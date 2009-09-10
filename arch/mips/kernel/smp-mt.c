@@ -36,6 +36,7 @@
 #include <asm/mipsmtregs.h>
 #include <asm/mips_mt.h>
 
+extern int gic_present;
 static void __init smvp_copy_vpe_config(void)
 {
 	write_vpe_c0_status(
@@ -117,7 +118,11 @@ static void vsmp_send_ipi_single(int cpu, unsigned int action)
 	int i;
 	unsigned long flags;
 	int vpflags;
-
+	
+	if (gic_present) {
+		cmp_send_ipi_single(cpu, action);
+		return;
+	}
 	local_irq_save(flags);
 
 	vpflags = dvpe();	/* cant access the other CPU's registers whilst MVPE enabled */
@@ -151,7 +156,6 @@ static void vsmp_send_ipi_mask(cpumask_t mask, unsigned int action)
 
 static void __cpuinit vsmp_init_secondary(void)
 {
-	extern int gic_present;
 	pr_debug("SMPMT: CPU%d: vsmp_init_secondary\n", smp_processor_id());
 	/* This is Malta specific: IPI,performance and timer inetrrupts */
 	if (gic_present)

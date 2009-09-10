@@ -19,6 +19,7 @@ extern unsigned long mt_fpemul_threshold;
 
 extern void mips_mt_regdump(unsigned long previous_mvpcontrol_value);
 extern void mips_mt_set_cpuoptions(void);
+extern void cmp_send_ipi_single(int cpu, unsigned int action);
 
 struct class;
 extern struct class *mt_class;
