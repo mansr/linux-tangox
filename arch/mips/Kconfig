@@ -264,7 +264,6 @@ config MIPS_MALTA
 	select BOOT_ELF32
 	select BOOT_RAW
 	select CEVT_R4K
-	select CSRC_R4K
 	select DMA_NONCOHERENT
 	select GENERIC_ISA_DMA
 	select HAVE_PCSPKR_PLATFORM
@@ -859,6 +858,24 @@ source "arch/mips/vr41xx/Kconfig"
 source "arch/mips/cavium-octeon/Kconfig"
 source "arch/mips/loongson/Kconfig"
 source "arch/mips/netlogic/Kconfig"
+
+endmenu
+
+menu "Clock source"
+	depends on MIPS_MALTA || MIPS_SEAD3
+
+comment "Select one or more precise CPU clock source kernel modules below:"
+
+config CSRC_R4K
+	bool "R4K count/compare counter"
+	default y if !CSRC_GIC
+	help
+	  Use the R4K count/compare counter for the kernel clock source.
+
+config CSRC_GIC
+	bool "GIC global counter (ROC-it or similar system controller)"
+	help
+	  Use the GIC global counter for the kernel clock source.
 
 endmenu
 
@@ -2016,7 +2033,7 @@ config MIPS_APSP_KSPD
 config MIPS_CMP
 	bool "MIPS CMP framework support"
 	depends on SYS_SUPPORTS_MIPS_CMP
-	select SYNC_R4K
+	select SYNC_R4K if CSRC_R4K
 	select SYS_SUPPORTS_SMP
 	select SYS_SUPPORTS_SCHED_SMT if SMP
 	select WEAK_ORDERING

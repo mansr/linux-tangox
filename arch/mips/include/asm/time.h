@@ -77,11 +77,11 @@ extern int init_r4k_clocksource(void);
 
 static inline int init_mips_clocksource(void)
 {
-#ifdef CONFIG_CSRC_R4K
-	return init_r4k_clocksource();
-#else
+	extern int gic_present;
+
+	if (!gic_present)
+		return init_r4k_clocksource();
 	return 0;
-#endif
 }
 
 static inline void clockevent_set_clock(struct clock_event_device *cd,
