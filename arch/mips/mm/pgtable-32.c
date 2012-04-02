@@ -33,6 +33,7 @@ void pgd_init(unsigned long page)
 void __init pagetable_init(void)
 {
 	unsigned long vaddr;
+	unsigned long vend;
 	pgd_t *pgd_base;
 #ifdef CONFIG_HIGHMEM
 	pgd_t *pgd;
@@ -51,8 +52,11 @@ void __init pagetable_init(void)
 	/*
 	 * Fixed mappings:
 	 */
-	vaddr = __fix_to_virt(__end_of_fixed_addresses - 1) & PMD_MASK;
-	fixrange_init(vaddr, vaddr + FIXADDR_SIZE, pgd_base);
+	vaddr = __fix_to_virt(__end_of_fixed_addresses - 1);
+	/* Calculate real end before alignment. */
+	vend = vaddr + FIXADDR_SIZE;
+	vaddr = vaddr & PMD_MASK;
+	fixrange_init(vaddr, vend, pgd_base);
 
 #ifdef CONFIG_HIGHMEM
 	/*
