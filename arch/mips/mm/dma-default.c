@@ -100,6 +100,7 @@ EXPORT_SYMBOL(dma_alloc_noncoherent);
 static void *mips_dma_alloc_coherent(struct device *dev, size_t size,
 	dma_addr_t * dma_handle, gfp_t gfp, struct dma_attrs *attrs)
 {
+	extern int hw_coherentio;
 	void *ret;
 
 	if (dma_alloc_from_coherent(dev, size, dma_handle, &ret))
@@ -115,7 +116,8 @@ static void *mips_dma_alloc_coherent(struct device *dev, size_t size,
 
 		if (!plat_device_is_coherent(dev)) {
 			dma_cache_wback_inv((unsigned long) ret, size);
-			ret = UNCAC_ADDR(ret);
+			if (!hw_coherentio)
+				ret = UNCAC_ADDR(ret);
 		}
 	}
 
@@ -134,6 +136,7 @@ EXPORT_SYMBOL(dma_free_noncoherent);
 static void mips_dma_free_coherent(struct device *dev, size_t size, void *vaddr,
 	dma_addr_t dma_handle, struct dma_attrs *attrs)
 {
+	extern int hw_coherentio;
 	unsigned long addr = (unsigned long) vaddr;
 	int order = get_order(size);
 
@@ -143,7 +146,8 @@ static void mips_dma_free_coherent(struct device *dev, size_t size, void *vaddr,
 	plat_unmap_dma_mem(dev, dma_handle, size, DMA_BIDIRECTIONAL);
 
 	if (!plat_device_is_coherent(dev))
-		addr = CAC_ADDR(addr);
+		if (!hw_coherentio)
+			addr = CAC_ADDR(addr);
 
 	free_pages(addr, get_order(size));
 }
