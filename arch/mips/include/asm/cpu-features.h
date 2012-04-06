@@ -222,13 +222,13 @@
 # endif
 #endif
 
-#if defined(CONFIG_CPU_MIPSR2_IRQ_VI) && !defined(cpu_has_vint)
+#if (defined(CONFIG_MIPS_SEAD3) || defined(CONFIG_CPU_MIPSR2_IRQ_VI)) && !defined(cpu_has_vint)
 # define cpu_has_vint		(cpu_data[0].options & MIPS_CPU_VINT)
 #elif !defined(cpu_has_vint)
 # define cpu_has_vint			0
 #endif
 
-#if defined(CONFIG_CPU_MIPSR2_IRQ_EI) && !defined(cpu_has_veic)
+#if (defined(CONFIG_MIPS_SEAD3) || defined(CONFIG_CPU_MIPSR2_IRQ_EI)) && !defined(cpu_has_veic)
 # define cpu_has_veic		(cpu_data[0].options & MIPS_CPU_VEIC)
 #elif !defined(cpu_has_veic)
 # define cpu_has_veic			0
