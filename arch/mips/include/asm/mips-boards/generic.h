@@ -29,6 +29,7 @@
  */
 #define ASCII_DISPLAY_WORD_BASE    0x1f000410
 #define ASCII_DISPLAY_POS_BASE     0x1f000418
+#define LCD_DISPLAY_POS_BASE       0x1f000400   /* SEAD-3 */
 
 
 /*
