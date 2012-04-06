@@ -124,7 +124,7 @@ _sys_clone(nabi_no_regargs struct pt_regs regs)
 	child_tidptr = (int __user *) regs.regs[8];
 #endif
 	return do_fork(clone_flags, newsp, &regs, 0,
-	               parent_tidptr, child_tidptr);
+		       parent_tidptr, child_tidptr);
 }
 
 /*
@@ -264,11 +264,12 @@ save_static_function(sys_sysmips);
 static int __used noinline
 _sys_sysmips(nabi_no_regargs struct pt_regs regs)
 {
-	long cmd, arg1, arg2;
+	long cmd, arg1, arg2, arg3;
 
 	cmd = regs.regs[4];
 	arg1 = regs.regs[5];
 	arg2 = regs.regs[6];
+	arg3 = regs.regs[7];
 
 	switch (cmd) {
 	case MIPS_ATOMIC_SET:

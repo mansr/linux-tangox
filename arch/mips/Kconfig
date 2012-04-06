@@ -1864,14 +1864,14 @@ config MIPS_MT_SMP
 	select SYS_SUPPORTS_SMP
 	select SMP_UP
 	help
-	  This is a kernel model which is known a VSMP but lately has been
-	  marketesed into SMVP.
-	  Virtual SMP uses the processor's VPEs  to implement virtual
-	  processors. In currently available configuration of the 34K processor
-	  this allows for a dual processor. Both processors will share the same
-	  primary caches; each will obtain the half of the TLB for it's own
-	  exclusive use. For a layman this model can be described as similar to
-	  what Intel calls Hyperthreading.
+	  Virtual SMP uses the processor's VPEs to implement virtual
+	  processors. In currently available configurations of the 34K
+	  processor this allows for a dual processor. Both processors will
+	  share the same primary caches and each will obtain the half of
+	  the TLB for its own exclusive use. For a layman this model can
+	  be described as similar to what Intel calls Hyperthreading. At
+	  some point MIPS marketing decided to renamed to SMVP but the
+	  renaming hasn't caught on as of yet. 
 
 	  For further information see http://www.linux-mips.org/wiki/34K#VSMP
 
@@ -1888,14 +1888,16 @@ config MIPS_MT_SMTC
 	select SYS_SUPPORTS_SMP
 	select SMP_UP
 	help
-	  This is a kernel model which is known a SMTC or lately has been
-	  marketesed into SMVP.
-	  is presenting the available TC's of the core as processors to Linux.
-	  On currently available 34K processors this means a Linux system will
-	  see up to 5 processors. The implementation of the SMTC kernel differs
-	  significantly from VSMP and cannot efficiently coexist in the same
-	  kernel binary so the choice between VSMP and SMTC is a compile time
-	  decision.
+	  SMTC is presenting the available TCs of the core as processors to
+	  Linux. On currently available 34K processors this means a Linux
+	  system will see up to 5 processors. The implementation of the SMTC
+	  kernel differs significantly from VSMP. It was found that SMTC cannot
+	  efficiently coexist in the same kernel binary with other modes of
+	  multiprocessor support, so enabling SMTC is a compile time decision.
+	  The choice between VSMP and SMTC is a bit delicate as it is affected
+	  by clockspeed, memory speed, the specific workload and other factors.
+	  As such the choice should not be made on an evaluation board such as
+	  the Malta but preferably on final target hardware.
 
 	  For further information see http://www.linux-mips.org/wiki/34K#SMTC
 
