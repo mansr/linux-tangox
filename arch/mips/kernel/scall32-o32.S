@@ -143,15 +143,25 @@ stackargs:
 	jr	t1
 	 addiu	t1, 6f - 5f
 
-2:	lw	t8, 28(t0)		# argument #8 from usp
-3:	lw	t7, 24(t0)		# argument #7 from usp
-4:	lw	t6, 20(t0)		# argument #6 from usp
-5:	jr	t1
+	lw	t8, 28(t0)		# argument #8 from usp
+	lw	t7, 24(t0)		# argument #7 from usp
+	lw	t6, 20(t0)		# argument #6 from usp
+	jr	t1
 	 sw	t5, 16(sp)		# argument #5 to ksp
 
+#ifdef CONFIG_CPU_MICROMIPS
+	## FIXME:
+	sw	t8, 28(sp)		# argument #8 to ksp
+	nop
+	sw	t7, 24(sp)		# argument #7 to ksp
+	nop
+	sw	t6, 20(sp)		# argument #6 to ksp
+	nop
+#else
 	sw	t8, 28(sp)		# argument #8 to ksp
 	sw	t7, 24(sp)		# argument #7 to ksp
 	sw	t6, 20(sp)		# argument #6 to ksp
+#endif
 6:	j	stack_done		# go back
 	 nop
 	.set	pop
