@@ -54,6 +54,12 @@ do {									\
 extern int mips_dsemul(struct pt_regs *regs, mips_instruction ir,
 	unsigned long cpc);
 extern int do_dsemulret(struct pt_regs *xcp);
+extern int fpu_emulator_cop1Handler(struct pt_regs *xcp,
+				    struct mips_fpu_struct *ctx, int has_fpu,
+				    void *__user *fault_addr);
+int process_fpemu_return(int sig, void __user *fault_addr);
+int mm_isBranchInstr(struct pt_regs *regs, struct decoded_instn dec_insn,
+		     unsigned long *contpc);
 
 /*
  * Instruction inserted following the badinst to further tag the sequence
@@ -64,5 +70,6 @@ extern int do_dsemulret(struct pt_regs *xcp);
  * Break instruction with special math emu break code set
  */
 #define BREAK_MATH (0x0000000d | (BRK_MEMU << 16))
+#define MM_BREAK_MATH (0x00000007 | (MM_BRK_MEMU << 16))
 
 #endif /* _ASM_FPU_EMULATOR_H */

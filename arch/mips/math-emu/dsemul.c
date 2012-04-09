@@ -54,8 +54,15 @@ int mips_dsemul(struct pt_regs *regs, mips_instruction ir, unsigned long cpc)
 	extern asmlinkage void handle_dsemulret(void);
 	struct emuframe __user *fr;
 	int err;
+	int nop = 0;
 
-	if (ir == 0) {		/* a nop is easy */
+	if (regs->cp0_epc & 1) {
+		if ((ir >> 16) == MM_NOP16)
+			nop = 1;
+	} else if (ir == 0)
+			nop = 1;
+
+	if (nop == 1) {		/* a nop is easy */
 		regs->cp0_epc = cpc;
 		regs->cp0_cause &= ~CAUSEF_BD;
 		return 0;
@@ -91,8 +98,17 @@ int mips_dsemul(struct pt_regs *regs, mips_instruction ir, unsigned long cpc)
 	if (unlikely(!access_ok(VERIFY_WRITE, fr, sizeof(struct emuframe))))
 		return SIGBUS;
 
-	err = __put_user(ir, &fr->emul);
-	err |= __put_user((mips_instruction)BREAK_MATH, &fr->badinst);
+	if (regs->cp0_epc & 1) {
+		err = __put_user(ir >> 16, (u16 __user *)(&fr->emul));
+		err |= __put_user(ir & 0xffff, (u16 __user *)((long)(&fr->emul) + 2));
+		err |= __put_user(MM_BREAK_MATH >> 16, (u16 __user *)(&fr->badinst));
+		err |= __put_user(MM_BREAK_MATH & 0xffff, (u16 __user *)((long)(&fr->badinst) + 2));
+	} else {
+		err = __put_user(ir, &fr->emul);
+		err |= __put_user((mips_instruction)BREAK_MATH, &fr->badinst);
+	}
+
+	/* NOTE: assume the 2nd instn is never executed => can leave as mips32 instr */
 	err |= __put_user((mips_instruction)BD_COOKIE, &fr->cookie);
 	err |= __put_user(cpc, &fr->epc);
 
@@ -101,7 +117,7 @@ int mips_dsemul(struct pt_regs *regs, mips_instruction ir, unsigned long cpc)
 		return SIGBUS;
 	}
 
-	regs->cp0_epc = (unsigned long) &fr->emul;
+	regs->cp0_epc = ((unsigned long) &fr->emul) | (regs->cp0_epc & 1);
 
 	flush_cache_sigtramp((unsigned long)&fr->badinst);
 
@@ -114,9 +130,14 @@ int do_dsemulret(struct pt_regs *xcp)
 	unsigned long epc;
 	u32 insn, cookie;
 	int err = 0;
+	u32 break_math = BREAK_MATH;
+	u16 instr[2];
+
+	if (xcp->cp0_epc & 1)
+		break_math = MM_BREAK_MATH;
 
 	fr = (struct emuframe __user *)
-		(xcp->cp0_epc - sizeof(mips_instruction));
+		((xcp->cp0_epc & (~1)) - sizeof(mips_instruction));
 
 	/*
 	 * If we can't even access the area, something is very wrong, but we'll
@@ -131,10 +152,15 @@ int do_dsemulret(struct pt_regs *xcp)
 	 *  - Is the instruction pointed to by the EPC an BREAK_MATH?
 	 *  - Is the following memory word the BD_COOKIE?
 	 */
-	err = __get_user(insn, &fr->badinst);
+	if (xcp->cp0_epc & 1) {
+		err = __get_user(instr[0], (u16 __user *)(&fr->badinst));
+		err |= __get_user(instr[1], (u16 __user *)((long)(&fr->badinst) + 2));
+		insn = (instr[0] << 16) | instr[1];
+	} else
+		err = __get_user(insn, &fr->badinst);
 	err |= __get_user(cookie, &fr->cookie);
 
-	if (unlikely(err || (insn != BREAK_MATH) || (cookie != BD_COOKIE))) {
+	if (unlikely(err || (insn != break_math) || (cookie != BD_COOKIE))) {
 		MIPS_FPU_EMU_INC_STATS(errors);
 		return 0;
 	}
