@@ -143,9 +143,13 @@ stackargs:
 	jr	t1
 	 addiu	t1, 6f - 5f
 
+2:	.insn
 	lw	t8, 28(t0)		# argument #8 from usp
+3:	.insn
 	lw	t7, 24(t0)		# argument #7 from usp
+4:	.insn
 	lw	t6, 20(t0)		# argument #6 from usp
+5:	.insn
 	jr	t1
 	 sw	t5, 16(sp)		# argument #5 to ksp
 
