@@ -114,6 +114,8 @@ Ip_0(_tlbwi);
 Ip_0(_tlbwr);
 Ip_u3u1u2(_xor);
 Ip_u2u1u3(_xori);
+Ip_u2u1msbu3(_ext);
+Ip_u2u1msbu3(_ins);
 Ip_u2u1msbu3(_dins);
 Ip_u2u1msbu3(_dinsm);
 Ip_u1(_syscall);

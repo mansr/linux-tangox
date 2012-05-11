@@ -10,6 +10,7 @@
  * Copyright (C) 2004, 2005, 2006, 2008  Thiemo Seufer
  * Copyright (C) 2005, 2007  Maciej W. Rozycki
  * Copyright (C) 2006  Ralf Baechle (ralf@linux-mips.org)
+ * Copyright (C) 2011, 2012  MIPS Technologies, Inc.
  */
 
 #include <linux/kernel.h>
@@ -343,6 +344,13 @@ Ip_u2u1msbu3(op)					\
 }							\
 UASM_EXPORT_SYMBOL(uasm_i##op);
 
+#define I_u2u1mmsbu3(op)				\
+Ip_u2u1msbu3(op)					\
+{							\
+	build_insn(buf, insn##op, b, a, d-1, c);	\
+}							\
+UASM_EXPORT_SYMBOL(uasm_i##op);
+
 #define I_u1u2(op)					\
 Ip_u1u2(op)						\
 {							\
@@ -396,6 +404,8 @@ I_u2u1u3(_drotr)
 I_u2u1u3(_drotr32)
 I_u3u1u2(_dsubu)
 I_0(_eret)
+I_u2u1msbu3(_ins)
+I_u2u1mmsbu3(_ext)
 I_u1(_j)
 I_u1(_jal)
 I_u1(_jr)
