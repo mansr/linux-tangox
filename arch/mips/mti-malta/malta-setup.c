@@ -222,3 +222,17 @@ void __init plat_mem_setup(void)
 	board_be_init = malta_be_init;
 	board_be_handler = malta_be_handler;
 }
+
+/* Enable PCI 2.1 compatibility in PIIX4. */
+static void __init quirk_dlcsetup(struct pci_dev *dev)
+{
+	u8 dlc;
+
+	/* Enable passive releases and delayed transactions. */
+	(void) pci_read_config_byte(dev, 0x82, &dlc);
+	dlc |= 7;
+	(void) pci_write_config_byte(dev, 0x82, dlc);
+}
+
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_82371AB_0,
+			quirk_dlcsetup);
