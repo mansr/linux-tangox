@@ -2231,6 +2231,7 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	unsigned long did_some_progress;
 	bool sync_migration = false;
 	bool deferred_compaction = false;
+ 	int num_retries = 0;
 
 	/*
 	 * In the slowpath, we sanity check order to avoid ever trying to
@@ -2402,6 +2403,12 @@ rebalance:
 	}
 
 nopage:
+	/* give more chances to see if memory is available */		
+	if (wait && !in_atomic() && !in_interrupt() && (++num_retries < 16)) {
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule_timeout(HZ);
+		goto rebalance;
+	}
 	warn_alloc_failed(gfp_mask, order, NULL);
 	return page;
 got_pg:

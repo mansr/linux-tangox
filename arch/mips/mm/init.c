@@ -43,6 +43,14 @@
 #include <asm/tlb.h>
 #include <asm/fixmap.h>
 
+#if defined(CONFIG_TANGO2)
+#include <asm/tango2/hardware.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/hardware.h>
+#elif defined(CONFIG_TANGO4)
+#include <asm/tango4/hardware.h>
+#endif
+
 /* Atomicity and interruptability */
 #ifdef CONFIG_MIPS_MT_SMTC
 
@@ -338,6 +346,12 @@ void __init paging_init(void)
 	unsigned long max_zone_pfns[MAX_NR_ZONES];
 	unsigned long lastpfn;
 
+#if defined(CONFIG_TANGOX) && defined(CONFIG_PCI)
+	extern unsigned long em8xxx_kmem_start;
+	extern unsigned long em8xxx_kmem_size;
+	extern int tangox_pci_host_enabled(void);
+#endif
+
 	pagetable_init();
 
 #ifdef CONFIG_HIGHMEM
@@ -346,7 +360,13 @@ void __init paging_init(void)
 	kmap_coherent_init();
 
 #ifdef CONFIG_ZONE_DMA
-	max_zone_pfns[ZONE_DMA] = MAX_DMA_PFN;
+#if defined(CONFIG_TANGOX) && defined(CONFIG_PCI)
+	/* If PCI is used, then limit DMA memory to MAX_PCIMEM_MAP_SIZE if kernel memory is > MAX_PCIMEM_MAP_SIZE */
+	if (tangox_pci_host_enabled() && (em8xxx_kmem_size>(MAX_PCIMEM_MAP_SIZE<<20)))
+		max_zone_pfns[ZONE_DMA] = PFN_DOWN(virt_to_phys((void *)((em8xxx_kmem_start+(MAX_PCIMEM_MAP_SIZE<<20))&0xfff00000)));
+	else
+#endif
+		max_zone_pfns[ZONE_DMA] = MAX_DMA_PFN;
 #endif
 #ifdef CONFIG_ZONE_DMA32
 	max_zone_pfns[ZONE_DMA32] = MAX_DMA32_PFN;

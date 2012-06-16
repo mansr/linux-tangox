@@ -295,8 +295,14 @@ int pci_mmap_page_range(struct pci_dev *dev, struct vm_area_struct *vma,
 
 char * (*pcibios_plat_setup)(char *str) __devinitdata;
 
+int pci_enabled = 1;
+
 char *__devinit pcibios_setup(char *str)
 {
+	if (strcmp(str, "disabled") == 0) {
+		pci_enabled = 0;
+		return(NULL);
+	}
 	if (pcibios_plat_setup)
 		return pcibios_plat_setup(str);
 	return str;

@@ -5,6 +5,8 @@
 lib-y	+= csum_partial.o delay.o memcpy.o memcpy-inatomic.o memset.o \
 	   strlen_user.o strncpy_user.o strnlen_user.o uncached.o
 
+obj-$(CONFIG_TANGO3) += archop_mips.o archop_cw.o
+
 obj-y			+= iomap.o
 obj-$(CONFIG_PCI)	+= iomap-pci.o
 

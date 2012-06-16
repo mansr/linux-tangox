@@ -80,6 +80,31 @@
 #define __sync()	do { } while(0)
 #endif
 
+#if defined(CONFIG_TANGO2)
+#include <asm/tango2/emhwlib_registers_tango2.h>
+#include <asm/tango2/emhwlib_dram_tango2.h>
+#define __fast_iob()				\
+	__asm__ __volatile__(			\
+		".set	push\n\t"		\
+		".set	noreorder\n\t"		\
+		"lw	$0,%0\n\t"		\
+		"nop\n\t"			\
+		".set	pop"			\
+		: /* no output */		\
+		: "m" (*(int *)(CKSEG1+MEM_BASE_dram_controller_0+FM_RESERVED))	\
+		: "memory")
+#elif defined(CONFIG_TANGO3) || defined(CONFIG_TANGO4)
+#define __fast_iob()				\
+	__asm__ __volatile__(			\
+		".set	push\n\t"		\
+		".set	noreorder\n\t"		\
+		"lw	$0,%0\n\t"		\
+		"nop\n\t"			\
+		".set	pop"			\
+		: /* no output */		\
+		: "m" (*(int *)(CKSEG1+CPU_REMAP_SPACE))	\
+		: "memory")
+#else
 #define __fast_iob()				\
 	__asm__ __volatile__(			\
 		".set	push\n\t"		\
@@ -90,6 +115,8 @@
 		: /* no output */		\
 		: "m" (*(int *)CKSEG1)		\
 		: "memory")
+#endif
+
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
 # define OCTEON_SYNCW_STR	".set push\n.set arch=octeon\nsyncw\nsyncw\n.set pop\n"
 # define __syncw() 	__asm__ __volatile__(OCTEON_SYNCW_STR : : : "memory")

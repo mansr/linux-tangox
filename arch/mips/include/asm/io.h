@@ -337,6 +337,7 @@ static inline void pfx##write##bwlq(type val,				\
 			local_irq_restore(__flags);			\
 	} else								\
 		BUG();							\
+	__sync();                                                       \
 }									\
 									\
 static inline type pfx##read##bwlq(const volatile void __iomem *mem)	\
@@ -367,7 +368,6 @@ static inline type pfx##read##bwlq(const volatile void __iomem *mem)	\
 		__val = 0;						\
 		BUG();							\
 	}								\
-									\
 	return pfx##ioswab##bwlq(__mem, __val);				\
 }
 
@@ -380,7 +380,7 @@ static inline void pfx##out##bwlq##p(type val, unsigned long port)	\
 									\
 	war_octeon_io_reorder_wmb();					\
 									\
-	__addr = (void *)__swizzle_addr_##bwlq(mips_io_port_base + port); \
+	__addr = (void *)(mips_io_port_base + __swizzle_addr_##bwlq(port)); \
 									\
 	__val = pfx##ioswab##bwlq(__addr, val);				\
 									\
@@ -388,6 +388,7 @@ static inline void pfx##out##bwlq##p(type val, unsigned long port)	\
 	BUILD_BUG_ON(sizeof(type) > sizeof(unsigned long));		\
 									\
 	*__addr = __val;						\
+	__sync();                                                       \
 	slow;								\
 }									\
 									\
@@ -396,7 +397,7 @@ static inline type pfx##in##bwlq##p(unsigned long port)			\
 	volatile type *__addr;						\
 	type __val;							\
 									\
-	__addr = (void *)__swizzle_addr_##bwlq(mips_io_port_base + port); \
+	__addr = (void *)(mips_io_port_base + __swizzle_addr_##bwlq(port)); \
 									\
 	BUILD_BUG_ON(sizeof(type) > sizeof(unsigned long));		\
 									\
@@ -551,6 +552,15 @@ static inline void memcpy_toio(volatile void __iomem *dst, const void *src, int 
 {
 	memcpy((void __force *) dst, src, count);
 }
+
+/* Create a virtual mapping cookie for an IO port range */
+extern void __iomem *ioport_map(unsigned long port, unsigned int nr);
+extern void ioport_unmap(void __iomem *);
+
+/* Create a virtual mapping cookie for a PCI BAR (memory or IO) */
+struct pci_dev;
+extern void __iomem *pci_iomap(struct pci_dev *dev, int bar, unsigned long max);
+extern void pci_iounmap(struct pci_dev *dev, void __iomem *);
 
 /*
  * The caches on some architectures aren't dma-coherent and have need to

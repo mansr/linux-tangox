@@ -18,7 +18,13 @@ extern void __ndelay(unsigned int ns);
 extern void __udelay(unsigned int us);
 
 #define ndelay(ns) __ndelay(ns)
+
+#ifdef CONFIG_TANGOX
+void tangox_udelay(unsigned usec);
+#define udelay(usecs) tangox_udelay(usecs)
+#else
 #define udelay(us) __udelay(us)
+#endif
 
 /* make sure "usecs *= ..." in udelay do not overflow. */
 #if HZ >= 1000

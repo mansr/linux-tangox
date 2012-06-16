@@ -1,0 +1,414 @@
+
+#
+# environment selection
+#
+
+#
+# chip revision selection
+#
+
+choice 
+	prompt "Sigma Designs chips"
+	depends on TANGOX
+
+config TANGO2_ES6
+	bool "SMP863x ES6+"
+	select TANGO2_SMP863X
+	select TANGO2
+	help
+	  Support for Sigma Designs SMP863x chip (Tango2 architecture).
+
+config TANGO3_SMP8652
+	bool "SMP8652"
+	select TANGO3_SMP86XX
+	select TANGO3_865X
+	select TANGO3_8652
+	select TANGO3
+#	select HIGHMEM
+	help 
+	  Support for Sigma Designs SMP8652 chip (Tango3 architecture).
+
+config TANGO3_SMP8654
+	bool "SMP8654"
+	select TANGO3_SMP86XX
+	select TANGO3_865X
+	select TANGO3_8654
+	select TANGO3
+#	select HIGHMEM
+	help 
+	  Support for Sigma Designs SMP8654 chip (Tango3 architecture).
+
+config TANGO3_SMP8656OTP
+	bool "SMP8656 w/OTP"
+	select TANGO3_SMP86XX
+	select TANGO3_865X
+	select TANGO3
+#	select HIGHMEM
+	help 
+	  Support for Sigma Designs SMP8656 chip with OTP technology (aka 8656PS4/8656Bxx, Tango3)).
+
+config TANGO3_SMP8656SF
+	bool "SMP8656 w/Serial Flash"
+	select TANGO3_SMP86XX
+	select TANGO3_865X
+	select TANGO3
+#	select HIGHMEM
+	help 
+	  Support for Sigma Designs SMP8656 chip with embedded serial flash (aka 8656ES1/8656ES5/8656Axx/8656Cxx, Tango3)).
+
+config TANGO3_SMP8642
+	bool "SMP8642"
+	select TANGO3_SMP86XX
+	select TANGO3_864X
+	select TANGO3
+	help
+	  Sigma Designs SMP8642 chip (MIPS 74Kf core based), ES2 or above.
+	  Newer compiler may be needed to support 74Kf core (Tango3 architecture).
+
+config TANGO3_SMP8644
+	bool "SMP8644"
+	select TANGO3_SMP86XX
+	select TANGO3_864X
+	select TANGO3
+	help
+	  Sigma Designs SMP8644 chip (MIPS 74Kf core based), ES2 or above.
+	  Newer compiler may be needed to support 74Kf core (Tango3 architecture).
+
+config TANGO3_SMP8646
+	bool "SMP8646"
+	select TANGO3_SMP86XX
+	select TANGO3_864X
+	select TANGO3
+	help
+	  Sigma Designs SMP8646 chip (MIPS 74Kf core based), ES2 or above.
+	  Newer compiler may be needed to support 74Kf core (Tango3 architecture).
+
+config TANGO3_SMP8670
+	bool "SMP8670"
+	select TANGO3_SMP86XX
+	select TANGO3_867X
+	select TANGO3
+#	select HIGHMEM
+	help
+	  Sigma Designs SMP8670 chip (MIPS 24Kf core based), ES1 or above (Tango3).
+
+config TANGO3_SMP8672
+	bool "SMP8672"
+	select TANGO3_SMP86XX
+	select TANGO3_867X
+	select TANGO3
+	help
+	  Sigma Designs SMP8672 chip (MIPS 74Kf core based), ES1 or above (Tango3).
+
+config TANGO3_SMP8674
+	bool "SMP8674"
+	select TANGO3_SMP86XX
+	select TANGO3_867X
+	select TANGO3
+	help
+	  Sigma Designs SMP8674 chip (MIPS 24Kf core based), ES1 or above (Tango3).
+
+config TANGO4_SMP8910
+	bool "SMP8910"
+	select TANGO4_89XX
+	select TANGO4_891X
+	select TANGO4
+#	select HIGHMEM
+	help
+	  Sigma Designs SMP891x chip (MIPS 1004Kf core based), ES1 or above (Tango4).
+	  Newer compiler may be needed to support 1004Kf core.
+
+config TANGO4_SMP8920
+	bool "SMP8920"
+	select TANGO4_89XX
+	select TANGO4_892X
+	select TANGO4
+	help
+	  Sigma Designs SMP892x chip (MIPS 1074Kf core based), ES1 or above (Tango4).
+	  Newer compiler may be needed to support 1074Kf core.
+
+endchoice
+
+config TANGO2
+	bool
+
+config TANGO3
+	bool
+
+config TANGO4
+	bool
+
+config TANGO2_SMP863X
+	bool
+	select IRQ_CPU
+	select HW_HAS_PCI
+	select NR_CPUS_DEFAULT_1
+	select USB_ARCH_HAS_OHCI
+	select USB_ARCH_HAS_EHCI
+
+config TANGO3_SMP86XX
+	bool
+	select CRYPTO_SHA256
+	select IRQ_CPU
+	select MIPS_CPU_SCACHE
+	select NR_CPUS_DEFAULT_1
+
+config TANGO3_865X
+	bool 
+	select HW_HAS_PCI
+	select USB_ARCH_HAS_OHCI
+	select USB_ARCH_HAS_EHCI
+
+config TANGO3_867X
+	bool 
+	select USB_ARCH_HAS_EHCI
+
+config TANGO3_864X
+	bool
+	select USB_ARCH_HAS_OHCI
+	select USB_ARCH_HAS_EHCI
+
+config TANGO4_891X
+	bool
+
+config TANGO4_892X
+	bool
+
+config TANGO4_89XX
+	bool
+	select USB_ARCH_HAS_EHCI
+	select CRYPTO_SHA256
+	select MIPS_CPU_SCACHE
+	select IRQ_CPU
+	select IRQ_GIC
+	select SYS_SUPPORTS_MULTITHREADING
+	select SYS_SUPPORTS_SMARTMIPS
+#	select SYS_SUPPORTS_MIPS_CMP if BROKEN	# because SYNC_R4K is broken
+	select SYS_SUPPORTS_MIPS_CMP
+	select NR_CPUS_DEFAULT_4
+
+comment "More configurations"
+	depends on TANGOX
+
+config TANGOX_SYSTEMRAM_ACTUALSIZE
+	int "System RAM size (in MB)"
+	depends on TANGOX
+	default 64
+	help
+	 This is the default amount of RAM available to the Linux kernel. It can be
+	 override with "mem=" command line option.
+
+config TANGOX_IGNORE_CMDLINE
+	bool "Ignore YAMON, XENV & memcfg command line"
+	depends on TANGOX
+	default n
+	help
+	 If you say  yes, boot command line from  YAMON, XENV & memcfg
+	 will be ignored. You can then use CONFIG_CMDLINE to force the
+	 kernel command line.
+
+config TANGOX_PROM_CONSOLE
+	bool "Register an early console"
+	depends on TANGOX
+	default n
+	help
+	 If you say yes, an light console will be available very early
+	 in the  boot process,  this is useful  if the  kernel crashes
+	 before reaching  the main console  code. The console  will be
+	 automatically replaced by the normal one after.
+	 ### NOTE: This console can only do output ###
+
+config TANGOX_FIXED_FREQUENCIES
+	bool "Specified fixed frequencies"
+	depends on TANGOX
+	default n 
+	help
+	 To specify, statically, the frequencies for CPU, System, and Base.
+	 Normally this is only used in experimental purpose where PLL may be
+	 set differently (typical for simulation or FPGA).
+
+config TANGOX_BASE_FREQUENCY
+	int "Base Frequency"
+	depends on TANGOX_FIXED_FREQUENCIES
+	default 27000000
+	help
+	 Base frequency (corresponding to XTAL in).
+
+config TANGOX_CPU_FREQUENCY
+	int "CPU Frequency"
+	depends on TANGOX_FIXED_FREQUENCIES
+	default 300000000
+	help
+	 CPU frequency.
+
+config TANGOX_SYS_FREQUENCY
+	int "System Frequency"
+	depends on TANGOX_FIXED_FREQUENCIES
+	default 200000000
+	help
+	 System frequency.
+
+config TANGOX_DSP_FREQUENCY
+ 	int "DSP Frequency"
+ 	depends on TANGOX_FIXED_FREQUENCIES
+ 	default 200000000
+ 	help
+ 	 DSP frequency.
+ 
+config TANGOX_UART_USE_SYSCLK
+	bool "Use system clock for UART"
+	depends on TANGOX
+	default n
+	help
+	 If you  say yes here, the UART  clock will be  derivated from the
+	 system bus clock. If  you say  no, the  XTAL_in clock  is used
+	 instead.
+
+config TANGOX_USE_TLB_REMAP_DRAM1
+	bool "Use TLB to access DRAM1"
+	depends on TANGO2_SMP863X 
+	default n
+	help
+	 If  you say yes  here, kernel  access to  DRAM1 will  be done
+	 using TLB implementation. gbus() funcs will use an ioremapped
+	 address to access this area of memory. If you say no, special
+	 CPU remap registers are used instead.
+
+#
+# XENV stuffs
+#
+comment "XENV support"
+	depends on TANGOX
+
+config TANGOX_XENV_READ
+	bool "Read config from XENV"
+	depends on TANGOX
+ 	select CRYPTO_SHA1 
+ 	select CRYPTO_SHA256 if (TANGO3 || TANGO4)
+	help
+	 If you  say yes  here, board configuration  (enabled devices,
+	 pci irq routing,  ...) will be read from  xenv space.
+
+config TANGOX_XENV_DUMP
+	bool "Dump XENV content at boot"
+	depends on TANGOX_XENV_READ
+	default n
+
+config TANGOX_XENV_READ_SAFE
+	bool "Don't boot if XENV invalid"
+	depends on TANGOX_XENV_READ
+	help
+	 If you say yes here and XENV content is invalid, linux wont boot.
+
+menu "XENV failsafe/override values"
+	depends on TANGOX && (!TANGOX_XENV_READ_SAFE)
+
+config TANGOX_XENV_DEF_CS0_SIZE
+	hex "CS0 size (flash0)"
+	default 0x0
+
+config TANGOX_XENV_DEF_CS1_SIZE
+	hex "CS1 size (flash1)"
+	default 0x0
+
+config TANGOX_XENV_DEF_CS2_SIZE
+	hex "CS2 size (flash2)"
+	default 0x400000
+
+config TANGOX_XENV_DEF_CS3_SIZE
+	hex "CS3 size (flash3)"
+	default 0x0
+
+config TANGOX_XENV_DEF_UART0
+	bool "UART0 enabled"
+	default y
+
+config TANGOX_XENV_DEF_UART1
+	bool "UART1 enabled"
+	default y
+
+config TANGOX_XENV_DEF_BAUDRATE
+	int "Default baudrate"
+	default 115200
+
+config TANGOX_XENV_DEF_CONSOLE_UART_PORT
+	int "Console UART port"
+	default 0
+
+config TANGOX_XENV_DEF_ENET
+	bool "Ethernet enabled"
+	default n
+
+config TANGOX_XENV_DEF_FIP
+	bool "FIP enabled"
+	default n
+
+config TANGOX_XENV_DEF_I2CM
+	bool "I2CM enabled"
+	default n
+
+config TANGOX_XENV_DEF_I2CS
+	bool "I2CS enabled"
+	default n
+
+config TANGOX_XENV_DEF_BMIDE
+	bool "BM IDE controller enabled"
+	default n
+
+config TANGOX_XENV_DEF_ISAIDE
+	bool "ISA IDE controller enabled"
+	default n
+
+config TANGOX_XENV_DEF_IR
+	bool "IR enabled"
+	default n
+
+config TANGOX_XENV_DEF_PCIHOST
+	bool "PCI Host enabled"
+	default n
+
+config TANGOX_XENV_DEF_PCI_ID1
+	bool "PCI device 1 enabled"
+	depends on TANGOX_XENV_DEF_PCIHOST
+	default n
+
+config TANGOX_XENV_DEF_PCI_ID1_IRQ
+	hex "PCI device 1 IRQ route"
+	depends on TANGOX_XENV_DEF_PCIHOST && TANGOX_XENV_DEF_PCI_ID1
+	default 0x0
+
+config TANGOX_XENV_DEF_PCI_ID2
+	bool "PCI device 2 enabled"
+	depends on TANGOX_XENV_DEF_PCIHOST
+	default n
+
+config TANGOX_XENV_DEF_PCI_ID2_IRQ
+	hex "PCI device 2 IRQ route"
+	depends on TANGOX_XENV_DEF_PCIHOST && TANGOX_XENV_DEF_PCI_ID2
+	default 0x0
+
+config TANGOX_XENV_DEF_PCI_ID3
+	bool "PCI device 3 enabled"
+	depends on TANGOX_XENV_DEF_PCIHOST
+	default n
+
+config TANGOX_XENV_DEF_PCI_ID3_IRQ
+	hex "PCI device 3 IRQ route"
+	depends on TANGOX_XENV_DEF_PCIHOST && TANGOX_XENV_DEF_PCI_ID3
+	default 0x0
+
+config TANGOX_XENV_DEF_PCI_ID4
+	bool "PCI device 4 enabled"
+	depends on TANGOX_XENV_DEF_PCIHOST
+	default n
+
+config TANGOX_XENV_DEF_PCI_ID4_IRQ
+	hex "PCI device 4 IRQ route"
+	depends on TANGOX_XENV_DEF_PCIHOST && TANGOX_XENV_DEF_PCI_ID4
+	default 0x0
+
+config TANGOX_XENV_DEF_USB
+	bool "USB enabled"
+	default n
+
+endmenu

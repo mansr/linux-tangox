@@ -122,13 +122,27 @@ FEXPORT(__bzero)
 	beqz		t1, .Lmemset_partial	/* no block to fill */
 	 andi		t0, a2, 0x40-STORSIZE
 
+#if defined(CONFIG_TANGO3) || defined(CONFIG_TANGO4)
+	subu    t1, 0x40 # distinguish one or >=2 blocks: pref 30 is destructive
+	beqz    t1, 2f
+#endif
+
 	PTR_ADDU	t1, a0			/* end address */
 	.set		reorder
 1:	PTR_ADDIU	a0, 64
+#if defined(CONFIG_TANGO3) || defined(CONFIG_TANGO4)
+	pref 30, 0(a0) # we assume a0 is 0x20-aligned
+	pref 30, 32(a0)
+#endif
 	R10KCBARRIER(0(ra))
 	f_fill64 a0, -64, FILL64RG, .Lfwd_fixup
 	bne		t1, a0, 1b
 	.set		noreorder
+
+#if defined(CONFIG_TANGO3) || defined(CONFIG_TANGO4)
+2:	PTR_ADDIU       a0, 64
+	f_fill64 a0, -64, a1, .Lfwd_fixup
+#endif
 
 .Lmemset_partial:
 	R10KCBARRIER(0(ra))

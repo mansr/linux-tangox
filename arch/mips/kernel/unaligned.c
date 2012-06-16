@@ -418,6 +418,9 @@ extern void show_registers(struct pt_regs *regs);
 		: "r" (value), "r" (addr), "i" (-EFAULT));
 #endif
 
+/* enable message to print unaligned access */
+#define PRINT_UNALIGNED_ACCESS
+ 
 static void emulate_load_store_insn(struct pt_regs *regs,
 				    void __user *addr,
 				    unsigned int __user *pc)
@@ -434,11 +437,43 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 
 	perf_sw_event(PERF_COUNT_SW_EMULATION_FAULTS, 1, regs, 0);
 
+#ifdef PRINT_UNALIGNED_ACCESS
+	if (printk_ratelimit())
+		printk("Cpu%d[%s:%d:0x%08lx:0x%08lx] ", raw_smp_processor_id(),
+	       		current->comm, current->pid, regs->cp0_epc, regs->cp0_badvaddr);
+#endif
+
 	/*
 	 * This load never faults.
 	 */
 	__get_user(insn.word, pc);
 
+#if defined(CONFIG_TANGO3_864X) || defined(CONFIG_TANGO4)
+	/*
+	  fix DSP r2 lhx and lwx too. see MD00374 page 131 (works on 74K only; on 24K you don't get AdEL but RI!)
+
+	  verified with
+	  
+	  *iptr=0x42434445;
+	  
+	  int q=0xffffffff;
+	  asm __volatile__(".set dspr2; lhx %0, $0(%1)":"=&r"(q):"r"(iptr));
+	  printf("0x%08lx\n",q);
+	  asm __volatile__(".set dspr2; lwx %0, $0(%1)":"=&r"(q):"r"(iptr));
+	  printf("0x%08lx\n",q);
+	*/
+	if ((insn.r_format.opcode==31)
+	    &&(insn.r_format.func==10)) {
+		// cheat the destination
+		insn.i_format.rt=insn.r_format.rd;
+		// cheat the function
+		if (insn.r_format.re==0)
+			insn.i_format.opcode=lw_op;
+		if (insn.r_format.re==4)
+			insn.i_format.opcode=lh_op;
+	}
+#endif
+	
 	switch (insn.i_format.opcode) {
 		/*
 		 * These are instructions that a compiler doesn't generate.  We
@@ -467,6 +502,10 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 	case lb_op:
 	case lbu_op:
 	case sb_op:
+#ifdef PRINT_UNALIGNED_ACCESS
+		if (printk_ratelimit())
+			printk("no fix-ups.\n");
+#endif
 		goto sigbus;
 
 		/*
@@ -643,11 +682,20 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		 * Pheeee...  We encountered an yet unknown instruction or
 		 * cache coherence problem.  Die sucker, die ...
 		 */
+#ifdef PRINT_UNALIGNED_ACCESS
+		if (printk_ratelimit())
+			printk("no fix-ups.\n");
+#endif
 		goto sigill;
 	}
 
 #ifdef CONFIG_DEBUG_FS
 	unaligned_instructions++;
+#endif
+
+#ifdef PRINT_UNALIGNED_ACCESS
+	if (printk_ratelimit())
+		printk("fix-ups done.\n");
 #endif
 
 	return;

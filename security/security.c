@@ -28,7 +28,7 @@
 static __initdata char chosen_lsm[SECURITY_NAME_MAX + 1] =
 	CONFIG_DEFAULT_SECURITY;
 
-static struct security_operations *security_ops;
+static struct security_operations *security_ops = NULL;
 static struct security_operations default_security_ops = {
 	.name	= "default",
 };
@@ -181,7 +181,7 @@ int security_quota_on(struct dentry *dentry)
 
 int security_syslog(int type)
 {
-	return security_ops->syslog(type);
+	return security_ops ? security_ops->syslog(type) : -EPERM;
 }
 
 int security_settime(const struct timespec *ts, const struct timezone *tz)

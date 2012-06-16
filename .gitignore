@@ -84,3 +84,7 @@ GTAGS
 *.orig
 *~
 \#*#
+
+# sigma generated files
+*.zbf
+*xload

@@ -32,7 +32,7 @@ int mac_partition(struct parsed_partitions *state)
 	Sector sect;
 	unsigned char *data;
 	int slot, blocks_in_map;
-	unsigned secsize;
+	sector_t secsize;
 #ifdef CONFIG_PPC_PMAC
 	int found_root = 0;
 	int found_root_goodness = 0;
@@ -65,7 +65,7 @@ int mac_partition(struct parsed_partitions *state)
 	}
 	strlcat(state->pp_buf, " [mac]", PAGE_SIZE);
 	for (slot = 1; slot <= blocks_in_map; ++slot) {
-		int pos = slot * secsize;
+		sector_t pos = slot * secsize;
 		put_dev_sector(sect);
 		data = read_part_sector(state, pos/512, &sect);
 		if (!data)

@@ -329,6 +329,7 @@ static inline int map_word_bitsset(struct map_info *map, map_word val1, map_word
 static inline map_word map_word_load(struct map_info *map, const void *ptr)
 {
 	map_word r;
+	memset(&r, 0, sizeof(map_word));
 
 	if (map_bankwidth_is_1(map))
 		r.x[0] = *(unsigned char *)ptr;

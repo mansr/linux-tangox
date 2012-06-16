@@ -423,7 +423,7 @@ uart_get_divisor(struct uart_port *port, unsigned int baud)
 	else
 		quot = DIV_ROUND_CLOSEST(port->uartclk, 16 * baud);
 
-	return quot;
+	return (quot ? quot : 1);
 }
 
 EXPORT_SYMBOL(uart_get_divisor);

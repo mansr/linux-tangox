@@ -10,11 +10,24 @@
 #include <linux/module.h>
 #include <asm/io.h>
 
+#ifdef CONFIG_TANGO2
+#include <asm/tango2/hardware.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/hardware.h>
+#elif defined(CONFIG_TANGO4)
+#include <asm/tango4/hardware.h>
+#endif
+
 void __iomem *__pci_ioport_map(struct pci_dev *dev,
 			       unsigned long port, unsigned int nr)
 {
 	struct pci_controller *ctrl = dev->bus->sysdata;
 	unsigned long base = ctrl->io_map_base;
+
+#ifdef CONFIG_TANGOX
+	/* some quirk for TangoX */
+	port = (port >= MEMORY_BASE_PCI_IO) ? (port - MEMORY_BASE_PCI_IO) : port;
+#endif
 
 	/* This will eventually become a BUG_ON but for now be gentle */
 	if (unlikely(!ctrl->io_map_base)) {

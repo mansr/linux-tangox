@@ -31,7 +31,7 @@
 
 #define M_COUNTER_OVERFLOW		(1UL      << 31)
 
-static int (*save_perf_irq)(void);
+static irqreturn_t (*save_perf_irq)(void);
 
 #ifdef CONFIG_MIPS_MT_SMP
 static int cpu_has_mipsmt_pertccounters;
@@ -212,7 +212,7 @@ static void mipsxx_cpu_stop(void *args)
 	}
 }
 
-static int mipsxx_perfcount_handler(void)
+static irqreturn_t mipsxx_perfcount_handler(void)
 {
 	unsigned int counters = op_model_mipsxx_ops.num_counters;
 	unsigned int control;

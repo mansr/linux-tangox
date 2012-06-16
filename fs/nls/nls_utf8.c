@@ -8,6 +8,7 @@
 #include <linux/string.h>
 #include <linux/nls.h>
 #include <linux/errno.h>
+#include <asm/unaligned.h>
 
 static unsigned char identity[256];
 
@@ -33,7 +34,7 @@ static int char2uni(const unsigned char *rawstring, int boundlen, wchar_t *uni)
 
 	n = utf8_to_utf32(rawstring, boundlen, &u);
 	if (n < 0 || u > MAX_WCHAR_T) {
-		*uni = 0x003f;	/* ? */
+ 		put_unaligned((wchar_t)0x003f, uni); /* ? */
 		return -EINVAL;
 	}
 	*uni = (wchar_t) u;

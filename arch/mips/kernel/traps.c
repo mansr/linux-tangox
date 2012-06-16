@@ -55,6 +55,20 @@
 #include <asm/stacktrace.h>
 #include <asm/uasm.h>
 
+#ifdef CONFIG_TANGO2
+#include <asm/tango2/emhwlib_registers_tango2.h>
+#include <asm/tango2/emhwlib_dram_tango2.h>
+#include <asm/tango2/hardware.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/emhwlib_registers_tango3.h>
+#include <asm/tango3/emhwlib_dram_tango3.h>
+#include <asm/tango3/hardware.h>
+#elif defined(CONFIG_TANGO4)
+#include <asm/tango4/emhwlib_registers_tango4.h>
+#include <asm/tango4/emhwlib_dram_tango4.h>
+#include <asm/tango4/hardware.h>
+#endif
+
 extern void check_wait(void);
 extern asmlinkage void r4k_wait(void);
 extern asmlinkage void rollback_handle_int(void);
@@ -1512,7 +1526,7 @@ static asmlinkage void do_default_vi(void)
 	panic("Caught unexpected vectored interrupt.");
 }
 
-static void *set_vi_srs_handler(int n, vi_handler_t addr, int srs)
+static void __cpuinit *set_vi_srs_handler(int n, vi_handler_t addr, int srs)
 {
 	unsigned long handler;
 	unsigned long old_handler = vi_handlers[n];
@@ -1623,7 +1637,7 @@ static void *set_vi_srs_handler(int n, vi_handler_t addr, int srs)
 	return (void *)old_handler;
 }
 
-void *set_vi_handler(int n, vi_handler_t addr)
+void __cpuinit *set_vi_handler(int n, vi_handler_t addr)
 {
 	return set_vi_srs_handler(n, addr, 0);
 }
@@ -1693,6 +1707,15 @@ void __cpuinit per_cpu_trap_init(void)
 	change_c0_status(ST0_CU|ST0_MX|ST0_RE|ST0_FR|ST0_BEV|ST0_TS|ST0_KX|ST0_SX|ST0_UX,
 			 status_set);
 
+#ifdef CONFIG_TANGOX
+#if defined(CONFIG_TANGO3) || defined(CONFIG_TANGO4)
+	ebase = KSEG0ADDR(CPU_REMAP_SPACE);
+#else
+	ebase = KSEG0ADDR(MEM_BASE_dram_controller_0 + FM_RESERVED);
+#endif
+	write_c0_ebase(ebase);
+#endif
+
 	if (cpu_has_mips_r2)
 		hwrena |= 0x0000000f;
 
@@ -1739,6 +1762,10 @@ void __cpuinit per_cpu_trap_init(void)
 		cp0_compare_irq_shift = CP0_LEGACY_PERFCNT_IRQ;
 		cp0_perfcount_irq = -1;
 	}
+#ifdef CONFIG_TANGO2
+	cp0_compare_irq = 7; /* hard-wired, cannot be checked by c0_intctl */
+	cp0_perfcount_irq = -1; /* no perfcount_irq */
+#endif
 
 #ifdef CONFIG_MIPS_MT_SMTC
 	}

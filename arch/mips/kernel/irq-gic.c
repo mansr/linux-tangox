@@ -122,7 +122,11 @@ static void gic_eic_irq_dispatch(void)
 static void __init vpe_local_setup(unsigned int numvpes)
 {
 	int i;
+#ifdef CONFIG_TANGO4
+	unsigned long timer_interrupt = GIC_CPU_INT5, perf_interrupt = GIC_CPU_INT5;
+#else
 	unsigned long timer_interrupt = GIC_INT_TMR, perf_interrupt = GIC_INT_PERFCTR;
+#endif
 	unsigned int vpe_ctl;
 
 	if (cpu_has_veic) {

@@ -37,6 +37,21 @@ static int show_cpuinfo(struct seq_file *m, void *v)
 		if (mips_get_machine_name())
 			seq_printf(m, "machine\t\t\t: %s\n",
 				   mips_get_machine_name());
+#ifdef CONFIG_TANGOX
+		{
+			extern unsigned long tangox_get_cpuclock(void);
+			extern unsigned long tangox_get_sysclock(void);
+			extern unsigned long tangox_get_dspclock(void);
+			extern unsigned long tangox_chip_id(void);
+			unsigned long chip_id = (tangox_chip_id() >> 16) & 0xffff;
+			unsigned long chip_rev = tangox_chip_id() & 0xff;
+			seq_printf(m, "SMP8XXX Chip ID\t\t: %lx\n", chip_id);
+			seq_printf(m, "SMP8XXX Rev ID\t\t: %lx\n", chip_rev);
+			seq_printf(m, "System bus frequency\t: %ld Hz\n", tangox_get_sysclock());
+			seq_printf(m, "CPU frequency\t\t: %ld Hz\n", tangox_get_cpuclock());
+			seq_printf(m, "DSP frequency\t\t: %ld Hz\n\n", tangox_get_dspclock());
+		}
+#endif
 	}
 
 	seq_printf(m, "processor\t\t: %ld\n", n);

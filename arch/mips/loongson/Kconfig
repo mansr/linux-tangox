@@ -83,7 +83,7 @@ config LOONGSON_SUSPEND
 config LOONGSON_UART_BASE
 	bool
 	default y
-	depends on EARLY_PRINTK || SERIAL_8250
+	depends on (EARLY_PRINTK || SERIAL_8250) && !TANGOX
 
 config LOONGSON_MC146818
 	bool

@@ -78,6 +78,14 @@ SECTIONS
 		CACHELINE_ALIGNED_DATA(1 << CONFIG_MIPS_L1_CACHE_SHIFT)
 		READ_MOSTLY_DATA(1 << CONFIG_MIPS_L1_CACHE_SHIFT)
 		DATA_DATA
+
+		/* Align the initial ramdisk image (INITRD) on page boundaries. */
+		. = ALIGN(PAGE_SIZE);
+		__rd_start = .;
+		*(.initrd)
+		. = ALIGN(PAGE_SIZE);
+		__rd_end = .;
+
 		CONSTRUCTORS
 	}
 	_gp = . + 0x8000;

@@ -92,8 +92,12 @@ static void cmp_init_secondary(void)
 	struct cpuinfo_mips *c = &current_cpu_data;
 
 	/* Assume GIC is present */
-	change_c0_status(ST0_IM, STATUSF_IP3 | STATUSF_IP4 | STATUSF_IP6 |
-				 STATUSF_IP7);
+#ifdef CONFIG_TANGO4
+	/* For 8910, IP5 is used for GIC/IPI, IP7 is used for timer, IP2/IP3/IP4 for IRQ/FIQ/IIQ */
+	change_c0_status(ST0_IM, STATUSF_IP7 | STATUSF_IP5 | STATUSF_IP4 | STATUSF_IP3 | STATUSF_IP2);
+#else
+	change_c0_status(ST0_IM, STATUSF_IP3 | STATUSF_IP4 | STATUSF_IP6 | STATUSF_IP7);
+#endif
 
 	/* Enable per-cpu interrupts: platform specific */
 
@@ -133,7 +137,7 @@ static void cmp_cpus_done(void)
  * __KSTK_TOS(idle) is apparently the stack pointer
  * (unsigned long)idle->thread_info the gp
  */
-static void cmp_boot_secondary(int cpu, struct task_struct *idle)
+static void __cpuinit cmp_boot_secondary(int cpu, struct task_struct *idle)
 {
 	struct thread_info *gp = task_thread_info(idle);
 	unsigned long sp = __KSTK_TOS(idle);
@@ -152,6 +156,8 @@ static void cmp_boot_secondary(int cpu, struct task_struct *idle)
 	amon_cpu_start(cpu, pc, sp, (unsigned long)gp, a0);
 }
 
+static int __initdata maxcpus = NR_CPUS;
+
 /*
  * Common setup before any secondaries are started
  */
@@ -168,7 +174,7 @@ void __init cmp_smp_setup(void)
 		cpu_set(0, mt_fpu_cpumask);
 #endif /* CONFIG_MIPS_MT_FPAFF */
 
-	for (i = 1; i < NR_CPUS; i++) {
+	for (i = 1; i < maxcpus; i++) {
 		if (amon_cpu_avail(i)) {
 			set_cpu_possible(i, true);
 			__cpu_number_map[i]	= ++ncpu;
@@ -189,6 +195,9 @@ void __init cmp_prepare_cpus(unsigned int max_cpus)
 {
 	pr_debug("SMPCMP: CPU%d: %s max_cpus=%d\n",
 		 smp_processor_id(), __func__, max_cpus);
+
+	if ((max_cpus > 0) && (max_cpus < NR_CPUS))
+		maxcpus = max_cpus;
 
 	/*
 	 * FIXME: some of these options are per-system, some per-core and

@@ -16,6 +16,7 @@
 #include <linux/kmod.h>
 #include <linux/spinlock.h>
 #include <asm/byteorder.h>
+#include <asm/unaligned.h>
 
 static struct nls_table default_table;
 static struct nls_table *tables = &default_table;
@@ -512,8 +513,8 @@ static int uni2char(wchar_t uni, unsigned char *out, int boundlen)
 
 static int char2uni(const unsigned char *rawstring, int boundlen, wchar_t *uni)
 {
-	*uni = charset2uni[*rawstring];
-	if (*uni == 0x0000)
+	put_unaligned((wchar_t)charset2uni[*rawstring], uni);
+	if (get_unaligned(uni) == 0x0000)
 		return -EINVAL;
 	return 1;
 }

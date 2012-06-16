@@ -480,6 +480,11 @@ EXPORT_SYMBOL(dev_remove_pack);
 /* Boot time configuration table */
 static struct netdev_boot_setup dev_boot_setup[NETDEV_BOOT_SETUP_MAX];
 
+#ifdef CONFIG_SD_IPFILTER
+void *(*sd_ipfilter)(unsigned char *, int) = NULL;
+EXPORT_SYMBOL(sd_ipfilter);
+#endif
+
 /**
  *	netdev_boot_setup_add	- add new setup entry
  *	@name: name of the device
@@ -2922,6 +2927,13 @@ int netif_rx(struct sk_buff *skb)
 {
 	int ret;
 
+#ifdef CONFIG_SD_IPFILTER
+	if ((sd_ipfilter != NULL) && (((*sd_ipfilter)(skb->data, skb->len)) == NULL)) {
+		kfree_skb(skb);
+		return NET_RX_SUCCESS;
+	}
+#endif
+
 	/* if netpoll wants it, pretend we never saw it */
 	if (netpoll_rx(skb))
 		return NET_RX_DROP;
@@ -3289,6 +3301,13 @@ out:
 int netif_receive_skb(struct sk_buff *skb)
 {
 	net_timestamp_check(netdev_tstamp_prequeue, skb);
+
+#ifdef CONFIG_SD_IPFILTER
+	if ((sd_ipfilter != NULL) && (((*sd_ipfilter)(skb->data, skb->len)) == NULL)) {
+		kfree_skb(skb);
+		return NET_RX_SUCCESS;
+	}
+#endif
 
 	if (skb_defer_rx_timestamp(skb))
 		return NET_RX_SUCCESS;

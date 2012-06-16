@@ -34,6 +34,12 @@ unsigned long max_low_pfn;
 unsigned long min_low_pfn;
 unsigned long max_pfn;
 
+/* Some modules may use things like pfn_valid macro which may need
+   these to be exported (depends on the architecture) */
+EXPORT_SYMBOL(max_low_pfn);
+EXPORT_SYMBOL(min_low_pfn);
+EXPORT_SYMBOL(max_pfn);
+
 bootmem_data_t bootmem_node_data[MAX_NUMNODES] __initdata;
 
 static struct list_head bdata_list __initdata = LIST_HEAD_INIT(bdata_list);

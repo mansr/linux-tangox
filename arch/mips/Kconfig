@@ -696,6 +696,25 @@ config SNI_RM
 	  Technology and now in turn merged with Fujitsu.  Say Y here to
 	  support this machine type.
 
+config TANGOX
+	bool "Sigma Designs TangoX chips/boards"
+	select BOOT_RAW
+	select CEVT_R4K
+#	select CSRC_R4K
+ 	select CRYPTO_SHA1
+	select DMA_NONCOHERENT
+	select SYS_SUPPORTS_32BIT_KERNEL
+	select SYS_SUPPORTS_LITTLE_ENDIAN
+	select SYS_HAS_CPU_MIPS32_R1
+	select SYS_HAS_CPU_MIPS32_R2
+	select SYS_SUPPORTS_HIGHMEM
+	select OWN_DMA
+	select DMA_TANGOX
+	select ZONE_DMA
+	select SD_IPFILTER
+	help
+	  Enable the support for Sigma Designs chips/boards. 
+
 config MACH_TX39XX
 	bool "Toshiba TX39 series based machines"
 
@@ -855,6 +874,7 @@ source "arch/mips/pmc-sierra/Kconfig"
 source "arch/mips/powertv/Kconfig"
 source "arch/mips/sgi-ip27/Kconfig"
 source "arch/mips/sibyte/Kconfig"
+source "arch/mips/tangox/Kconfig"
 source "arch/mips/txx9/Kconfig"
 source "arch/mips/vr41xx/Kconfig"
 source "arch/mips/cavium-octeon/Kconfig"
@@ -983,11 +1003,18 @@ config ARCH_DMA_ADDR_T_64BIT
 config DMA_COHERENT
 	bool
 
+config DMA_TANGOX
+	bool
+	select DMA_NEED_PCI_MAP_STATE
+
 config DMA_NONCOHERENT
 	bool
 	select NEED_DMA_MAP_STATE
 
 config NEED_DMA_MAP_STATE
+	bool
+
+config SD_IPFILTER
 	bool
 
 config SYS_HAS_EARLY_PRINTK
@@ -1210,6 +1237,8 @@ config MIPS_L1_CACHE_SHIFT
 	default "4" if MACH_DECSTATION || MIKROTIK_RB532 || PMC_MSP4200_EVAL
 	default "6" if MIPS_CPU_SCACHE
 	default "7" if SGI_IP22 || SGI_IP27 || SGI_IP28 || SNI_RM || CPU_CAVIUM_OCTEON
+ 	default "4" if TANGO2
+ 	default "5" if (TANGO3 || TANGO4) && !MIPS_CPU_SCACHE
 	default "5"
 
 config HAVE_STD_PC_SERIAL_PORT
@@ -1926,7 +1955,7 @@ config MIPS_MT_SMTC
 	bool "SMTC: Use all TCs on all VPEs for SMP"
 	depends on CPU_MIPS32_R2
 	#depends on CPU_MIPS64_R2		# once there is hardware ...
-	depends on SYS_SUPPORTS_MULTITHREADING
+	depends on SYS_SUPPORTS_MULTITHREADING && !TANGO4
 	select CPU_MIPSR2_IRQ_VI
 	select CPU_MIPSR2_IRQ_EI
 	select MIPS_MT

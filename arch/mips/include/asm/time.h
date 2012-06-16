@@ -45,7 +45,7 @@ extern unsigned int mips_hpt_frequency;
  * The performance counter IRQ on MIPS is a close relative to the timer IRQ
  * so it lives here.
  */
-extern int (*perf_irq)(void);
+extern irqreturn_t (*perf_irq)(void);
 
 /*
  * Initialize the calling CPU's compare interrupt as clockevent device
@@ -77,11 +77,14 @@ extern int init_r4k_clocksource(void);
 
 static inline int init_mips_clocksource(void)
 {
+#ifdef CONFIG_CSRC_R4K
 	extern int gic_present;
 
 	if (!gic_present)
 		return init_r4k_clocksource();
+#else
 	return 0;
+#endif
 }
 
 static inline void clockevent_set_clock(struct clock_event_device *cd,

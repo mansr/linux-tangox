@@ -102,6 +102,10 @@ pci_dma_mapping_error(struct pci_dev *pdev, dma_addr_t dma_addr)
 }
 
 #ifdef CONFIG_PCI
+#ifdef CONFIG_TANGOX
+int pci_set_dma_mask(struct pci_dev *dev, u64 mask);
+int pci_set_consistent_dma_mask(struct pci_dev *dev, u64 mask);
+#else
 static inline int pci_set_dma_mask(struct pci_dev *dev, u64 mask)
 {
 	return dma_set_mask(&dev->dev, mask);
@@ -111,6 +115,7 @@ static inline int pci_set_consistent_dma_mask(struct pci_dev *dev, u64 mask)
 {
 	return dma_set_coherent_mask(&dev->dev, mask);
 }
+#endif
 #endif
 
 #endif

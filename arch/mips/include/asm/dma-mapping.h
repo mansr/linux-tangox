@@ -93,4 +93,8 @@ void *dma_alloc_noncoherent(struct device *dev, size_t size,
 void dma_free_noncoherent(struct device *dev, size_t size,
 			 void *vaddr, dma_addr_t dma_handle);
 
+#ifdef CONFIG_TANGOX
+#define HAVE_ARCH_PCI_SET_DMA_MASK
+#endif
+
 #endif /* _ASM_DMA_MAPPING_H */

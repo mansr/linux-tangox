@@ -9,6 +9,7 @@
  * Copyright (C) 1996 Stoned Elipot
  * Copyright (C) 1999 Silicon Graphics, Inc.
  * Copyright (C) 2000, 2001, 2002, 2007  Maciej W. Rozycki
+ * Copyright (C) 2003-2012 Sigma Designs, Inc.
  */
 #include <linux/init.h>
 #include <linux/ioport.h>
@@ -32,6 +33,25 @@
 #include <asm/setup.h>
 #include <asm/smp-ops.h>
 #include <asm/prom.h>
+
+#ifdef CONFIG_TANGO2
+#include <asm/tango2/rmdefs.h>
+#include <asm/tango2/memcfg.h>
+#include <asm/tango2/tango2.h>
+#include <asm/tango2/hardware.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/rmdefs.h>
+#include <asm/tango3/tango3.h>
+#include <asm/tango3/hardware.h>
+#include "../tangox/xenv.h"
+#include "../tangox/xenvkeys.h"
+#elif defined(CONFIG_TANGO4)
+#include <asm/tango4/rmdefs.h>
+#include <asm/tango4/tango4.h>
+#include <asm/tango4/hardware.h>
+#include "../tangox/xenv.h"
+#include "../tangox/xenvkeys.h"
+#endif
 
 struct cpuinfo_mips cpu_data[NR_CPUS] __read_mostly;
 
@@ -72,6 +92,8 @@ static char __initdata builtin_cmdline[COMMAND_LINE_SIZE] = CONFIG_CMDLINE;
  */
 const unsigned long mips_io_port_base = -1;
 EXPORT_SYMBOL(mips_io_port_base);
+
+extern void * __rd_start, * __rd_end;
 
 static struct resource code_resource = { .name = "Kernel code", };
 static struct resource data_resource = { .name = "Kernel data", };
@@ -168,6 +190,11 @@ early_param("rd_size", rd_size_early);
 static unsigned long __init init_initrd(void)
 {
 	unsigned long end;
+
+	if ((!initrd_start) && (&__rd_start != &__rd_end)) {
+		initrd_start = (unsigned long)&__rd_start;
+		initrd_end = (unsigned long)&__rd_end;
+	}
 
 	/*
 	 * Board specific code or command line parser should have
@@ -445,6 +472,14 @@ static int usermem __initdata;
 static int __init early_parse_mem(char *p)
 {
 	unsigned long start, size;
+#ifdef CONFIG_TANGOX
+        extern unsigned long em8xxx_kmem_start;
+        extern unsigned long em8xxx_kmem_size;
+#ifdef CONFIG_HIGHMEM
+	extern unsigned long em8xxx_himem_start;
+	extern unsigned long em8xxx_himem_size;
+#endif
+#endif
 
 	/*
 	 * If a user specifies memory size, we
@@ -459,8 +494,33 @@ static int __init early_parse_mem(char *p)
 	size = memparse(p, &p);
 	if (*p == '@')
 		start = memparse(p + 1, &p);
+	else {
+#ifdef CONFIG_TANGOX
+		start = CPHYSADDR(em8xxx_kmem_start);
+#else
+		start = 0;
+#endif
+    }
 
+#ifdef CONFIG_TANGOX
+	printk("parsing kernel command line for memory options ..\n");
+	if (start == CPHYSADDR(em8xxx_kmem_start)) {
+		void tangox_mem_setup(unsigned long size);
+		tangox_mem_setup(size);
+		add_memory_region(start, em8xxx_kmem_size, BOOT_MEM_RAM);
+	} else {
+		/* We just add this blindly as the alignment can be wrong, use it as own risk */
+		add_memory_region(start, size, BOOT_MEM_RAM);
+	}
+#ifdef CONFIG_HIGHMEM
+	if ((em8xxx_himem_start != 0) && (em8xxx_himem_size != 0)) {
+		add_memory_region(em8xxx_himem_start, em8xxx_himem_size, BOOT_MEM_RAM);
+		printk("adding [0x%08lx..0x%08lx) as highmem area.\n", em8xxx_himem_start, em8xxx_himem_start + em8xxx_himem_size);
+	}
+#endif
+#else
 	add_memory_region(start, size, BOOT_MEM_RAM);
+#endif 
 	return 0;
 }
 early_param("mem", early_parse_mem);
