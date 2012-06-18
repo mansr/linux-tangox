@@ -99,6 +99,11 @@ unsigned long tangox_get_dspclock(void)
 {
 	return(CONFIG_TANGOX_DSP_FREQUENCY);
 }
+
+unsigned long tangox_get_cdclock(unsigned int cd)
+{
+	return(0);
+}
 #else
 unsigned long tangox_get_pllclock(int pll)
 {
@@ -196,6 +201,34 @@ unsigned long tangox_get_cpuclock(void)
 unsigned long tangox_get_dspclock(void)
 {
 	return(tangox_get_clock(2));
+}
+
+unsigned long tangox_get_cdclock(unsigned int cd)
+{
+	unsigned long sysclk_premux = (RD_BASE_REG32(SYS_sysclk_premux) & 0x700) >> 8;
+	unsigned long cddiv = RD_BASE_REG32(SYS_cleandiv0_div + (cd * 8));
+	u64 pllfreq, temp;
+
+	pllfreq = (u64)tangox_get_pllclock(sysclk_premux >> 1);
+
+	if (sysclk_premux & 1)  /* from PLLx_1 */
+		do_div(pllfreq, (unsigned int)(RD_BASE_REG32(SYS_clkgen0_div + ((sysclk_premux >> 1) * 8)) & 0xf));
+
+	/* use 64 bit for better precision, from formula
+	   cd_out = pllfreq / (2 + cddiv * (2 ^ -27)) 
+	   => cd_out = pllfreq / (2 + (cddiv >> 27)) 
+	   => cd_out = pllfreq << 27 / (2 + (cddiv >> 27)) <<27
+	   => cd_out = pllfreq << 27 / (2 << 27 + cddiv) 
+	   => cd_out = pllfreq << 27 / (1 << 28 + cddiv) */
+	temp = pllfreq << 27;
+	do_div(temp, (unsigned int)((1 << 28) + cddiv));
+
+#if defined(CONFIG_TANGO3) || defined(CONFIG_TANGO4)
+	if (RD_BASE_REG32(SYS_cleandiv0_div + 4 + (cd * 8)) & 1)
+		return 0;
+	else
+#endif
+		return((unsigned long)(temp & 0xffffffff));
 }
 #endif
 
@@ -619,7 +652,6 @@ void __init prom_init(void)
 		tangox_get_sysclock() / 1000000, (tangox_get_sysclock() / 10000) % 100,
 		tangox_get_dspclock() / 1000000, (tangox_get_dspclock() / 10000) % 100);
 #endif
-
 	/*
 	 * read xenv  configuration, we  need it quickly  to configure
 	 * console accordingly.
@@ -782,6 +814,7 @@ EXPORT_SYMBOL(tangox_get_sysclock);
 EXPORT_SYMBOL(tangox_get_cpuclock);
 EXPORT_SYMBOL(tangox_get_dspclock);
 EXPORT_SYMBOL(tangox_get_pllclock);
+EXPORT_SYMBOL(tangox_get_cdclock);
 
 unsigned long tangox_chip_id(void)
 {
