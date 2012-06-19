@@ -54,9 +54,11 @@ static int __blk_rq_map_user(struct request_queue *q, struct request *rq,
 	 * direct dma. else, set up kernel bounce buffers
 	 */
 	uaddr = (unsigned long) ubuf;
-	if (blk_rq_aligned(q, uaddr, len) && !map_data)
+	if (blk_rq_aligned(q, uaddr, len) && !map_data) {
 		bio = bio_map_user(q, NULL, uaddr, len, reading, gfp_mask);
-	else
+		if (IS_ERR(bio))
+			bio = bio_copy_user(q, map_data, uaddr, len, reading, gfp_mask);
+	} else
 		bio = bio_copy_user(q, map_data, uaddr, len, reading, gfp_mask);
 
 	if (IS_ERR(bio))
@@ -214,8 +216,12 @@ int blk_rq_map_user_iov(struct request_queue *q, struct request *rq,
 	if (unaligned || (q->dma_pad_mask & len) || map_data)
 		bio = bio_copy_user_iov(q, map_data, iov, iov_count, read,
 					gfp_mask);
-	else
+	else {
 		bio = bio_map_user_iov(q, NULL, iov, iov_count, read, gfp_mask);
+		if (IS_ERR(bio))
+			bio = bio_copy_user_iov(q, map_data, iov, iov_count, read,
+						gfp_mask);
+	}
 
 	if (IS_ERR(bio))
 		return PTR_ERR(bio);
@@ -305,8 +311,11 @@ int blk_rq_map_kern(struct request_queue *q, struct request *rq, void *kbuf,
 	do_copy = !blk_rq_aligned(q, addr, len) || object_is_on_stack(kbuf);
 	if (do_copy)
 		bio = bio_copy_kern(q, kbuf, len, gfp_mask, reading);
-	else
+	else {
 		bio = bio_map_kern(q, kbuf, len, gfp_mask);
+		if (IS_ERR(bio))
+			bio = bio_copy_kern(q, kbuf, len, gfp_mask, reading);
+	}
 
 	if (IS_ERR(bio))
 		return PTR_ERR(bio);
