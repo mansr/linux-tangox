@@ -49,6 +49,30 @@ config SGI_MBCS
          If you have an SGI Altix with an attached SABrick
          say Y or M here, otherwise say N.
 
+config TANGOX_FIP
+       tristate "SMP8xxx Front Panel support" 
+       depends on TANGOX
+       default m
+       help
+         Support Front Panel interface for SMP8xxx.
+
+choice
+       prompt "SMP8xxx reference platform"
+       depends on TANGOX_FIP
+       default TANGOX_FIP_REF1
+
+config TANGOX_FIP_REF1
+       bool "Ref1"
+       help
+         For reference platform 1.
+
+config TANGOX_FIP_REF2
+       bool "Ref2"
+       help
+         For reference platform 2.
+
+endchoice
+
 source "drivers/tty/serial/Kconfig"
 
 config TTY_PRINTK
