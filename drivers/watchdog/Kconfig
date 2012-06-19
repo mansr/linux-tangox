@@ -72,6 +72,12 @@ config WM831X_WATCHDOG
 	  Support for the watchdog in the WM831x AudioPlus PMICs.  When
 	  the watchdog triggers the system will be reset.
 
+config TANGOX_WATCHDOG
+	tristate "SMP8xxx watchdog"
+	depends on TANGO3 || TANGO4
+	help
+	  Hardware watch dog for Sigma Designs' SMP864x/SMP865x/SMP867x/SMP89xx chips.
+
 config WM8350_WATCHDOG
 	tristate "WM8350 watchdog"
 	depends on MFD_WM8350
