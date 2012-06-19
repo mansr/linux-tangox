@@ -21,6 +21,53 @@
 #include <linux/mtd/concat.h>
 #include <linux/io.h>
 
+#if defined(CONFIG_TANGOX) && defined(CONFIG_TANGOX_XENV_READ)
+
+#ifdef CONFIG_TANGO2
+#include <asm/tango2/emhwlib_registers_tango2.h>
+#include <asm/tango2/tango2_gbus.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/emhwlib_registers_tango3.h>
+#include <asm/tango3/tango3_gbus.h>
+#endif
+
+#define XENV_MAX_FLASH    4
+#define XENV_MAX_FLASH_PARTITIONS   16
+static struct mtd_info *mymtds[XENV_MAX_FLASH] = { NULL, NULL, NULL, NULL };
+static struct mtd_partition *mtd_parts[XENV_MAX_FLASH] = { NULL, NULL, NULL, NULL };
+static unsigned int p_cnts[XENV_MAX_FLASH] = { 0, 0, 0, 0 };
+static u64 f_sizes[XENV_MAX_FLASH] = { 0, 0, 0, 0 };
+
+struct map_info physmap_maps[XENV_MAX_FLASH] = {
+        {
+                .name = "CS0: Physically mapped flash",
+                .phys = 0x40000000,
+                .size = 0, /* To be filled by XENV */
+                .bankwidth = 2, /* To be checked by PBI registers */
+        },
+        {
+                .name = "CS1: Physically mapped flash",
+                .phys = 0x44000000,
+                .size = 0, /* To be filled by XENV */
+                .bankwidth = 2, /* To be checked by PBI registers */
+        },
+        {
+                .name = "CS2: Physically mapped flash",
+                .phys = 0x48000000,
+                .size = 0, /* To be filled by XENV */
+                .bankwidth = 2, /* To be checked by PBI registers */
+        },
+        {
+                .name = "CS3: Physically mapped flash",
+                .phys = 0x4c000000,
+                .size = 0, /* To be filled by XENV */
+                .bankwidth = 2, /* To be checked by PBI registers */
+        },
+};
+int tangox_flash_get_info(int cs, u64 *size, unsigned int *part_count);
+int tangox_flash_get_parts(int cs, u64 offset[], u64 size[]);
+#endif
+
 #define MAX_RESOURCES		4
 
 struct physmap_flash_info {
@@ -33,6 +80,29 @@ struct physmap_flash_info {
 
 static int physmap_flash_remove(struct platform_device *dev)
 {
+#if defined(CONFIG_TANGOX) && defined(CONFIG_TANGOX_XENV_READ)
+        int cs, p;
+        struct mtd_partition *part_ptr;
+
+        for (cs = 0; cs < XENV_MAX_FLASH; cs++) {
+                if (f_sizes[cs] != 0) {
+                        if (p_cnts[cs] != 0) {
+                                for (part_ptr = mtd_parts[cs], p = 0; p < p_cnts[cs]; p++, part_ptr++) {
+                                        if (part_ptr->name) {
+                                                kfree(part_ptr->name);
+                                                part_ptr->name = NULL;
+                                        }
+                                }
+                        }
+			mtd_device_unregister(mymtds[cs]);
+                        map_destroy(mymtds[cs]);
+                        kfree(mtd_parts[cs]);
+                        mtd_parts[cs] = NULL;
+                        iounmap(physmap_maps[cs].virt);
+                        physmap_maps[cs].virt = NULL;
+                }
+        }
+#else
 	struct physmap_flash_info *info;
 	struct physmap_flash_data *physmap_data;
 	int i;
@@ -57,7 +127,7 @@ static int physmap_flash_remove(struct platform_device *dev)
 
 	if (physmap_data->exit)
 		physmap_data->exit(dev);
-
+#endif
 	return 0;
 }
 
@@ -93,14 +163,128 @@ static const char *rom_probe_types[] = {
 					"qinfo_probe",
 					"map_rom",
 					NULL };
+
+#ifndef CONFIG_TANGOX
 static const char *part_probe_types[] = { "cmdlinepart", "RedBoot", "afs",
 					  NULL };
+#endif
 
 static int physmap_flash_probe(struct platform_device *dev)
 {
+	const char **probe_type;
+
+#if defined(CONFIG_TANGOX) && defined(CONFIG_TANGOX_XENV_READ)
+        int cs;
+        int part_num = 0;
+        unsigned long csconfig = gbus_read_reg32(REG_BASE_host_interface + PB_CS_config) & 0xf;
+
+        for (cs = 0; cs < XENV_MAX_FLASH; cs++) {
+
+                /* Check XENV for availability */
+                f_sizes[cs] = p_cnts[cs] = 0;
+
+                tangox_flash_get_info(cs, &f_sizes[cs], &p_cnts[cs]);
+                if (f_sizes[cs] == 0)
+                        continue;
+                else {
+                        physmap_maps[cs].size = f_sizes[cs];
+                        physmap_maps[cs].bankwidth = ((csconfig >> cs) & 0x1) ? 1 : 2;
+                }
+
+                printk(KERN_NOTICE "physmap flash device CS%d: 0x%x at 0x%x\n",
+                                cs, (u32)physmap_maps[cs].size, (u32)physmap_maps[cs].phys);
+                physmap_maps[cs].virt = ioremap(physmap_maps[cs].phys, physmap_maps[cs].size);
+
+                if (!physmap_maps[cs].virt) {
+                        printk("Failed to ioremap\n");
+                        continue;
+                }
+
+                simple_map_init(&physmap_maps[cs]);
+
+                mymtds[cs] = NULL;
+                probe_type = rom_probe_types;
+                for(; !mymtds[cs] && *probe_type; probe_type++) {
+                        mymtds[cs] = do_map_probe(*probe_type, &physmap_maps[cs]);
+                }
+
+                if (mymtds[cs] && (mymtds[cs]->size != f_sizes[cs])) {
+                        /* Redo ioremap if size specified is not the same as detected */
+                        iounmap((void *)physmap_maps[cs].virt);
+                        physmap_maps[cs].size = mymtds[cs]->size;
+                        physmap_maps[cs].virt = ioremap(physmap_maps[cs].phys, physmap_maps[cs].size);
+			physmap_maps[cs].set_vpp = physmap_set_vpp;
+
+                        if (!physmap_maps[cs].virt) {
+                                printk(KERN_NOTICE "Failed to ioremap at 0x%08x, size 0x%08x\n",
+                                                (u32)physmap_maps[cs].phys, (u32)physmap_maps[cs].size);
+                                continue;
+                        }
+                        printk(KERN_NOTICE "CS%d: flash size mismatched, re-do probing/initialization.\n", cs);
+                        printk(KERN_NOTICE "physmap flash device CS%d: 0x%x at 0x%x (remapped 0x%x)\n",
+                                        cs, (u32)physmap_maps[cs].size, (u32)physmap_maps[cs].phys, (u32)physmap_maps[cs].virt);
+
+                        /* Re-do initialization */
+                        simple_map_init(&physmap_maps[cs]);
+                        mymtds[cs] = NULL;
+                        probe_type = rom_probe_types;
+                        for(; !mymtds[cs] && *probe_type; probe_type++) {
+                                mymtds[cs] = do_map_probe(*probe_type, &physmap_maps[cs]);
+                        }
+                }
+
+                if (mymtds[cs]) {
+                        mymtds[cs]->owner = THIS_MODULE;
+			mtd_device_register(mymtds[cs], NULL, 0);
+                        part_num++;
+
+                        if (p_cnts[cs] > 0) {
+                                int p, pcnt;
+                                struct mtd_partition *part_ptr;
+                                u64 offsets[XENV_MAX_FLASH_PARTITIONS];
+                                u64 szs[XENV_MAX_FLASH_PARTITIONS];
+
+                                if ((mtd_parts[cs] = (struct mtd_partition *)kmalloc(
+                                                sizeof(struct mtd_partition) * p_cnts[cs], GFP_KERNEL)) == NULL) {
+                                        printk(KERN_NOTICE "Out of memory.\n");
+                                        return -ENOMEM;
+                                }
+                                memset(mtd_parts[cs], 0, sizeof(struct mtd_partition) * p_cnts[cs]);
+                                tangox_flash_get_parts(cs, offsets, szs);
+
+                                printk(KERN_NOTICE "Using physmap partition definition\n");
+
+                                /* Initialize each partition */
+                                for (pcnt = 0, part_ptr = mtd_parts[cs], p = 0; p < p_cnts[cs]; p++) {
+                                        if (((szs[p] & 0x7fffffff) + offsets[p]) > physmap_maps[cs].size) {
+                                                printk(KERN_NOTICE "CS%d-Part%d (offset:0x%llx, size:0x%llx) outside physical map, removed.\n",
+                                                                cs, p + 1, offsets[p], szs[p] & 0x7fffffffffffffffULL);
+                                                        continue;
+                                        }
+                                        part_ptr->size = szs[p] & 0x7fffffffffffffffULL;
+                                        part_ptr->offset = offsets[p];
+                                        if (part_ptr->size & 0x8000000000000000ULL)
+                                                part_ptr->mask_flags = MTD_WRITEABLE;
+                                        part_ptr->name = (char *)kmalloc(16, GFP_KERNEL);
+                                        if (part_ptr->name != NULL)
+                                                sprintf(part_ptr->name, "CS%d-Part%d", cs, p + 1);
+                                        pcnt++;
+                                        part_ptr++;
+                                }
+                                p_cnts[cs] = pcnt;
+
+                                if (p_cnts[cs] > 0) {
+                                        printk(KERN_NOTICE "Adding partition #%d-#%d\n", part_num, part_num + p_cnts[cs] - 1);
+                                        mtd_device_register(mymtds[cs], mtd_parts[cs], p_cnts[cs]);
+                                        part_num += p_cnts[cs];
+                                }
+                        }
+                }
+        }
+        return 0;
+#else
 	struct physmap_flash_data *physmap_data;
 	struct physmap_flash_info *info;
-	const char **probe_type;
 	const char **part_types;
 	int err = 0;
 	int i;
@@ -199,6 +383,7 @@ static int physmap_flash_probe(struct platform_device *dev)
 err_out:
 	physmap_flash_remove(dev);
 	return err;
+#endif /* CONFIG_TANGOX && CONFIG_TANGOX_XENV_READ */
 }
 
 #ifdef CONFIG_PM
@@ -218,7 +403,9 @@ static void physmap_flash_shutdown(struct platform_device *dev)
 static struct platform_driver physmap_flash_driver = {
 	.probe		= physmap_flash_probe,
 	.remove		= physmap_flash_remove,
-	.shutdown	= physmap_flash_shutdown,
+#ifdef CONFIG_PM
+ 	.shutdown	= physmap_flash_shutdown,
+#endif
 	.driver		= {
 		.name	= "physmap-flash",
 		.owner	= THIS_MODULE,
@@ -261,11 +448,20 @@ static int __init physmap_init(void)
 	}
 #endif
 
+#ifdef CONFIG_TANGOX
+	/* a hack to force probing here */
+	err = physmap_flash_probe(NULL);
+#endif
+
 	return err;
 }
 
 static void __exit physmap_exit(void)
 {
+#ifdef CONFIG_TANGOX
+	physmap_flash_remove(NULL);
+#endif
+
 #ifdef CONFIG_MTD_PHYSMAP_COMPAT
 	platform_device_unregister(&physmap_flash);
 #endif

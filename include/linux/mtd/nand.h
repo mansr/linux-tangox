@@ -474,6 +474,8 @@ struct nand_buffers {
  * @controller:		[REPLACEABLE] a pointer to a hardware controller
  *			structure which is shared among multiple independent
  *			devices.
+ * @maf_id:		[OPTOINAL] manufacture ID 
+ * @dev_id:		[OPTIONAL] device ID
  * @priv:		[OPTIONAL] pointer to private chip data
  * @errstat:		[OPTIONAL] hardware specific function to perform
  *			additional error status checks (determine if errors are
@@ -543,6 +545,9 @@ struct nand_chip {
 
 	struct nand_bbt_descr *badblock_pattern;
 
+	int		maf_id;
+	int		dev_id;
+
 	void *priv;
 };
 
@@ -559,6 +564,7 @@ struct nand_chip {
 #define NAND_MFR_MICRON		0x2c
 #define NAND_MFR_AMD		0x01
 #define NAND_MFR_MACRONIX	0xc2
+#define NAND_MFR_ESMT		0x92
 
 /**
  * struct nand_flash_dev - NAND Flash Device ID Structure

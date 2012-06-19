@@ -83,6 +83,14 @@ config MTD_NAND_DENALI_SCRATCH_REG_ADDR
           scratch register here to enable this feature. On Intel Moorestown
           boards, the scratch register is at 0xFF108018.
 
+config MTD_NAND_TANGOX
+        tristate "TANGOX NAND Device Support"
+        depends on TANGO3 || TANGO4
+        select MTD_PARTITIONS
+        default m
+        help
+          Support TANGOX NAND Flash in the NAND flash reserved zone.
+
 config MTD_NAND_H1900
 	tristate "iPAQ H1900 flash"
 	depends on ARCH_PXA && BROKEN

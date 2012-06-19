@@ -345,6 +345,16 @@ static struct cfi_fixup cfi_nopri_fixup_table[] = {
 	{ 0, 0, NULL }
 };
 
+static void fixup_M29W128G_write_buffer(struct mtd_info *mtd)
+{
+	struct map_info *map = mtd->priv;
+	struct cfi_private *cfi = map->fldrv_priv;
+	if (cfi->cfiq->BufWriteTimeoutTyp) {
+		pr_warning("Don't use write buffer on ST flash M29W128G\n");
+		cfi->cfiq->BufWriteTimeoutTyp = 0;
+	}
+}
+
 static struct cfi_fixup cfi_fixup_table[] = {
 	{ CFI_MFR_ATMEL, CFI_ID_ANY, fixup_convert_atmel_pri },
 #ifdef AMD_BOOTLOC_BUG
@@ -362,6 +372,7 @@ static struct cfi_fixup cfi_fixup_table[] = {
 	{ CFI_MFR_AMD, 0x1301, fixup_s29gl064n_sectors },
 	{ CFI_MFR_AMD, 0x1a00, fixup_s29gl032n_sectors },
 	{ CFI_MFR_AMD, 0x1a01, fixup_s29gl032n_sectors },
+	{ CFI_MFR_ST,  0x227E, fixup_M29W128G_write_buffer },
 	{ CFI_MFR_SST, 0x536a, fixup_sst38vf640x_sectorsize }, /* SST38VF6402 */
 	{ CFI_MFR_SST, 0x536b, fixup_sst38vf640x_sectorsize }, /* SST38VF6401 */
 	{ CFI_MFR_SST, 0x536c, fixup_sst38vf640x_sectorsize }, /* SST38VF6404 */
@@ -616,6 +627,22 @@ static struct mtd_info *cfi_amdstd_setup(struct mtd_info *mtd)
  * correctly and is therefore not done	(particularly with interleaved chips
  * as each chip must be checked independently of the others).
  */
+#ifdef CONFIG_TANGOX
+/* For TANGOX, verify content in start address as well */
+static int __xipram chip_ready(struct map_info *map, unsigned long addr, unsigned long start, map_word z_val)
+{
+	map_word d, t, z;
+
+	d = map_read(map, addr);
+	mb();
+	t = map_read(map, addr);
+	mb();
+	z = map_read(map, start);
+	mb();
+
+	return map_word_equal(map, d, t) && map_word_equal(map, z, z_val);
+}
+#else
 static int __xipram chip_ready(struct map_info *map, unsigned long addr)
 {
 	map_word d, t;
@@ -625,6 +652,7 @@ static int __xipram chip_ready(struct map_info *map, unsigned long addr)
 
 	return map_word_equal(map, d, t);
 }
+#endif
 
 /*
  * Return true if the chip is ready and has the correct value.
@@ -658,6 +686,9 @@ static int get_chip(struct map_info *map, struct flchip *chip, unsigned long adr
 	struct cfi_private *cfi = map->fldrv_priv;
 	unsigned long timeo;
 	struct cfi_pri_amdstd *cfip = (struct cfi_pri_amdstd *)cfi->cmdset_priv;
+#ifdef CONFIG_TANGOX
+	map_word z_val = map_read(map, chip->start);
+#endif
 
  resettime:
 	timeo = jiffies + HZ;
@@ -666,8 +697,13 @@ static int get_chip(struct map_info *map, struct flchip *chip, unsigned long adr
 
 	case FL_STATUS:
 		for (;;) {
+#ifdef CONFIG_TANGOX
+			if (chip_ready(map, adr, chip->start, z_val))
+				break;
+#else
 			if (chip_ready(map, adr))
 				break;
+#endif
 
 			if (time_after(jiffies, timeo)) {
 				printk(KERN_ERR "Waiting for chip to be ready timed out.\n");
@@ -691,6 +727,12 @@ static int get_chip(struct map_info *map, struct flchip *chip, unsigned long adr
 		    (mode == FL_WRITING && (cfip->EraseSuspend & 0x2))))
 			goto sleep;
 
+		/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		 * Sentivision FIX: map_write here whole flash operation freeze on VIP1216 STB.
+		 *   So we just will sleep waitting for state change: */
+		goto sleep;
+		/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 		/* We could check to see if we're trying to access the sector
 		 * that is currently being erased. However, no user will try
 		 * anything like that so we just wait for the timeout. */
@@ -703,8 +745,13 @@ static int get_chip(struct map_info *map, struct flchip *chip, unsigned long adr
 		chip->state = FL_ERASE_SUSPENDING;
 		chip->erase_suspended = 1;
 		for (;;) {
+#ifdef CONFIG_TANGOX
+			if (chip_ready(map, adr, chip->start, z_val))
+				break;
+#else
 			if (chip_ready(map, adr))
 				break;
+#endif
 
 			if (time_after(jiffies, timeo)) {
 				/* Should have suspended the erase by now.
@@ -1143,6 +1190,9 @@ static int __xipram do_write_oneword(struct map_info *map, struct flchip *chip, 
 	int ret = 0;
 	map_word oldd;
 	int retry_cnt = 0;
+#ifdef CONFIG_TANGOX
+	map_word z_val;
+#endif
 
 	adr += chip->start;
 
@@ -1162,6 +1212,9 @@ static int __xipram do_write_oneword(struct map_info *map, struct flchip *chip, 
 	 * data at other locations when 0xff is written to a location that
 	 * already contains 0xff.
 	 */
+#ifdef CONFIG_TANGOX
+	z_val = ((adr == chip->start) ? datum : map_read(map, chip->start));
+#endif
 	oldd = map_read(map, adr);
 	if (map_word_equal(map, oldd, datum)) {
 		pr_debug("MTD %s(): NOP\n",
@@ -1200,15 +1253,25 @@ static int __xipram do_write_oneword(struct map_info *map, struct flchip *chip, 
 			continue;
 		}
 
-		if (time_after(jiffies, timeo) && !chip_ready(map, adr)){
+#ifdef CONFIG_TANGOX
+		if (time_after(jiffies, timeo) && !chip_ready(map, adr, chip->start, z_val))
+#else
+		if (time_after(jiffies, timeo) && !chip_ready(map, adr))
+#endif
+		{
 			xip_enable(map, chip, adr);
 			printk(KERN_WARNING "MTD %s(): software timeout\n", __func__);
 			xip_disable(map, chip, adr);
 			break;
 		}
 
+#ifdef CONFIG_TANGOX
+		if (chip_ready(map, adr, chip->start, z_val))
+			break;
+#else
 		if (chip_ready(map, adr))
 			break;
+#endif
 
 		/* Latency issues. Drop the lock, wait a while and retry */
 		UDELAY(map, chip, adr, 1);
@@ -1374,6 +1437,9 @@ static int __xipram do_write_buffer(struct map_info *map, struct flchip *chip,
 	unsigned long cmd_adr;
 	int z, words;
 	map_word datum;
+#ifdef CONFIG_TANGOX
+	map_word z_val;
+#endif
 
 	adr += chip->start;
 	cmd_adr = adr;
@@ -1394,6 +1460,9 @@ static int __xipram do_write_buffer(struct map_info *map, struct flchip *chip,
 	ENABLE_VPP(map);
 	xip_disable(map, chip, cmd_adr);
 
+#ifdef CONFIG_TANGOX
+	z_val = ((adr == chip->start) ? datum : map_read(map, chip->start));
+#endif
 	cfi_send_gen_cmd(0xAA, cfi->addr_unlock1, chip->start, map, cfi, cfi->device_type, NULL);
 	cfi_send_gen_cmd(0x55, cfi->addr_unlock2, chip->start, map, cfi, cfi->device_type, NULL);
 
@@ -1443,10 +1512,20 @@ static int __xipram do_write_buffer(struct map_info *map, struct flchip *chip,
 			continue;
 		}
 
+#ifdef CONFIG_TANGOX
+		if (time_after(jiffies, timeo) && !chip_ready(map, adr, chip->start, z_val))
+			break;
+#else
 		if (time_after(jiffies, timeo) && !chip_ready(map, adr))
 			break;
+#endif
 
-		if (chip_ready(map, adr)) {
+#ifdef CONFIG_TANGOX
+		if (chip_ready(map, adr, chip->start, z_val)) 
+#else
+		if (chip_ready(map, adr)) 
+#endif
+		{
 			xip_enable(map, chip, adr);
 			goto op_done;
 		}
@@ -1793,6 +1872,10 @@ static int __xipram do_erase_chip(struct map_info *map, struct flchip *chip)
 	unsigned long int adr;
 	DECLARE_WAITQUEUE(wait, current);
 	int ret = 0;
+#ifdef CONFIG_TANGOX
+	map_word z_val;
+	z_val.x[0] = ((map->bankwidth == 1) ? 0xff : 0xffff);
+#endif
 
 	adr = cfi->addr_unlock1;
 
@@ -1845,8 +1928,13 @@ static int __xipram do_erase_chip(struct map_info *map, struct flchip *chip)
 			chip->erase_suspended = 0;
 		}
 
+#ifdef CONFIG_TANGOX
+		if (chip_ready(map, adr, chip->start, z_val))
+			break;
+#else
 		if (chip_ready(map, adr))
 			break;
+#endif
 
 		if (time_after(jiffies, timeo)) {
 			printk(KERN_WARNING "MTD %s(): software timeout\n",
@@ -1882,6 +1970,9 @@ static int __xipram do_erase_oneblock(struct map_info *map, struct flchip *chip,
 	unsigned long timeo = jiffies + HZ;
 	DECLARE_WAITQUEUE(wait, current);
 	int ret = 0;
+#ifdef CONFIG_TANGOX
+	map_word z_val;
+#endif
 
 	adr += chip->start;
 
@@ -1894,6 +1985,13 @@ static int __xipram do_erase_oneblock(struct map_info *map, struct flchip *chip,
 
 	pr_debug("MTD %s(): ERASE 0x%.8lx\n",
 	       __func__, adr );
+
+#ifdef CONFIG_TANGOX
+	if (adr == chip->start)
+		z_val.x[0] = ((map->bankwidth == 1) ? 0xff : 0xffff);
+	else
+		z_val = map_read(map, chip->start);
+#endif
 
 	XIP_INVAL_CACHED_RANGE(map, adr, len);
 	ENABLE_VPP(map);
@@ -1928,13 +2026,18 @@ static int __xipram do_erase_oneblock(struct map_info *map, struct flchip *chip,
 			continue;
 		}
 		if (chip->erase_suspended) {
-			/* This erase was suspended and resumed.
+		/* This erase was suspended and resumed.
 			   Adjust the timeout */
 			timeo = jiffies + (HZ*20); /* FIXME */
 			chip->erase_suspended = 0;
 		}
 
-		if (chip_ready(map, adr)) {
+#ifdef CONFIG_TANGOX
+		if (chip_ready(map, adr, chip->start, z_val))
+#else
+		if (chip_ready(map, adr)) 
+#endif
+		{
 			xip_enable(map, chip, adr);
 			break;
 		}

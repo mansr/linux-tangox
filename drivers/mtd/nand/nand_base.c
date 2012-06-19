@@ -2541,6 +2541,7 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 	struct nand_chip *chip = mtd->priv;
 	loff_t rewrite_bbt[NAND_MAX_CHIPS] = {0};
 	unsigned int bbt_masked_page = 0xffffffff;
+	int force_erase = 0;
 	loff_t len;
 
 	pr_debug("%s: start = 0x%012llx, len = %llu\n",
@@ -2549,6 +2550,9 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 
 	if (check_offs_len(mtd, instr->addr, instr->len))
 		return -EINVAL;
+
+	if (instr->retries == 0x73092215)
+		force_erase = 1;
 
 	/* Grab the lock and see if the device is available */
 	nand_get_device(chip, mtd, FL_ERASING);
@@ -2587,7 +2591,7 @@ int nand_erase_nand(struct mtd_info *mtd, struct erase_info *instr,
 
 	while (len) {
 		/* Check if we have a bad block, we do not erase bad blocks! */
-		if (nand_block_checkbad(mtd, ((loff_t) page) <<
+		if (!force_erase && nand_block_checkbad(mtd, ((loff_t) page) <<
 					chip->page_shift, 0, allowbbt)) {
 			pr_warn("%s: attempt to erase a bad block at page 0x%08x\n",
 				    __func__, page);
@@ -3214,6 +3218,9 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips,
 	/* Store the number of chips and calc total size for mtd */
 	chip->numchips = i;
 	mtd->size = i * chip->chipsize;
+
+	chip->maf_id = nand_maf_id;
+	chip->dev_id = type->id;
 
 	return 0;
 }

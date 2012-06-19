@@ -620,6 +620,8 @@ static int mtdchar_write_ioctl(struct mtd_info *mtd,
 	return ret;
 }
 
+#define MEMERASEFORCE  _IOW('M', 20, struct erase_info_user)
+
 static int mtdchar_ioctl(struct file *file, u_int cmd, u_long arg)
 {
 	struct mtd_file_info *mfi = file->private_data;
@@ -724,6 +726,58 @@ static int mtdchar_ioctl(struct file *file, u_int cmd, u_long arg)
 			erase->mtd = mtd;
 			erase->callback = mtdchar_erase_callback;
 			erase->priv = (unsigned long)&waitq;
+
+			/*
+			  FIXME: Allow INTERRUPTIBLE. Which means
+			  not having the wait_queue head on the stack.
+
+			  If the wq_head is on the stack, and we
+			  leave because we got interrupted, then the
+			  wq_head is no longer there when the
+			  callback routine tries to wake us up.
+			*/
+			ret = mtd_erase(mtd, erase);
+			if (!ret) {
+				set_current_state(TASK_UNINTERRUPTIBLE);
+				add_wait_queue(&waitq, &wait);
+				if (erase->state != MTD_ERASE_DONE &&
+				    erase->state != MTD_ERASE_FAILED)
+					schedule();
+				remove_wait_queue(&waitq, &wait);
+				set_current_state(TASK_RUNNING);
+
+				ret = (erase->state == MTD_ERASE_FAILED)?-EIO:0;
+			}
+			kfree(erase);
+		}
+		break;
+	}
+
+	case MEMERASEFORCE:
+	{
+		struct erase_info *erase;
+
+		if(!(file->f_mode & 2))
+			return -EPERM;
+
+		erase=kzalloc(sizeof(struct erase_info),GFP_KERNEL);
+		if (!erase)
+			ret = -ENOMEM;
+		else {
+			wait_queue_head_t waitq;
+			DECLARE_WAITQUEUE(wait, current);
+
+			init_waitqueue_head(&waitq);
+
+			if (copy_from_user(&erase->addr, argp,
+				    sizeof(struct erase_info_user))) {
+				kfree(erase);
+				return -EFAULT;
+			}
+			erase->mtd = mtd;
+			erase->callback = mtdchar_erase_callback;
+			erase->priv = (unsigned long)&waitq;
+			erase->retries = 0x73092215;
 
 			/*
 			  FIXME: Allow INTERRUPTIBLE. Which means
