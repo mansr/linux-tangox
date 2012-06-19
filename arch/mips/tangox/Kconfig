@@ -190,6 +190,13 @@ config TANGO4_89XX
 comment "More configurations"
 	depends on TANGOX
 
+config TANGOX_BWINFO_COLLECTION
+	tristate "Collecting bandwidth information"
+	depends on TANGO3 || TANGO4
+	default n
+	help
+         Enabling bandwidth information collection.
+
 config TANGOX_SYSTEMRAM_ACTUALSIZE
 	int "System RAM size (in MB)"
 	depends on TANGOX

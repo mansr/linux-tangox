@@ -16,9 +16,11 @@ obj-$(CONFIG_SMP) += amon.o
 
 ifdef CONFIG_TANGO3
 obj-$(CONFIG_TANGOX_XENV_READ) += zxenv.o
+obj-$(CONFIG_TANGOX_BWINFO_COLLECTION) += bwinfo.o
 endif
 ifdef CONFIG_TANGO4
 obj-$(CONFIG_TANGOX_XENV_READ) += zxenv.o
+obj-$(CONFIG_TANGOX_BWINFO_COLLECTION) += bwinfo.o
 endif
 
 obj-$(CONFIG_TANGOX) += gpio.o
