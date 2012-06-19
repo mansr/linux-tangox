@@ -73,6 +73,13 @@ config TANGOX_FIP_REF2
 
 endchoice
 
+config TANGOX_SCARD
+       tristate "SMP8xxx Smartcard support" 
+       depends on TANGOX
+       default m
+       help
+         Support Smartcard interface for SMP8xxx.
+
 source "drivers/tty/serial/Kconfig"
 
 config TTY_PRINTK
