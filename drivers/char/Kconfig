@@ -80,6 +80,13 @@ config TANGOX_SCARD
        help
          Support Smartcard interface for SMP8xxx.
 
+config TANGOX_UIR
+       tristate "SMP8xxx Universal IR remote support" 
+       depends on TANGO3 || TANGO4
+       default m
+       help
+         Support Universal Infra-Red remote controller interface for SMP8xxx.
+
 source "drivers/tty/serial/Kconfig"
 
 config TTY_PRINTK
