@@ -87,6 +87,13 @@ config TANGOX_UIR
        help
          Support Universal Infra-Red remote controller interface for SMP8xxx.
 
+config TANGOX_IR
+       tristate "SMP8xxx IR remote support" 
+       depends on TANGOX
+       default m
+       help
+         Support Infra-Red remote controller interface for SMP8xxx.
+
 source "drivers/tty/serial/Kconfig"
 
 config TTY_PRINTK
