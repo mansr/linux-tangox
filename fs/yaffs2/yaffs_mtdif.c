@@ -39,7 +39,11 @@ int nandmtd_erase_block(struct yaffs_dev *dev, int block_no)
 	ei.callback = NULL;
 	ei.priv = (u_long) dev;
 
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 3, 0))
+	retval = mtd_erase(mtd, &ei);
+#else
 	retval = mtd->erase(mtd, &ei);
+#endif
 
 	if (retval == 0)
 		return YAFFS_OK;

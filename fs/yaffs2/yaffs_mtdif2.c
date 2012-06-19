@@ -87,7 +87,11 @@ int nandmtd2_write_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
 	ops.ooboffs = 0;
 	ops.datbuf = (u8 *) data;
 	ops.oobbuf = (dev->param.inband_tags) ? NULL : packed_tags_ptr;
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 3, 0))
+	retval = mtd_write_oob(mtd, addr, &ops);
+#else
 	retval = mtd->write_oob(mtd, addr, &ops);
+#endif
 
 #else
 	if (!dev->param.inband_tags) {
@@ -142,8 +146,13 @@ int nandmtd2_read_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 17))
 	if (dev->param.inband_tags || (data && !tags))
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 3, 0))
+		retval = mtd_read(mtd, addr, dev->param.total_bytes_per_chunk,
+				   &dummy, data);
+#else
 		retval = mtd->read(mtd, addr, dev->param.total_bytes_per_chunk,
 				   &dummy, data);
+#endif
 	else if (tags) {
 		ops.mode = MTD_OPS_AUTO_OOB;
 		ops.ooblen = packed_tags_size;
@@ -151,7 +160,11 @@ int nandmtd2_read_chunk_tags(struct yaffs_dev *dev, int nand_chunk,
 		ops.ooboffs = 0;
 		ops.datbuf = data;
 		ops.oobbuf = yaffs_dev_to_lc(dev)->spare_buffer;
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 3, 0))
+		retval = mtd_read_oob(mtd, addr, &ops);
+#else
 		retval = mtd->read_oob(mtd, addr, &ops);
+#endif
 	}
 #else
 	if (!dev->param.inband_tags && data && tags) {
@@ -215,9 +228,15 @@ int nandmtd2_mark_block_bad(struct yaffs_dev *dev, int block_no)
 		block_no);
 
 	retval =
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 3, 0))
+	    mtd_block_markbad(mtd,
+			       block_no * dev->param.chunks_per_block *
+			       dev->param.total_bytes_per_chunk);
+#else
 	    mtd->block_markbad(mtd,
 			       block_no * dev->param.chunks_per_block *
 			       dev->param.total_bytes_per_chunk);
+#endif
 
 	if (retval == 0)
 		return YAFFS_OK;
@@ -234,9 +253,15 @@ int nandmtd2_query_block(struct yaffs_dev *dev, int block_no,
 
 	yaffs_trace(YAFFS_TRACE_MTD, "nandmtd2_query_block %d", block_no);
 	retval =
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 3, 0))
+	    mtd_block_isbad(mtd,
+			     block_no * dev->param.chunks_per_block *
+			     dev->param.total_bytes_per_chunk);
+#else
 	    mtd->block_isbad(mtd,
 			     block_no * dev->param.chunks_per_block *
 			     dev->param.total_bytes_per_chunk);
+#endif
 
 	if (retval) {
 		yaffs_trace(YAFFS_TRACE_MTD, "block is bad");
