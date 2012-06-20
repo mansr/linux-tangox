@@ -137,7 +137,7 @@ static const unsigned int sbox_tgt[2] = { SBOX_PCIMASTER, SBOX_PCISLAVE };
 
 #define MAX_CS		8	/* Maximum number of CS */
 #define MAX_PARTITIONS	16	/* Maximum partitions per CS */
-#define MAX_NAND_DEVS	8	/* Maximum number of NAND devices */
+#define MAX_NAND_DEVS	8	/* Maximum number of NAND devices, needs to be in sync with the gap in nand_ids.c */
 
 /* XENV keys to be used */
 #define CS_RESERVED	"a.cs%d_rsvd_pblk"
@@ -150,6 +150,8 @@ static const unsigned int sbox_tgt[2] = { SBOX_PCIMASTER, SBOX_PCISLAVE };
 #define CS_DEVCFG	"a.cs%d_nand_devcfg"
 #define NAND_PARAM	"a.nandpart%d_params"
 #define HIGH_32		"_hi"
+
+#define BUFSIZE		256
 
 /* Prototype of routine that gets XENV and others .. */
 extern int zxenv_get(char *recordname, void *dst, u32 *datasize);
@@ -164,7 +166,7 @@ static int cs_avail[MAX_CS], cs_parts[MAX_CS];
 static int cs_offset;
 static unsigned long chip_szs[MAX_CS] = { 0, };
 static int max_chips = MAX_CS;
-module_param_array(chip_szs, int, &max_chips, 0000);
+module_param_array(chip_szs, ulong, &max_chips, 0000);
 MODULE_PARM_DESC(chip_szs, "Overridden value of chip sizes");
 
 struct chip_private
@@ -1061,11 +1063,10 @@ static void smp8xxx_select_chip(struct mtd_info *mtd, int chipnr)
 /* Loading partiton information from XENV */
 static void smp8xxx_nand_load_part_info(void)
 {
-#define BUFSIZE		256
 	char buf[BUFSIZE], pname[BUFSIZE];
 	u32 dsize, rsvd_blks;
-	u32 cs, part, parts, cnt, blkmask;
-	u64 rsvd_sz, psz, poff;
+	u32 cs, part, parts, cnt;
+	u64 rsvd_sz, psz, poff, blkmask;
 	static const char *h32str = HIGH_32;
 
 	for (cs = 0; cs < MAX_CS; cs++) {
@@ -1082,7 +1083,7 @@ static void smp8xxx_nand_load_part_info(void)
 
 		/* find out the size of reservation zone */
 		smp8xxx_mtds[cs].size = rsvd_sz = min((u64)smp8xxx_mtds[cs].erasesize * (u64)rsvd_blks, smp8xxx_mtds[cs].size);
-		blkmask = ~(smp8xxx_mtds[cs].erasesize - 1);
+		blkmask = ~(u64)(smp8xxx_mtds[cs].erasesize - 1);
 
 		sprintf(buf, CS_PARTS, cs);
 		dsize = sizeof(u32);
@@ -1109,7 +1110,7 @@ static void smp8xxx_nand_load_part_info(void)
 			if ((zxenv_get(buf, &ph, &dsize) < 0) || (dsize != sizeof(u32)))
 				ph = 0;
 
-			psz = ((((u64)ph) << 32) | (u64)pl) & (u64)blkmask; /* make it align to block boundary */
+			psz = ((((u64)ph) << 32) | (u64)pl) & blkmask; /* make it align to block boundary */
 			if (psz == 0)
 				goto next;
 			smp8xxx_partitions[cs][cnt].size = psz;
@@ -1129,8 +1130,10 @@ static void smp8xxx_nand_load_part_info(void)
 			smp8xxx_partitions[cs][cnt].offset = poff;
 
 			/* check if partition is out of reservation zone */
-			if ((poff >= rsvd_sz) || ((poff + psz) > rsvd_sz))
+			if ((poff >= rsvd_sz) || ((poff + psz) > rsvd_sz)) {
+				printk("%s: CS%d partition%d (0x%llx-0x%llx) out of reserved zone.\n", SMP_NAND_DEV_NAME, cs, part + 1, poff, poff + psz);
 				goto next;
+			}
 
 			sprintf(buf, CS_PART_NAME, cs, part + 1);
 			dsize = BUFSIZE;
@@ -1201,6 +1204,52 @@ static void __init smp8xxx_set_nand_ctrler(void)
 	}
 }
 
+/* appending more entries from XENV to the table */
+static void __init append_nand_flash_ids(void)
+{
+	int i, id, maf;
+	struct nand_flash_dev *type = nand_flash_ids, *ptr;
+	char buf[BUFSIZE];
+	u32 dsize, params[6];
+
+#define LP_OPTIONS (NAND_SAMSUNG_LP_OPTIONS | NAND_NO_READRDY | NAND_NO_AUTOINCR)
+	for (i = 0; i < MAX_NAND_DEVS; i++) {
+		sprintf(buf, NAND_PARAM, i);
+		dsize = sizeof(params);
+
+		/* get entry from XENV */
+		memset(params, 0, dsize);
+		if ((zxenv_get(buf, params, &dsize) < 0) && (dsize == 0)) 
+			continue;
+
+		if ((id = (params[0] >> 16) & 0xff) == 0)
+			continue;
+		maf = (params[0] >> 24) & 0xff;
+
+		/* going to the end of table or matching entry found */
+		for (ptr = type; ptr->id; ptr++) {
+			if (ptr->id == id)
+				break;
+		}
+
+		if ((!ptr->name) || (ptr->id == id))
+			continue;	/* end of table, or found the entry in the table */
+
+		/* append new entry to the table */
+		ptr->id = id;
+		if (((params[2] >> 16) & 0xf) >= 10) { /* >=2KB page size */
+			ptr->options = LP_OPTIONS;
+			ptr->erasesize = ptr->pagesize = 0; /* let MTD autodetect */
+		} else {
+			ptr->options = 0;
+			ptr->pagesize = 1 << (((params[2] >> 16) & 0xf) + 1);
+			ptr->erasesize = 1 << ((((params[2] >> 16) & 0xf) + 1) + (((params[2] >> 20) & 0xf) + 1));
+		}
+		ptr->chipsize = 1 << (((((params[2] >> 16) & 0xf) + 1) + (((params[2] >> 20) & 0xf) + 1) + (((params[2] >> 24) & 0xf) + 1)) - 20);
+		sprintf(ptr->name, "Unknown device %ldMiB (%02x:%02x)", ptr->chipsize, maf, ptr->id);
+	}
+}
+
 static int __init smp8xxx_nand_init(void)
 {
 	struct nand_chip *this;
@@ -1208,6 +1257,9 @@ static int __init smp8xxx_nand_init(void)
 	RMuint8 local_pb_cs_ctrl;
 	RMuint32 local_pb_cs_config, local_pb_cs_config1;
 	int cs, chip_cnt = 0;
+
+	/* append the id table from XENV first, if any */
+	append_nand_flash_ids();
 
 	memset(smp8xxx_mtds, 0, sizeof(struct mtd_info) * MAX_CS);
 	memset(smp8xxx_chips, 0, sizeof(struct nand_chip) * MAX_CS);
@@ -1248,6 +1300,12 @@ static int __init smp8xxx_nand_init(void)
 	init_waitqueue_head(&smp8xxx_hw_control.wq);
 
 	for (cs = 0; cs < MAX_CS; cs++) {
+		int i;
+		unsigned long pg_size, oob_size, blk_size;
+		uint64_t chip_size;
+		u32 dsize, params[6];
+		char buf[BUFSIZE];
+
 		if (cs_avail[cs] == 0)
 			goto next;
 		if (new_ctrler) { /* bounce buffer may be needed with new controller */
@@ -1296,37 +1354,47 @@ static int __init smp8xxx_nand_init(void)
 #endif
 			goto next;
 		
+		/* checking XENV to see if parameters are given ... */
+		for (i = 0; i < MAX_NAND_DEVS; i++) {
+			sprintf(buf, NAND_PARAM, i);
+			dsize = sizeof(params);
+
+			memset(params, 0, dsize);
+			if ((zxenv_get(buf, params, &dsize) < 0) && (dsize == 0))
+				continue;
+
+			/* matching maf_id and dev_id?? */
+			if ((smp8xxx_chips[cs].maf_id == ((params[0] >> 24) & 0xff)) && (smp8xxx_chips[cs].dev_id == ((params[0] >> 16) & 0xff)))
+				break;
+		}
+
+		/* saving information from XENV */
+		chip_size = pg_size = oob_size = blk_size = 0;
+		if (i < MAX_NAND_DEVS) {
+			oob_size = params[2] & 0xffff;
+			pg_size = 1 << (((params[2] >> 16) & 0xf) + 1);
+			blk_size = pg_size * (1 << (((params[2] >> 20) & 0xf) + 1));
+			chip_size = ((uint64_t)1) << ((((params[2] >> 16) & 0xf) + 1) + (((params[2] >> 20) & 0xf) + 1) + (((params[2] >> 24) & 0xf) + 1));
+		}
+
 		if (new_ctrler) {
-			int i;
- 			u32 timing1, timing2, devcfg, dsize, params[6];
-			char buf[BUFSIZE];
-
-			/* checking XENV to see if parameters are given ... */
-			for (i = 0; i < MAX_NAND_DEVS; i++) {
-				sprintf(buf, NAND_PARAM, i);
-				dsize = sizeof(params);
-
-				memset(params, 0, dsize);
-				if ((zxenv_get(buf, params, &dsize) < 0) && (dsize == 0)) 
-					continue;
-
-				/* matching maf_id and dev_id?? */
-				if ((smp8xxx_chips[cs].maf_id == ((params[0] >> 24) & 0xff)) && (smp8xxx_chips[cs].dev_id == ((params[0] >> 16) & 0xff))) 
-					break;
-			}
+#define DEF_TIMING1	0x1b162c16	/* conservative timing1 */
+#define DEF_TIMING2	0x120e1f58	/* conservative timing2 */
+#define DEF_DEVCFG	0x35		/* default devcfg, may not be correct */
+			u32 timing1, timing2, devcfg;
 
 			sprintf(buf, CS_TIMING1, cs);
 			dsize = sizeof(u32);
 			if ((zxenv_get(buf, &timing1, &dsize) < 0) || (dsize != sizeof(u32))) 
-				timing1 = (params[3] ? params[3] : 0x081c1006);	/* use default */
+				timing1 = (params[3] ? params[3] : DEF_TIMING1);
 			sprintf(buf, CS_TIMING2, cs);
 			dsize = sizeof(u32);
 			if ((zxenv_get(buf, &timing2, &dsize) < 0) || (dsize != sizeof(u32))) 
-				timing2 = (params[4] ? params[4] : 0x08040410);	/* use default */
+				timing2 = (params[4] ? params[4] : DEF_TIMING2);
 			sprintf(buf, CS_DEVCFG, cs);
 			dsize = sizeof(u32);
 			if ((zxenv_get(buf, &devcfg, &dsize) < 0) || (dsize != sizeof(u32))) 
-				devcfg = (params[5] ? params[5] : 0x00000035);	/* use default */
+				devcfg = (params[5] ? params[5] : DEF_DEVCFG);
 
 			WR_HOST_REG32(DEVICE_CFG(chx_reg[cs]), devcfg);
 			WR_HOST_REG32(TIMING1(chx_reg[cs]), timing1);
@@ -1414,9 +1482,41 @@ static int __init smp8xxx_nand_init(void)
 		if (nand_scan_tail(&smp8xxx_mtds[cs]))
 			goto next;
 
-		printk("%s: detected NAND on CS%d, erasesize %d, pagesize %d, oobsize %d, oobavail %d\n", 
-			SMP_NAND_DEV_NAME, cs, smp8xxx_mtds[cs].erasesize,
+		printk("%s: detected NAND on CS%d, %lldMiB, erasesize %dKiB, pagesize %dB, oobsize %dB, oobavail %dB\n",
+			SMP_NAND_DEV_NAME, cs, smp8xxx_mtds[cs].size >> 20, smp8xxx_mtds[cs].erasesize >> 10,
 			smp8xxx_mtds[cs].writesize, smp8xxx_mtds[cs].oobsize, smp8xxx_mtds[cs].oobavail);
+
+		if (new_ctrler) {
+			u32 p_cyc, e_cyc, devcfg;
+			if (smp8xxx_mtds[cs].writesize < 2048) {	/* small page */
+				e_cyc = ((smp8xxx_mtds[cs].size >> 20) > 32) ? 3 : 2;
+				p_cyc = e_cyc + 1;
+			} else {
+				e_cyc = ((smp8xxx_mtds[cs].size >> 20) > 128) ? 3 : 2;
+				p_cyc = e_cyc + 2;
+			}
+			devcfg = (e_cyc << 4) | p_cyc;
+			if ((RD_HOST_REG32(DEVICE_CFG(chx_reg[cs])) & 0xff) != devcfg) {
+				printk(KERN_WARNING "%s: CS%d devcfg mismatch detected (0x%x specified, 0x%x detected)\n",
+					SMP_NAND_DEV_NAME, cs, RD_HOST_REG32(DEVICE_CFG(chx_reg[cs])) & 0xff, devcfg);
+				WR_HOST_REG32(DEVICE_CFG(chx_reg[cs]), devcfg);
+			}
+		}
+
+		/* Check against the saved information from XENV */
+		if (chip_size && chip_size != smp8xxx_mtds[cs].size)
+			printk(KERN_WARNING "%s: CS%d size mismatch detected (%lldMiB specified, %lldMiB detected)\n",
+				SMP_NAND_DEV_NAME, cs, chip_size >> 20, smp8xxx_mtds[cs].size >> 20);
+		if (blk_size && blk_size != smp8xxx_mtds[cs].erasesize)
+			printk(KERN_WARNING "%s: CS%d erasesize mismatch detected (%ldKiB specified, %dKiB detected)\n",
+				SMP_NAND_DEV_NAME, cs, blk_size >> 10, smp8xxx_mtds[cs].erasesize >> 10);
+		if (pg_size && pg_size != smp8xxx_mtds[cs].writesize)
+			printk(KERN_WARNING "%s: CS%d pagesize mismatch detected (%ldB specified, %dB detected)\n",
+				SMP_NAND_DEV_NAME, cs, pg_size, smp8xxx_mtds[cs].writesize);
+		if (oob_size && oob_size != smp8xxx_mtds[cs].oobsize)
+			printk(KERN_WARNING "%s: CS%d oobsize mismatch detected (%ldB specified, %dB detected)\n",
+				SMP_NAND_DEV_NAME, cs, oob_size, smp8xxx_mtds[cs].oobsize);
+
 		cs_avail[cs] = 1;
 		chip_cnt++;
 		continue;

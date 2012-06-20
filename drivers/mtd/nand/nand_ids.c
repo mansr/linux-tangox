@@ -162,7 +162,22 @@ struct nand_flash_dev nand_flash_ids[] = {
 	 BBT_AUTO_REFRESH
 	},
 
-	{NULL,}
+	/*
+	 * Fill-in gaps, may be refilled at the runtime
+	 */
+	{"                                ", 0, },
+	{"                                ", 0, },
+	{"                                ", 0, },
+	{"                                ", 0, },
+	{"                                ", 0, },
+	{"                                ", 0, },
+	{"                                ", 0, },
+	{"                                ", 0, },
+
+	/*
+	 * Terminates the table
+	 */
+	{NULL, },
 };
 
 /*
@@ -180,6 +195,7 @@ struct nand_manufacturers nand_manuf_ids[] = {
 	{NAND_MFR_AMD, "AMD"},
 	{NAND_MFR_MACRONIX, "Macronix"},
 	{NAND_MFR_ESMT, "ESMT"},
+	{NAND_MFR_MIRA, "MIRA"},
 	{0x0, "Unknown"}
 };
 

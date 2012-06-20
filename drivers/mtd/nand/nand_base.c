@@ -2960,12 +2960,12 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	if (!type)
 		type = nand_flash_ids;
 
-	for (; type->name != NULL; type++)
+	for (; (type->name != NULL) && (type->id != 0); type++)
 		if (*dev_id == type->id)
 			break;
 
 	chip->onfi_version = 0;
-	if (!type->name || !type->pagesize) {
+	if (!type->name || !type->id || !type->pagesize) {
 		/* Check is chip is ONFI compliant */
 		ret = nand_flash_detect_onfi(mtd, chip, &busw);
 		if (ret)
@@ -2979,7 +2979,7 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	for (i = 0; i < 8; i++)
 		id_data[i] = chip->read_byte(mtd);
 
-	if (!type->name)
+	if ((!type->name) || (!type->id))
 		return ERR_PTR(-ENODEV);
 
 	if (!mtd->name)
@@ -3005,10 +3005,10 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 		 * Check for wraparound + Samsung ID + nonzero 6th byte
 		 * to decide what to do.
 		 */
-		if (id_data[0] == id_data[6] && id_data[1] == id_data[7] &&
+		if ((id_data[0] == id_data[6] && id_data[1] == id_data[7] &&
 				id_data[0] == NAND_MFR_SAMSUNG &&
 				(chip->cellinfo & NAND_CI_CELLTYPE_MSK) &&
-				id_data[5] != 0x00) {
+				id_data[5] != 0x00) || (id_data[0] == NAND_MFR_MIRA)) {
 			/* Calc pagesize */
 			mtd->writesize = 2048 << (extid & 0x03);
 			extid >>= 2;
@@ -3031,6 +3031,16 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 			/* Calc blocksize */
 			mtd->erasesize = (128 * 1024) <<
 				(((extid >> 1) & 0x04) | (extid & 0x03));
+			busw = 0;
+		} else if (id_data[0] == NAND_MFR_ESMT) {
+			/* Calc pagesize */
+			mtd->writesize = 1024 << (extid & 0x03);
+			extid >>= 2;
+			/* Calc oobsize */
+			mtd->oobsize = (8 << (extid & 0x01)) * (mtd->writesize / 512) ;
+			extid >>= 2;
+			/* Calc blocksize */
+			mtd->erasesize = (64 * 1024) << (extid & 0x03);
 			busw = 0;
 		} else {
 			/* Calc pagesize */
@@ -3136,10 +3146,14 @@ ident_done:
 	 */
 	if ((chip->cellinfo & NAND_CI_CELLTYPE_MSK) &&
 			(*maf_id == NAND_MFR_SAMSUNG ||
+			 *maf_id == NAND_MFR_MIRA ||
+			 *maf_id == NAND_MFR_ESMT ||
 			 *maf_id == NAND_MFR_HYNIX))
 		chip->bbt_options |= NAND_BBT_SCANLASTPAGE;
 	else if ((!(chip->cellinfo & NAND_CI_CELLTYPE_MSK) &&
 				(*maf_id == NAND_MFR_SAMSUNG ||
+				 *maf_id == NAND_MFR_MIRA ||
+				 *maf_id == NAND_MFR_ESMT ||
 				 *maf_id == NAND_MFR_HYNIX ||
 				 *maf_id == NAND_MFR_TOSHIBA ||
 				 *maf_id == NAND_MFR_AMD ||

@@ -660,7 +660,7 @@ static int init_nandsim(struct mtd_info *mtd)
 	}
 
 	/* Detect how many ID bytes the NAND chip outputs */
-        for (i = 0; nand_flash_ids[i].name != NULL; i++) {
+        for (i = 0; (nand_flash_ids[i].name != NULL) && (nand_flash_ids[i].id != 0); i++) {
                 if (second_id_byte != nand_flash_ids[i].id)
                         continue;
 		if (!(nand_flash_ids[i].options & NAND_NO_AUTOINCR))
