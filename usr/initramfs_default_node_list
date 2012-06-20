@@ -257,6 +257,22 @@ nod /dev/scd0 644 0 0 b 11 0
 nod /dev/scd1 644 0 0 b 11 1
 nod /dev/scd2 644 0 0 b 11 2
 nod /dev/scd3 644 0 0 b 11 3
+nod /dev/mmcblk0 664 0 0 b 179 0
+nod /dev/mmcblk0p1 664 0 0 b 179 1
+nod /dev/mmcblk0p2 664 0 0 b 179 2
+nod /dev/mmcblk0p3 664 0 0 b 179 3
+nod /dev/mmcblk0p4 664 0 0 b 179 4
+nod /dev/mmcblk0p5 664 0 0 b 179 5
+nod /dev/mmcblk0p6 664 0 0 b 179 6
+nod /dev/mmcblk0p7 664 0 0 b 179 7
+nod /dev/mmcblk1 664 0 0 b 179 8
+nod /dev/mmcblk1p1 664 0 0 b 179 9
+nod /dev/mmcblk1p2 664 0 0 b 179 10
+nod /dev/mmcblk1p3 664 0 0 b 179 11
+nod /dev/mmcblk1p4 664 0 0 b 179 12
+nod /dev/mmcblk1p5 664 0 0 b 179 13
+nod /dev/mmcblk1p6 664 0 0 b 179 14
+nod /dev/mmcblk1p7 664 0 0 b 179 15
 slink /dev/sr0 scd0 777 0 0
 slink /dev/sr1 scd1 777 0 0
 slink /dev/sr2 scd2 777 0 0

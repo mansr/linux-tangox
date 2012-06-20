@@ -57,6 +57,14 @@ config MMC_SDHCI_BIG_ENDIAN_32BIT_BYTE_SWAPPER
 
 	  This is the case for the Freescale eSDHC and Nintendo Wii SDHCI.
 
+config MMC_SDHCI_TANGOX
+	tristate "Sigma Designs SDIO Interface support"
+	depends on MMC_SDHCI && (TANGO3 || TANGO4)
+	help
+	  This select the SDIO support for Sigma Designs' built-in
+          interface(s), which is available for SMP864x/SMP865x/SMP867x/SMP868x, and
+	  SMP89xx chips.
+
 config MMC_SDHCI_PCI
 	tristate "SDHCI support on PCI bus"
 	depends on MMC_SDHCI && PCI
