@@ -167,7 +167,7 @@ static int sdhci_tangox_suspend (struct device *pdev, pm_message_t state)
 		if (!slot)
 			continue;
 
-		ret = sdhci_suspend_host(slot->host, state);
+		ret = sdhci_suspend_host(slot->host);
 
 		if (ret) {
 			for (i--; i >= 0; i--)
