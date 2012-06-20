@@ -224,6 +224,23 @@ config BLK_DEV_PLATFORM
 
 	  If unsure, say N.
 
+config BLK_DEV_BMIDE_TANGO2
+       select BLK_DEV_IDEDMA_SFF
+       tristate "BMIDE for SMP863x"
+       depends on TANGO2
+       default n
+       help
+         Enable the support for Bus Mastering IDE controller. 
+
+config BLK_DEV_BMIDE_TANGO2_DMA
+       select SD_CDROM_DMAPACKET if BLK_DEV_IDECD
+       bool "support BMIDE DMA operations"
+       default y
+       depends on BLK_DEV_BMIDE_TANGO2
+       help
+         Enable the DMA support for Bus Mastering IDE controller, which
+	 include support for MDMA and UDMA modes. 
+
 config BLK_DEV_CMD640
 	tristate "CMD640 chipset bugfix/support"
 	depends on X86

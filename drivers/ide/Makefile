@@ -107,6 +107,7 @@ obj-$(CONFIG_BLK_DEV_IDETAPE)		+= ide-tape.o
 obj-$(CONFIG_BLK_DEV_IDECS)		+= ide-cs.o
 
 obj-$(CONFIG_BLK_DEV_PLATFORM)		+= ide_platform.o
+obj-$(CONFIG_BLK_DEV_BMIDE_TANGO2)	+= tango2-bmide.o
 
 obj-$(CONFIG_BLK_DEV_IDE_ICSIDE)	+= icside.o
 obj-$(CONFIG_BLK_DEV_IDE_RAPIDE)	+= rapide.o
