@@ -1642,12 +1642,19 @@ static int cfi_amdstd_panic_wait(struct map_info *map, struct flchip *chip,
 	struct cfi_private *cfi = map->fldrv_priv;
 	int retries = 10;
 	int i;
+#ifdef CONFIG_TANGOX
+	map_word z_val = map_read(map, chip->start);
+#endif
 
 	/*
 	 * If the driver thinks the chip is idle, and no toggle bits
 	 * are changing, then the chip is actually idle for sure.
 	 */
+#ifdef CONFIG_TANGOX
+	if (chip->state == FL_READY && chip_ready(map, adr, chip->start, z_val))
+#else
 	if (chip->state == FL_READY && chip_ready(map, adr))
+#endif
 		return 0;
 
 	/*
@@ -1664,7 +1671,11 @@ static int cfi_amdstd_panic_wait(struct map_info *map, struct flchip *chip,
 
 		/* wait for the chip to become ready */
 		for (i = 0; i < jiffies_to_usecs(timeo); i++) {
+#ifdef CONFIG_TANGOX
+			if (chip_ready(map, adr, chip->start, z_val))
+#else
 			if (chip_ready(map, adr))
+#endif
 				return 0;
 
 			udelay(1);
@@ -1695,6 +1706,9 @@ static int do_panic_write_oneword(struct map_info *map, struct flchip *chip,
 	map_word oldd;
 	int ret = 0;
 	int i;
+#ifdef CONFIG_TANGOX
+	map_word z_val = map_read(map, chip->start);
+#endif
 
 	adr += chip->start;
 
@@ -1726,7 +1740,11 @@ retry:
 	map_write(map, datum, adr);
 
 	for (i = 0; i < jiffies_to_usecs(uWriteTimeout); i++) {
+#ifdef CONFIG_TANGOX
+		if (chip_ready(map, adr, chip->start, z_val))
+#else
 		if (chip_ready(map, adr))
+#endif
 			break;
 
 		udelay(1);
