@@ -561,10 +561,21 @@ unsigned int ata_sff_data_xfer(struct ata_device *dev, unsigned char *buf,
 	struct ata_port *ap = dev->link->ap;
 	void __iomem *data_addr = ap->ioaddr.data_addr;
 	unsigned int words = buflen >> 1;
+	unsigned int i;
+	u16 *buf16 = (u16 *) buf;	
 
 	/* Transfer multiple of 2 bytes */
-	if (rw == READ)
+	if (rw == READ) {
+#ifndef CONFIG_TANGOX
 		ioread16_rep(data_addr, buf, words);
+#else
+		for (i = 0; i < words; i++) {
+			buf16[i] = cpu_to_le16(readw(data_addr));
+			/* for some drives*/
+			udelay(1);
+		}
+#endif
+	}
 	else
 		iowrite16_rep(data_addr, buf, words);
 
@@ -878,6 +889,9 @@ next_sg:
 		consumed = ap->ops->sff_data_xfer(dev,  buf + offset,
 								count, rw);
 	}
+
+	if ((rw == READ) && !PageSlab(page))
+		flush_dcache_page(page);
 
 	bytes -= min(bytes, consumed);
 	qc->curbytes += count;
