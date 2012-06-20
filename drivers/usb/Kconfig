@@ -26,6 +26,8 @@ config USB_ARCH_HAS_OHCI
 	# MIPS:
 	default y if MIPS_ALCHEMY
 	default y if MACH_JZ4740
+	default y if TANGO3	
+	default y if TANGO2
 	# more:
 	default PCI
 
@@ -48,11 +50,13 @@ config USB_ARCH_HAS_EHCI
 	default y if SPARC_LEON
 	default y if ARCH_MMP
 	default y if MACH_LOONGSON1
+	default y if TANGOX	
 	default PCI
 
 # some non-PCI HCDs implement xHCI
 config USB_ARCH_HAS_XHCI
 	boolean
+	default n if TANGOX	
 	default PCI
 
 menuconfig USB_SUPPORT
@@ -82,6 +86,7 @@ config USB_ARCH_HAS_HCD
 	default y if ARM				# SL-811
 	default y if BLACKFIN				# SL-811
 	default y if SUPERH				# r8a66597-hcd
+	default y if TANGOX	
 	default PCI
 
 # ARM SA1111 chips have a non-PCI based "OHCI-compatible" USB host interface.

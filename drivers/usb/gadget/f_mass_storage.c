@@ -816,6 +816,9 @@ static int do_read(struct fsg_common *common)
 		nread = vfs_read(curlun->filp,
 				 (char __user *)bh->buf,
 				 amount, &file_offset_tmp);
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
+		dma_cache_wback((unsigned long)bh->buf, amount);
+#endif
 		VLDBG(curlun, "file read %u @ %llu -> %d\n", amount,
 		      (unsigned long long)file_offset, (int)nread);
 		if (signal_pending(current))
@@ -1006,6 +1009,9 @@ static int do_write(struct fsg_common *common)
 
 			/* Perform the write */
 			file_offset_tmp = file_offset;
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
+			dma_cache_wback((unsigned long)bh->buf, amount);
+#endif
 			nwritten = vfs_write(curlun->filp,
 					     (char __user *)bh->buf,
 					     amount, &file_offset_tmp);
@@ -1155,6 +1161,9 @@ static int do_verify(struct fsg_common *common)
 		nread = vfs_read(curlun->filp,
 				(char __user *) bh->buf,
 				amount, &file_offset_tmp);
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
+		dma_cache_wback((unsigned long)bh->buf, amount);
+#endif
 		VLDBG(curlun, "file read %u @ %llu -> %d\n", amount,
 				(unsigned long long) file_offset,
 				(int) nread);
@@ -2841,6 +2850,9 @@ buffhds_first_it:
 			rc = -ENOMEM;
 			goto error_release;
 		}
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
+		dma_cache_inv((unsigned long)(bh->buf), FSG_BUFLEN);
+#endif
 	} while (--i);
 	bh->next = common->buffhds;
 

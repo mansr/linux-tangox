@@ -51,6 +51,14 @@
 #include <asm/firmware.h>
 #endif
 
+#if defined(CONFIG_TANGO2)
+#include <asm/tango2/platform_dev.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/platform_dev.h>
+#elif defined(CONFIG_TANGO4)
+#include <asm/tango4/platform_dev.h>
+#endif
+
 /*-------------------------------------------------------------------------*/
 
 /*
@@ -99,6 +107,13 @@ static const char	hcd_name [] = "ehci_hcd";
 #define EHCI_ASYNC_JIFFIES	(HZ/20)		/* async idle timeout */
 #define EHCI_SHRINK_JIFFIES	(DIV_ROUND_UP(HZ, 200) + 1)
 						/* 5-ms async qh unlink delay */
+
+#ifdef CONFIG_TANGO3
+/* for 867x, it has two controller */
+static int controller = 2;		// 0,1,2(both)
+module_param (controller, int, S_IRUGO);
+MODULE_PARM_DESC (controller, "TANGOX USB host Controller 0, 1 or 2(both)");
+#endif
 
 /* Initial IRQ latency:  faster than hw default */
 static int log2_irq_thresh = 0;		// 0 to 6
@@ -338,6 +353,20 @@ static int ehci_reset (struct ehci_hcd *ehci)
 		ehci_writel(ehci, TXFIFO_DEFAULT,
 			(u32 __iomem *)(((u8 *)ehci->regs) + TXFILLTUNING));
 	}
+
+#ifdef CONFIG_TANGOX
+	{
+		unsigned long tangox_chip_id(void);
+		unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
+
+		if ((chip_id == 0x8652) || (chip_id == 0x8646) || ((chip_id & 0xfff0) == 0x8670) || (chip_id == 0x8910)) {
+			int ctrl = (ehci_to_hcd(ehci)->irq == TANGOX_EHCI0_IRQ) ? 0 : 1;
+			int val =	ehci_readl(ehci, (void *)(NON_CACHED(tangox_ehci_base[ctrl]) + TANGOX_USB_MODE));
+			ehci_writel(ehci, val | 0x3, (void *)(NON_CACHED(tangox_ehci_base[ctrl]) + TANGOX_USB_MODE));
+		}
+	}
+#endif
+
 	if (retval)
 		return retval;
 
@@ -1388,6 +1417,12 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER		ehci_platform_driver
 #endif
 
+#ifdef CONFIG_TANGOX
+#include "ehci-tangox.c"
+#define	PLATFORM_DRIVER		ehci_tangox_driver0
+#define	PLATFORM_DRIVER1	ehci_tangox_driver1
+#endif
+
 #if !defined(PCI_DRIVER) && !defined(PLATFORM_DRIVER) && \
     !defined(PS3_SYSTEM_BUS_DRIVER) && !defined(OF_PLATFORM_DRIVER) && \
     !defined(XILINX_OF_PLATFORM_DRIVER)
@@ -1400,6 +1435,11 @@ static int __init ehci_hcd_init(void)
 
 	if (usb_disabled())
 		return -ENODEV;
+
+#ifdef CONFIG_TANGOX_XENV_READ
+	if (!tangox_usb_enabled())
+		return -ENODEV;
+#endif
 
 	printk(KERN_INFO "%s: " DRIVER_DESC "\n", hcd_name);
 	set_bit(USB_EHCI_LOADED, &usb_hcds_loaded);
@@ -1422,9 +1462,29 @@ static int __init ehci_hcd_init(void)
 #endif
 
 #ifdef PLATFORM_DRIVER
+#if defined(CONFIG_TANGO3)
+	{
+		unsigned long tangox_chip_id(void);
+		unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
+
+		if (((chip_id & 0xfff0) != 0x8670) || (controller != 1)) {
+			retval = platform_driver_register(&PLATFORM_DRIVER);
+			if (retval < 0)
+				goto clean0;
+		}
+
+		if (((chip_id & 0xfff0) == 0x8670) && (controller != 0)) {
+			retval = platform_driver_register(&PLATFORM_DRIVER1);
+			if (retval < 0) {
+				printk("Controller 1 driver is not loaded\n");	
+			}
+		}
+	}
+#else
 	retval = platform_driver_register(&PLATFORM_DRIVER);
 	if (retval < 0)
 		goto clean0;
+#endif
 #endif
 
 #ifdef PCI_DRIVER
@@ -1491,7 +1551,20 @@ static void __exit ehci_hcd_cleanup(void)
 	platform_driver_unregister(&OF_PLATFORM_DRIVER);
 #endif
 #ifdef PLATFORM_DRIVER
+#if defined(CONFIG_TANGO3)
+	{
+		unsigned long tangox_chip_id(void);
+		unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
+
+		if (((chip_id & 0xfff0) != 0x8670) || (controller != 1))
+			platform_driver_unregister(&PLATFORM_DRIVER);
+
+		if (((chip_id & 0xfff0) == 0x8670) && (controller != 0))
+			platform_driver_unregister(&PLATFORM_DRIVER1);
+	}
+#else
 	platform_driver_unregister(&PLATFORM_DRIVER);
+#endif
 #endif
 #ifdef PCI_DRIVER
 	pci_unregister_driver(&PCI_DRIVER);

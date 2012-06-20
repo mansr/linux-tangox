@@ -159,9 +159,33 @@ static void tangox_init_ehci(void)
 #endif
 #endif
 
-#ifdef CONFIG_USB_GADGET_TANGOX
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
 #if defined(CONFIG_TANGO3) || defined(CONFIG_TANGO4)
-/* GADGET device, the same resouce as ehci*/
+static struct resource udc_resources0[] = {
+	{
+		.start	=  TANGOX_EHCI0_BASE ,
+		.end	= TANGOX_EHCI0_BASE  + 0xff,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= TANGOX_EHCI0_IRQ ,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+#if defined(CONFIG_TANGO3)
+static struct resource udc_resources1[] = {
+	{
+		.start	=  TANGOX_EHCI1_BASE ,
+		.end	= TANGOX_EHCI1_BASE  + 0xff,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= TANGOX_EHCI1_IRQ ,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+#endif
+
 static struct platform_device tangox_udc_device0 = {
 	.name           = (char *)TANGOX_UDC_NAME0,
 	.id             = -1,
@@ -170,8 +194,8 @@ static struct platform_device tangox_udc_device0 = {
 		.coherent_dma_mask      = 0xffffffff,
 		.release                = tangox_release_dev,
 	 },
-	.num_resources  = ARRAY_SIZE(ehci_resources0),
-	.resource       = ehci_resources0,
+	.num_resources  = ARRAY_SIZE(udc_resources0),
+	.resource       = udc_resources0,
 };
 
 #ifdef CONFIG_TANGO3
@@ -183,8 +207,8 @@ static struct platform_device tangox_udc_device1 = {
 		.coherent_dma_mask      = 0xffffffff,
 		.release                = tangox_release_dev,
 	 },
-	.num_resources  = ARRAY_SIZE(ehci_resources1),
-	.resource       = ehci_resources1,
+	.num_resources  = ARRAY_SIZE(udc_resources1),
+	.resource       = udc_resources1,
 };
 #endif
 
@@ -256,7 +280,7 @@ static int __init tangox_init_devices(void)
 	tangox_init_ohci();
 #endif
 #endif
-#ifdef CONFIG_USB_GADGET_TANGOX
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
 #if defined(CONFIG_TANGO3) || defined(CONFIG_TANGO4)
 	tangox_init_udc();
 #endif

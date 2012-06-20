@@ -1120,6 +1120,11 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER		ohci_platform_driver
 #endif
 
+#ifdef CONFIG_TANGOX
+#include "ohci-tangox.c"
+#define PLATFORM_DRIVER		tangox_ohci_driver
+#endif
+
 #if	!defined(PCI_DRIVER) &&		\
 	!defined(PLATFORM_DRIVER) &&	\
 	!defined(OMAP1_PLATFORM_DRIVER) &&	\
@@ -1139,6 +1144,23 @@ static int __init ohci_hcd_mod_init(void)
 
 	if (usb_disabled())
 		return -ENODEV;
+
+#ifdef CONFIG_TANGOX_XENV_READ
+	if (!tangox_usb_enabled())
+		return -ENODEV;
+#endif
+
+#ifdef CONFIG_TANGOX
+	{
+		unsigned long tangox_chip_id(void);
+		unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
+
+		if ((chip_id == 0x8652) || (chip_id == 0x8646) || ((chip_id & 0xfff0) == 0x8670)) {
+			printk("No OHCI in SMP8652/SMP8653/SMP8646/SMP8647/SMP867X.\n");
+			return -ENODEV;
+		}
+	}
+#endif
 
 	printk(KERN_INFO "%s: " DRIVER_DESC "\n", hcd_name);
 	pr_debug ("%s: block sizes: ed %Zd td %Zd\n", hcd_name,

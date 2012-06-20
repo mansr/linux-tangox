@@ -120,6 +120,16 @@ config USB_EHCI_BIG_ENDIAN_DESC
 				    MIPS_SEAD3)
 	default y
 
+config TANGOX_EHCI_HCD
+        boolean "SMP86xx EHCI HCD (USB 2.0) support"
+        depends on USB_EHCI_HCD && TANGOX 
+	---help---
+	  SMP86xx chips has an USB 2.0 host controller integrated. 
+	  Enable this option if your board has this chip. If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tangox-ehci-hcd.
+
 config XPS_USB_HCD_XILINX
 	bool "Use Xilinx usb host EHCI controller core"
 	depends on USB_EHCI_HCD && (PPC32 || MICROBLAZE)
@@ -304,6 +314,16 @@ config USB_OHCI_HCD
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called ohci-hcd.
+
+config TANGOX_OHCI_HCD
+        boolean "SMP86xx OHCI HCD support"
+        depends on USB_OHCI_HCD && USB_ARCH_HAS_OHCI && TANGOX && !USB_EHSET && !TANGO4
+        ---help---
+	  SMP86xx chips has an USB 1.1 OHCI controller integrated. 
+	  Enable this option if your board has this chip. If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tangox-ohci-hcd.
 
 config USB_OHCI_HCD_OMAP1
 	bool "OHCI support for OMAP1/2 chips"

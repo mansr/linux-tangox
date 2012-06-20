@@ -1,6 +1,6 @@
 
 /*********************************************************************
- Copyright (C) 2001-2011
+ Copyright (C) 2001-2011 
  Sigma Designs, Inc. 
 
  This program is free software; you can redistribute it and/or modify
@@ -10,7 +10,7 @@
 
 #ifndef __PLATFORM_DEV_H
 #define __PLATFORM_DEV_H
- 
+
 #include <linux/sched.h>
 #include <asm/addrspace.h>
 
@@ -50,26 +50,41 @@
 #define HC_SATA1_AES_CONFIG		KSEG1ADDR(REG_BASE_host_interface + 0x52B0)
 
 /* USB */
-#define TANGOX_EHCI_BASE_ADDR           /*NON_CACHED*/(REG_BASE_host_interface + 0x1400)
-#define TANGOX_OHCI_BASE_ADDR           /*NON_CACHED*/(REG_BASE_host_interface + 0x1500)
-#define TANGOX_USB_CTL_STATUS_REG_BASE  /*NON_CACHED*/(REG_BASE_host_interface + 0x1700)
-#define TANGOX_EHCI_IRQ                 IRQ_CONTROLLER_IRQ_BASE + LOG2_CPU_USB_EHCI_INT
-#define TANGOX_OHCI_IRQ                 IRQ_CONTROLLER_IRQ_BASE + LOG2_CPU_USB_OHCI_INT
+#define TANGOX_EHCI0_BASE	(REG_BASE_host_interface + 0x1400)
+#define TANGOX_OHCI0_BASE	(REG_BASE_host_interface + 0x1500)
+#define TANGOX_CTRL0_BASE	(REG_BASE_host_interface + 0x1700)
+#define TANGOX_EHCI0_IRQ	(IRQ_CONTROLLER_IRQ_BASE + LOG2_CPU_USB_EHCI_INT)
+#define TANGOX_OHCI0_IRQ	(IRQ_CONTROLLER_IRQ_BASE + LOG2_CPU_USB_OHCI_INT)
+#define TANGOX_EHCI1_BASE	(REG_BASE_host_interface + 0x5400)
+#define TANGOX_OHCI1_BASE	(REG_BASE_host_interface + 0x5500)
+#define TANGOX_CTRL1_BASE	(REG_BASE_host_interface + 0x5700)
+#define TANGOX_EHCI1_IRQ	(IRQ_CONTROLLER_IRQ_BASE + LOG2_CPU_USB_EHCI_INT - 1)
+#define TANGOX_OHCI1_IRQ	(IRQ_CONTROLLER_IRQ_BASE + LOG2_CPU_USB_OHCI_INT)
 
 /* For 8652/867X OTG host or 8646 host */
 #define TANGOX_EHCI_REG_OFFSET		0x100
-#define TANGOX_USB_MODE				0x1A8
+#define TANGOX_USB_MODE			0x1A8
 
 /* tangox gadget */
-#define TANGOX_UDC_NAME				 "tangox_udc"
+#define TANGOX_UDC_NAME0		"tangox_udc_0"
+#define TANGOX_UDC_NAME1		"tangox_udc_1"
 /* tangox ehci */
 #define TANGOX_EHCI_BUS_NAME 		"tangox-ehci-bus"
 #define TANGOX_EHCI_PRODUCT_DESC 	"TangoX Integrated USB 2.0"
-#define EHCI_HCD_NAME		 		"tangox-ehci-hcd"
+#define EHCI_HCD_NAME		 	"tangox-ehci-hcd"
 /* tangox ohci */
-#define OHCI_HCD_NAME		 		"tangox-ohci-hcd"
+#define OHCI_HCD_NAME		 	"tangox-ohci-hcd"
 #define TANGOX_OHCI_BUS_NAME 		"tangox-ohci-bus"
 
+/* for 8670 has two controllers */
+static const int tangox_ehci_base[2] = {TANGOX_EHCI0_BASE, TANGOX_EHCI1_BASE};
+static const int tangox_ohci_base[2] = {TANGOX_OHCI0_BASE, TANGOX_OHCI1_BASE};
+static const int tangox_ctrl_base[2] = {TANGOX_CTRL0_BASE, TANGOX_CTRL1_BASE};
+static const int tangox_ehci_irq[2]  = {TANGOX_EHCI0_IRQ, TANGOX_EHCI1_IRQ};
+static const int tangox_ohci_irq[2]  = {TANGOX_OHCI0_IRQ, TANGOX_OHCI1_IRQ};
+#define TANGOX_EHCI_NAME0	"tangox-ehci-hcd-0"
+#define TANGOX_EHCI_NAME1	"tangox-ehci-hcd-1"
+//const char* tangox_ehci_name[2] = {TANGOX_EHCI_NAME0, TANGOX_EHCI_NAME1};
 
 static u32 __inline__ tangox_read_reg( u32 Reg )
 {
@@ -93,18 +108,21 @@ static void __inline__ tangox_write_reg( u32 Reg, u32 Data )
 
 static __inline__ void wait_ms(unsigned int ms)
 {
-        if (!in_interrupt()) {
+        if(!in_interrupt()) {
                 current->state = TASK_UNINTERRUPTIBLE;
                 schedule_timeout(1 + ms * HZ / 1000);
-        } else
+        }
+        else
                 mdelay(ms);
 }
-
 #ifdef CONFIG_TANGOX_XENV_READ
 extern int tangox_usb_enabled(void);
 #endif
+extern unsigned long tangox_chip_id(void);
 extern int is_tango2_es89(void);
 extern int is_tango3_chip(void);
-extern void tangox_usb_init(void);
-extern void tangox_usb_deinit(void);
+extern void tangox_phy_power_up(int ctrl);
+extern void tangox_phy_power_down(int ctrl);
+extern void tangox_usb_init(int);
+extern void tangox_usb_deinit(int);
 #endif

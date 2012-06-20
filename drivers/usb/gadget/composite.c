@@ -1162,7 +1162,21 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 		*((u8 *)req->buf) = value;
 		value = min(w_length, (u16) 1);
 		break;
-
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
+	case USB_REQ_SET_ADDRESS:
+		if (ctrl->bRequestType != (USB_DIR_OUT | USB_TYPE_STANDARD |
+				USB_RECIP_DEVICE)){
+			break;
+		}
+		if (w_index != 0) {
+			value = -EDOM;
+			break;
+		}
+		DBG(cdev, "set address\n");
+		*((u8 *)req->buf)= 0;
+		value = min(w_length, (u16) 1);
+		break;
+#endif
 	/*
 	 * USB 3.0 additions:
 	 * Function driver should handle get_status request. If such cb

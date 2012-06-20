@@ -10,5 +10,6 @@ usbcore-y += devio.o notify.o generic.o quirks.o devices.o
 
 usbcore-$(CONFIG_PCI)		+= hcd-pci.o
 usbcore-$(CONFIG_USB_DEVICEFS)	+= inode.o
+usbcore-$(CONFIG_TANGOX)    += tangox-usb.o
 
 obj-$(CONFIG_USB)		+= usbcore.o

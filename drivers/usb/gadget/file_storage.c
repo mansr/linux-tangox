@@ -228,7 +228,7 @@
  */
 
 
-/* #define VERBOSE_DEBUG */
+/* #define VERBOSE_DEBUG */ 
 /* #define DUMP_MSGS */
 
 
@@ -722,6 +722,7 @@ static void bulk_in_complete(struct usb_ep *ep, struct usb_request *req)
 	struct fsg_dev		*fsg = ep->driver_data;
 	struct fsg_buffhd	*bh = req->context;
 
+	dump_msg(fsg, "bulk-in", req->buf, req->actual);
 	if (req->status || req->actual != req->length)
 		DBG(fsg, "%s --> %d, %u/%u\n", __func__,
 				req->status, req->actual, req->length);
@@ -1044,7 +1045,21 @@ get_config:
 		*(u8 *) req->buf = 0;
 		value = 1;
 		break;
-
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
+	case USB_REQ_SET_ADDRESS:
+		if (ctrl->bRequestType != (USB_DIR_OUT | USB_TYPE_STANDARD |
+				USB_RECIP_DEVICE)){
+			break;
+		}
+		if (w_index != 0) {
+			value = -EDOM;
+			break;
+		}
+		VDBG(fsg, "set address\n");
+		*(u8 *) req->buf = 0;
+		value = 1;
+		break;
+#endif
 	default:
 		VDBG(fsg,
 			"unknown control req %02x.%02x v%04x i%04x l%u\n",
@@ -1223,6 +1238,9 @@ static int do_read(struct fsg_dev *fsg)
 		nread = vfs_read(curlun->filp,
 				(char __user *) bh->buf,
 				amount, &file_offset_tmp);
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
+		dma_cache_wback((unsigned long)bh->buf, amount);
+#endif
 		VLDBG(curlun, "file read %u @ %llu -> %d\n", amount,
 				(unsigned long long) file_offset,
 				(int) nread);
@@ -1403,6 +1421,9 @@ static int do_write(struct fsg_dev *fsg)
 
 			/* Perform the write */
 			file_offset_tmp = file_offset;
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
+			dma_cache_wback((unsigned long)bh->buf, amount);
+#endif
 			nwritten = vfs_write(curlun->filp,
 					(char __user *) bh->buf,
 					amount, &file_offset_tmp);
@@ -1547,6 +1568,9 @@ static int do_verify(struct fsg_dev *fsg)
 		nread = vfs_read(curlun->filp,
 				(char __user *) bh->buf,
 				amount, &file_offset_tmp);
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
+		dma_cache_wback((unsigned long)bh->buf, amount);
+#endif
 		VLDBG(curlun, "file read %u @ %llu -> %d\n", amount,
 				(unsigned long long) file_offset,
 				(int) nread);
@@ -3198,11 +3222,13 @@ static void /* __init_or_exit */ fsg_unbind(struct usb_gadget *gadget)
 
 	/* Free the data buffers */
 	for (i = 0; i < fsg_num_buffers; ++i)
-		kfree(fsg->buffhds[i].buf);
+		if(fsg->buffhds[i].buf) {
+			kfree(fsg->buffhds[i].buf);
+		}
 
 	/* Free the request and buffer for endpoint 0 */
 	if (req) {
-		kfree(req->buf);
+  		kfree(req->buf);
 		usb_ep_free_request(fsg->ep0, req);
 	}
 
@@ -3497,7 +3523,9 @@ static int __init fsg_bind(struct usb_gadget *gadget)
 	fsg->ep0req = req = usb_ep_alloc_request(fsg->ep0, GFP_KERNEL);
 	if (!req)
 		goto out;
+
 	req->buf = kmalloc(EP0_BUFSIZE, GFP_KERNEL);
+
 	if (!req->buf)
 		goto out;
 	req->complete = ep0_complete;
@@ -3512,6 +3540,10 @@ static int __init fsg_bind(struct usb_gadget *gadget)
 		bh->buf = kmalloc(mod_data.buflen, GFP_KERNEL);
 		if (!bh->buf)
 			goto out;
+
+#if defined(CONFIG_USB_GADGET_TANGOX) || defined(CONFIG_USB_GADGET_TANGOX_MODULE)
+		dma_cache_inv((unsigned long)(bh->buf),mod_data.buflen );
+#endif
 		bh->next = bh + 1;
 	}
 	fsg->buffhds[fsg_num_buffers - 1].next = &fsg->buffhds[0];

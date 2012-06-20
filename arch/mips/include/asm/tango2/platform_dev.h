@@ -80,8 +80,11 @@ static __inline__ void wait_ms(unsigned int ms)
 #ifdef CONFIG_TANGOX_XENV_READ
 extern int tangox_usb_enabled(void);
 #endif
+extern unsigned long tangox_chip_id(void);
 extern int is_tango2_es89(void);
 extern int is_tango3_chip(void);
+extern void tangox_phy_power_up(int ctrl);
+extern void tangox_phy_power_down(int ctrl);
 extern void tangox_usb_init(int);
 extern void tangox_usb_deinit(int);
 #endif
