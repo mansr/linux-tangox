@@ -63,15 +63,17 @@ $(warning Error: cannot find the initramfs source $(CONFIG_INITRAMFS_SOURCE) )
 $(warning If you are using integration with the Sigma Designs MIPSutils      )
 $(warning rootfs package, please make sure you have sourced 'rootfs-path.env')
 $(warning in the rootfs package dir, or that you have adequately defined the )
-$(warning 'SMP86XX_ROOTFS_PATH' environment variable.                        )
+$(warning 'SMP86XX_TARGET_ROOTFS_PATH' environment variable.                 )
 $(warning                                                                    )
 $(error   Error: $(CONFIG_INITRAMFS_SOURCE) not found.)
 endif
 endif
  
+ifeq ($(CONFIG_INITRAMFS_DEFAULT_NODES),y)
 is_ramfs_input_dir := $(shell if [ -d $(ramfs-input) ]; then echo yes; fi)
 ifeq '$(is_ramfs_input_dir)' 'yes'
 	initramfs_extra_list := usr/initramfs_default_node_list
+endif
 endif
 
 quiet_cmd_initfs = GEN     $@

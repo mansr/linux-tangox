@@ -45,6 +45,17 @@ config INITRAMFS_ROOT_GID
 
 	  If you are not sure, leave it set to "0".
 
+config INITRAMFS_DEFAULT_NODES
+	bool "Adding default device nodes into initrammfs"
+	depends on INITRAMFS_SOURCE!=""
+	default n
+	help
+	  This option add pre-defined device nodes (as defined in
+	  usr/initramfs_default_node_list) into the initramfs -- if the
+	  source of given initramfs is in the form of a directory,
+
+	  If you are not sure, leave it set to N.
+
 config RD_GZIP
 	bool "Support initial ramdisks compressed using gzip" if EXPERT
 	default y

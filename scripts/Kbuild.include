@@ -74,7 +74,7 @@ endef
 cc-cross-prefix =  \
 	$(word 1, $(foreach c,$(1),                                   \
 		$(shell set -e;                                       \
-		if (which $(strip $(c))$(CC)) > /dev/null 2>&1 ; then \
+		if (which -- $(strip $(c))$(CC)) > /dev/null 2>&1 ; then \
 			echo $(c);                                    \
 		fi)))
 

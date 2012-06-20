@@ -143,7 +143,7 @@ if $scm_only; then
 fi
 
 if test -e include/config/auto.conf; then
-	. include/config/auto.conf
+	. include/config/auto.conf 2> /dev/null
 else
 	echo "Error: kernelrelease not valid - run 'make prepare' to update it"
 	exit 1

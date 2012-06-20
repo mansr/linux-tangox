@@ -17,28 +17,30 @@ KBUILD_DEFCONFIG := ip22_defconfig
 #
 # Select the object file format to substitute into the linker script.
 #
+tool-archpref		:= $(UTS_MACHINE)
+
 ifdef CONFIG_CPU_LITTLE_ENDIAN
-32bit-tool-archpref	= mipsel
-64bit-tool-archpref	= mips64el
-32bit-bfd		= elf32-tradlittlemips
-64bit-bfd		= elf64-tradlittlemips
-32bit-emul		= elf32ltsmip
-64bit-emul		= elf64ltsmip
+32bit-tool-archpref	:= mipsel
+64bit-tool-archpref	:= mips64el
+32bit-bfd		:= elf32-tradlittlemips
+64bit-bfd		:= elf64-tradlittlemips
+32bit-emul		:= elf32ltsmip
+64bit-emul		:= elf64ltsmip
 else
-32bit-tool-archpref	= mips
-64bit-tool-archpref	= mips64
-32bit-bfd		= elf32-tradbigmips
-64bit-bfd		= elf64-tradbigmips
-32bit-emul		= elf32btsmip
-64bit-emul		= elf64btsmip
+32bit-tool-archpref	:= mips
+64bit-tool-archpref	:= mips64
+32bit-bfd		:= elf32-tradbigmips
+64bit-bfd		:= elf64-tradbigmips
+32bit-emul		:= elf32btsmip
+64bit-emul		:= elf64btsmip
 endif
 
 ifdef CONFIG_32BIT
-tool-archpref		= $(32bit-tool-archpref)
+tool-archpref		:= $(32bit-tool-archpref)
 UTS_MACHINE		:= mips
 endif
 ifdef CONFIG_64BIT
-tool-archpref		= $(64bit-tool-archpref)
+tool-archpref		:= $(64bit-tool-archpref)
 UTS_MACHINE		:= mips64
 endif
 
