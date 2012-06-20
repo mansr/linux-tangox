@@ -405,7 +405,7 @@ static int stat_read_proc(char *page, char **start, off_t off, int count, int *e
 
 	for (i = 0; (masters[i] != 0xffffffff) && (i < MAX_MASTERS); i++) {
 		tmp64 = xtal_sum[i];
-		do_div(tmp64, 270000);
+		do_div(tmp64, TANGOX_BASE_FREQUENCY / 100);
 		tmp32 = (u32)(tmp64 & 0xffffffff);
 		ret += sprintf(page + off + ret, "master %d(0x%x): xtal_cnt 0x%llx (%d.%02d sec), count 0x%llx\n",
 				i, masters[i], xtal_sum[i], tmp32 / 100, tmp32 % 100, cnt_sum[i]);

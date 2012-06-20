@@ -76,7 +76,15 @@ unsigned long tangox_zxenv[MAX_XENV_SIZE/sizeof(unsigned long)] = { 0 };
  */
 const char *get_system_type(void)
 {
-	return "Sigma Designs TangoX";
+#if defined(CONFIG_TANGO4)
+	return "Sigma Designs Tango4";
+#elif defined(CONFIG_TANGO3)
+	return "Sigma Designs Tango3";
+#elif defined(CONFIG_TANGO2)
+	return "Sigma Designs Tango2";
+#else
+	return "";
+#endif
 }
 
 #ifdef CONFIG_TANGOX_FIXED_FREQUENCIES
@@ -1045,4 +1053,12 @@ unsigned long tangox_virt_to_phys(void *pvaddr)
 		return (pte_val(*(pte_t *)pte_offset(pmd_offset(pud_offset(pgd_offset_gate(current->mm, vpa), vpa), vpa), vpa)) & PAGE_MASK) + ((unsigned long)pvaddr & ~PAGE_MASK);
 }
 EXPORT_SYMBOL(tangox_virt_to_phys);
+
+#ifndef CONFIG_TANGOX_XENV_READ
+int zxenv_get(char *recordname, void *dst, u32 *datasize)
+{
+	return -EIO;
+}
+EXPORT_SYMBOL(zxenv_get);
+#endif
 

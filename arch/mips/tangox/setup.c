@@ -360,21 +360,30 @@ static struct tangox_uart_info __initdata uinfo[3] = {
 	{ LOG2_CPU_UART1_INT, REG_BASE_cpu_block + CPU_UART1_base },
 	{ LOG2_CPU_UART2_INT, REG_BASE_cpu_block + CPU_UART2_base }, 
 };
+unsigned int tangox_uart_base[3] = {
+	REG_BASE_cpu_block + CPU_UART0_base, REG_BASE_cpu_block + CPU_UART1_base, REG_BASE_cpu_block + CPU_UART2_base,
+};
 #elif defined(CONFIG_TANGO4) 
 static struct tangox_uart_info __initdata uinfo[3] = {
 	{ LOG2_SYS_UART0_INT, REG_BASE_system_block + 0x700 },
 	{ LOG2_CPU_UART1_INT, REG_BASE_cpu_block + CPU_UART1_base },
 	{ LOG2_CPU_UART2_INT, REG_BASE_cpu_block + CPU_UART2_base }, 
 };
+unsigned int tangox_uart_base[3] = {
+	REG_BASE_cpu_block + CPU_UART0_base, REG_BASE_cpu_block + CPU_UART1_base, REG_BASE_cpu_block + CPU_UART2_base,
+};
 #else
 static struct tangox_uart_info __initdata uinfo[2] = {
 	{ LOG2_CPU_UART0_INT, REG_BASE_cpu_block + CPU_UART0_base },
 	{ LOG2_CPU_UART1_INT, REG_BASE_cpu_block + CPU_UART1_base },
 };
+unsigned int tangox_uart_base[2] = {
+	REG_BASE_cpu_block + CPU_UART0_base, REG_BASE_cpu_block + CPU_UART1_base,
+};
 #endif
 #endif
 
-void uart_init(int baud, int fifo);
+void uart_init(int uart_idx, int baud, int fifo);
 
 void __init plat_mem_setup(void)
 {
@@ -394,9 +403,14 @@ void __init plat_mem_setup(void)
 	//_machine_power_off = tangox_machine_power_off;
 	pm_power_off = tangox_machine_power_off;
 
+#ifdef CONFIG_TANGO3
+	if ((chip_id == 0x8656) || (chip_id == 0x8672) || (chip_id == 0x8674))
+		tangox_uart_base[0] = REG_BASE_system_block + 0x700;
+#endif
+
 #ifdef CONFIG_SERIAL_8250
 	/* Handle console first */
-	uart_init(tangox_uart_baudrate(console_port), 1);
+	uart_init(console_port, tangox_uart_baudrate(console_port), 1);
 	memset(&uart, 0, sizeof (uart));
 	uart.line = 0;
 #ifdef CONFIG_TANGOX_UART_USE_SYSCLK
@@ -435,6 +449,7 @@ void __init plat_mem_setup(void)
 		if (console_port == i)
 			continue;
 
+		uart_init(i, tangox_uart_baudrate(i), 1);
 		memset(&uart, 0, sizeof (uart));
 		uart.line = idx++;
 #ifdef CONFIG_TANGOX_UART_USE_SYSCLK
