@@ -81,19 +81,6 @@
 extern unsigned long tangox_get_sysclock(void);
 
 /*
- * address space conversion
- */
-#define CACHE_TO_NONCACHE(x)	KSEG1ADDR(x)
-
-/*
- * dma address translation
- */
-static inline unsigned long DMA_ADDR(void *addr) 
-{
-	return tangox_dma_address(CPHYSADDR((unsigned long)addr));
-}
-
-/*
  * Mac/DMA registers offset, refer to documentation
  */
 #define ENET_TX_CTL1(mac_base)		((mac_base) + 0x00)
@@ -276,11 +263,11 @@ enum {
 struct tangox_enet_priv {
 
 	/*
-	 * tracking the allocated pages
+	 * tracking the allocated buffer
 	 */
-	unsigned int			alloc_order;
-	void				*alloc_pages;
-	void				*alloc_pages_cached;
+	void				*alloc_buffer;
+	size_t				alloc_size;
+	dma_addr_t			alloc_dma_addr;
 	atomic_t			napi_poll;
 
 	struct napi_struct		napi;
@@ -297,6 +284,7 @@ struct tangox_enet_priv {
 
 	/* we keep a list of skb given */
 	struct sk_buff			**rx_skbs;
+	unsigned long			*rx_skbs_dma_addr;
 	
 	/* desc status report */
 	unsigned long 			*rx_report;
@@ -333,6 +321,8 @@ struct tangox_enet_priv {
 
 	/* list of sent skb */
 	struct sk_buff			**tx_skbs;
+	unsigned long			*tx_skbs_dma_addr;
+	unsigned int 			*tx_skbs_dma_sz;
 
 	/* list of tx_bufs */
 	unsigned char 			**tx_bufs;
@@ -395,5 +385,24 @@ struct tangox_enet_priv {
 	int				rx_desc_count;
 	int				tx_desc_count;
 };
+
+/*
+ * dma address translation
+ */
+static inline unsigned long enet_dma_map(struct net_device *dev, void *addr, unsigned int size, enum dma_data_direction dir)
+{
+	return (unsigned long)dma_map_single(&dev->dev, addr, (size_t)size, dir);
+}
+
+static inline void enet_dma_unmap(struct net_device *dev, unsigned long dma_addr, unsigned int size, enum dma_data_direction dir)
+{
+	dma_unmap_single(&dev->dev, (dma_addr_t)dma_addr, (size_t)size, dir);
+}
+
+static inline unsigned long enet_dma_addr(struct net_device *dev, void *addr)
+{
+	struct tangox_enet_priv *priv = netdev_priv(dev);
+	return (unsigned long)(priv->alloc_dma_addr + (addr - priv->alloc_buffer));
+}
 
 #endif /* __TANGOX_ENET_H */

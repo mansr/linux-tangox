@@ -341,8 +341,6 @@ static void enet_stop_rx(struct net_device *dev)
 	/*start rx and tx */
 	enet_mac_tx(dev, 1);
 	enet_mac_rx(dev, 1);
-
-	kfree_skb(dummy_skb);
 }
 
 static __inline void rearm_rx_descs(struct net_device *dev)
@@ -505,6 +503,7 @@ static int enet_poll(struct napi_struct *napi, int budget)
 				skb->dev = dev;
 				skb_put(skb, len);
 				skb->protocol = eth_type_trans(skb, dev);
+				enet_dma_unmap(dev, priv->rx_skbs_dma_addr[priv->last_rx_desc], RX_BUF_SIZE + SKB_RESERVE_SIZE, DMA_FROM_DEVICE);
 				netif_receive_skb(skb);
 #ifdef ETH_DEBUG
 				if (len > 0) {
@@ -538,13 +537,14 @@ done_checking:
 			wmb();
 			break;
 		}
-		dma_cache_inv((unsigned long)skb->data, RX_BUF_SIZE + SKB_RESERVE_SIZE);
 
 		rx->config = RX_BUF_SIZE | DESC_BTS(2) | DESC_EOF/* | DESC_ID*/;
 
-		r_sz = 8 - (((u32)skb->data) & 0x7);
-		skb_reserve(skb, (r_sz == 8) ? 0 : r_sz); /* make sure it's aligned to 8 bytes boundary */
-		rx->s_addr = DMA_ADDR((void *)skb->data);
+		priv->rx_skbs_dma_addr[priv->last_rx_desc] = enet_dma_map(dev, (void *)skb->data, RX_BUF_SIZE + SKB_RESERVE_SIZE, DMA_FROM_DEVICE);
+		r_sz = (data_aligned - ((u32)skb->data & (data_aligned - 1))) % data_aligned;
+		if (r_sz)
+			skb_reserve(skb, r_sz); /* make sure it's aligned to n bytes boundary */
+		rx->s_addr = priv->rx_skbs_dma_addr[priv->last_rx_desc] + r_sz;
 		priv->rx_skbs[priv->last_rx_desc] = skb;
 
 rearm:
@@ -592,6 +592,8 @@ static int __enet_xmit(struct sk_buff *skb, struct net_device *dev, int force)
 	unsigned long val;
 	int tx_busy = 0, cpsz = 0;
 	unsigned char *txbuf;
+	unsigned long dma_addr;
+	unsigned int dma_sz;
 
 	priv = netdev_priv(dev);
 	spin_lock_bh(&priv->tx_lock);
@@ -629,7 +631,8 @@ static int __enet_xmit(struct sk_buff *skb, struct net_device *dev, int force)
 		goto tx_pending;
 	}
 
-	dma_cache_wback((unsigned long)skb->data, skb->len);
+	dma_addr = enet_dma_map(dev, skb->data, skb->len, DMA_TO_DEVICE);
+	dma_sz = skb->len;
 	cpsz = (data_aligned - ((u32)skb->data & (data_aligned - 1))) % data_aligned;
 
 	/* fill the tx desc with this skb address */
@@ -639,12 +642,14 @@ static int __enet_xmit(struct sk_buff *skb, struct net_device *dev, int force)
 		stx = &priv->tx_descs[priv->next_tx_desc];
 		txbuf = priv->tx_bufs[priv->next_tx_desc];
 		memcpy(txbuf, skb->data, cpsz); 
-		stx->s_addr = DMA_ADDR((void *)txbuf);
-		stx->n_addr = DMA_ADDR((void *)&(priv->tx_descs[(priv->next_tx_desc + 1) % priv->tx_desc_count]));
+		stx->s_addr = enet_dma_addr(dev, (void *)txbuf);
+		stx->n_addr = enet_dma_addr(dev, (void *)&(priv->tx_descs[(priv->next_tx_desc + 1) % priv->tx_desc_count]));
 		stx->config = tconfig_cache;
 
 		/* keep a pointer to it for later and give it to dma */
 		priv->tx_skbs[priv->next_tx_desc] = skb;
+		priv->tx_skbs_dma_addr[priv->next_tx_desc] = dma_addr;
+		priv->tx_skbs_dma_sz[priv->next_tx_desc] = dma_sz;
 		priv->tx_report[priv->next_tx_desc] = 0;
 		priv->next_tx_desc++;
 		priv->next_tx_desc %= priv->tx_desc_count;
@@ -653,10 +658,10 @@ static int __enet_xmit(struct sk_buff *skb, struct net_device *dev, int force)
 
 	tconfig_cache = DESC_BTS(2) | DESC_EOF | (skb->len - cpsz); 
 	tx = &priv->tx_descs[priv->next_tx_desc];
-	tx->s_addr = DMA_ADDR(skb->data + cpsz);
+	tx->s_addr = dma_addr + cpsz;
 
 	if (tx_busy) {
-		tx->n_addr = DMA_ADDR((void *)&(priv->tx_descs[(priv->next_tx_desc + 1) % priv->tx_desc_count]));
+		tx->n_addr = enet_dma_addr(dev, (void *)&(priv->tx_descs[(priv->next_tx_desc + 1) % priv->tx_desc_count]));
 	} else {
 		tx->n_addr = 0;
 		tconfig_cache |= DESC_EOC;
@@ -664,10 +669,14 @@ static int __enet_xmit(struct sk_buff *skb, struct net_device *dev, int force)
 	tx->config = tconfig_cache;
 
 	/* keep a pointer to it for later and give it to dma if needed */
-	if (cpsz) 
+	if (cpsz) { 
 		priv->tx_skbs[priv->next_tx_desc] = NULL;
-	else {
+		priv->tx_skbs_dma_addr[priv->next_tx_desc] = 0;
+		priv->tx_skbs_dma_sz[priv->next_tx_desc] = 0;
+	} else {
 		priv->tx_skbs[priv->next_tx_desc] = skb;
+		priv->tx_skbs_dma_addr[priv->next_tx_desc] = dma_addr;
+		priv->tx_skbs_dma_sz[priv->next_tx_desc] = dma_sz;
 		stx = tx;
 	}
 	priv->tx_report[priv->next_tx_desc] = 0;
@@ -702,7 +711,7 @@ tx_pending:
 			priv->is_mdesc = 0;
 		}
 
-		gbus_write_reg32(ENET_TX_DESC_ADDR(priv->enet_mac_base), DMA_ADDR((void *)stx));
+		gbus_write_reg32(ENET_TX_DESC_ADDR(priv->enet_mac_base), enet_dma_addr(dev, (void *)stx));
 		gbus_write_reg32(ENET_TX_SAR(priv->enet_mac_base), 0);
 		gbus_write_reg32(ENET_TX_REPORT_ADDR(priv->enet_mac_base), 0);
 
@@ -767,6 +776,7 @@ static void enet_tx_reclaim(unsigned long data)
 			} else {
 				priv->stats.tx_bytes += skb->len;
 			}
+			enet_dma_unmap(dev, priv->tx_skbs_dma_addr[priv->dirty_tx_desc], priv->tx_skbs_dma_sz[priv->dirty_tx_desc], DMA_TO_DEVICE);
 			dev_kfree_skb(skb);
 		}
 		priv->tx_skbs[priv->dirty_tx_desc] = NULL;
@@ -1184,6 +1194,7 @@ static void enet_set_rx_mode(struct net_device *dev)
 
 static void enet_dma_reinit(struct net_device *dev)
 {
+	int i;
 	struct tangox_enet_priv *priv = netdev_priv(dev);
 
 	priv->pending_tx = -1;
@@ -1197,11 +1208,22 @@ static void enet_dma_reinit(struct net_device *dev)
 	rearm_rx_descs(dev);
 	wmb();
 
+	/* reset all TX skb related info */
+	for (i = 0; i < priv->tx_desc_count; i++) {
+		if (priv->tx_skbs[i]) {
+			enet_dma_unmap(dev, priv->tx_skbs_dma_addr[i], priv->tx_skbs_dma_sz[i], DMA_TO_DEVICE);
+			kfree_skb(priv->tx_skbs[i]);
+			priv->tx_skbs[i] = NULL;
+			priv->tx_skbs_dma_addr[i] = 0;
+			priv->tx_skbs_dma_sz[i] = 0;
+		}
+	}
+
 	/*
 	 * write rx desc list & tx desc list addresses in registers
 	 */
-	gbus_write_reg32(ENET_TX_DESC_ADDR(priv->enet_mac_base), DMA_ADDR((void *)&priv->tx_descs[0]));
-	gbus_write_reg32(ENET_RX_DESC_ADDR(priv->enet_mac_base), DMA_ADDR((void *)&priv->rx_descs[0]));
+	gbus_write_reg32(ENET_TX_DESC_ADDR(priv->enet_mac_base), enet_dma_addr(dev, (void *)&priv->tx_descs[0]));
+	gbus_write_reg32(ENET_RX_DESC_ADDR(priv->enet_mac_base), enet_dma_addr(dev, (void *)&priv->rx_descs[0]));
 }
 
 /*
@@ -1388,36 +1410,35 @@ static int enet_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 static int enet_dma_init(struct net_device *dev)
 {
 #define CEILING(x, c) ((((x) / (1 << (c))) + (((x) % (1 << (c))) ? 1 : 0)) * (1 << (c)))
-	unsigned int r_sz, alloc_size, alloc_order;
+	unsigned int r_sz;
 	int i;
 	void *tx_ptr;
 	struct tangox_enet_priv *priv = netdev_priv(dev);
 	
 	/* calculate the size needed */
-	alloc_size = CEILING(priv->rx_desc_count * sizeof(struct enet_desc), L1_CACHE_SHIFT) + 
+	priv->alloc_size = CEILING(priv->rx_desc_count * sizeof(struct enet_desc), L1_CACHE_SHIFT) + 
 			CEILING(priv->rx_desc_count * sizeof(unsigned long), L1_CACHE_SHIFT) +
 			CEILING(priv->rx_desc_count * sizeof(struct skb_buff *), L1_CACHE_SHIFT) + 
+			CEILING(priv->rx_desc_count * sizeof(unsigned long), L1_CACHE_SHIFT) + 
 			CEILING(priv->tx_desc_count * sizeof(struct enet_desc), L1_CACHE_SHIFT) + 
 			CEILING(priv->tx_desc_count * sizeof(unsigned long), L1_CACHE_SHIFT) +
 			CEILING(priv->tx_desc_count * sizeof(struct skb_buff *), L1_CACHE_SHIFT) +
+			CEILING(priv->tx_desc_count * sizeof(unsigned long), L1_CACHE_SHIFT) +
+			CEILING(priv->tx_desc_count * sizeof(unsigned int), L1_CACHE_SHIFT) +
 			CEILING(priv->tx_desc_count * sizeof(char *), L1_CACHE_SHIFT) +
 			(priv->tx_desc_count * CEILING(data_aligned, L1_CACHE_SHIFT));
 			
-	for (alloc_order = 0; (PAGE_SIZE << alloc_order) < alloc_size; alloc_order++)
-		;
-	if ((priv->alloc_pages_cached = (void *)__get_free_pages(GFP_KERNEL | GFP_DMA, alloc_order)) == NULL) {
+	if ((priv->alloc_buffer = dma_alloc_coherent(&dev->dev, priv->alloc_size, &priv->alloc_dma_addr, GFP_DMA)) == NULL) {
 		printk("%s: cannot allocate memory.\n", priv->name);
 		return -ENOMEM;
 	}
-	memset(priv->alloc_pages_cached, 0, alloc_size);
-	dma_cache_wback_inv((unsigned long)priv->alloc_pages_cached, alloc_size);
-	priv->alloc_pages = (void *)KSEG1ADDR(priv->alloc_pages_cached);
-	priv->alloc_order = alloc_order;
+	memset(priv->alloc_buffer, 0, priv->alloc_size);
 
 	/* arrange rx */
-	priv->rx_descs = (void *)priv->alloc_pages;
+	priv->rx_descs = (void *)priv->alloc_buffer;
 	priv->rx_report = ((void *)priv->rx_descs) + CEILING(priv->rx_desc_count * sizeof(struct enet_desc), L1_CACHE_SHIFT);
 	priv->rx_skbs = ((void *)priv->rx_report) + CEILING(priv->rx_desc_count * sizeof(unsigned long), L1_CACHE_SHIFT);
+	priv->rx_skbs_dma_addr = ((void *)priv->rx_skbs) + CEILING(priv->rx_desc_count * sizeof(struct skb_buff *), L1_CACHE_SHIFT);
 
 	/*
 	 * initialize all rx descs
@@ -1431,17 +1452,17 @@ static int enet_dma_init(struct net_device *dev)
 
 		if ((skb = dev_alloc_skb(RX_BUF_SIZE + SKB_RESERVE_SIZE)) == NULL)
 			return -ENOMEM;
-		dma_cache_inv((unsigned long)skb->data, RX_BUF_SIZE + SKB_RESERVE_SIZE);
 		
+		priv->rx_report[i] = 0; 
+		priv->rx_skbs_dma_addr[i] = enet_dma_map(dev, (void *)skb->data, RX_BUF_SIZE + SKB_RESERVE_SIZE, DMA_FROM_DEVICE);
 		r_sz = (data_aligned - ((u32)skb->data & (data_aligned - 1))) % data_aligned;
 		if (r_sz)
 			skb_reserve(skb, r_sz); /* make sure it's aligned to pre-defined boundary */
-		priv->rx_report[i] = 0; 
-		rx->s_addr = DMA_ADDR((void *)skb->data);
-		rx->r_addr = DMA_ADDR((void *)&priv->rx_report[i]);
-		rx->n_addr = DMA_ADDR((void *)&priv->rx_descs[i + 1]);
+		rx->s_addr = priv->rx_skbs_dma_addr[i] + r_sz;
+		rx->r_addr = enet_dma_addr(dev, (void *)&priv->rx_report[i]);
+		rx->n_addr = enet_dma_addr(dev, (void *)&priv->rx_descs[i + 1]);
 		if (i == (priv->rx_desc_count - 1)) {
-			rx->n_addr = DMA_ADDR((void *)&priv->rx_descs[0]);
+			rx->n_addr = enet_dma_addr(dev, (void *)&priv->rx_descs[0]);
 			rx->config |= DESC_EOC;
 			priv->rx_eoc = i;
 		}
@@ -1464,10 +1485,12 @@ static int enet_dma_init(struct net_device *dev)
 	 * further use. When tx is needed, we will set the right flags
 	 * and kick the dma.
 	 */
-	priv->tx_descs = ((void *)priv->rx_skbs) + CEILING(priv->rx_desc_count * sizeof(struct skb_buff *), L1_CACHE_SHIFT);
+	priv->tx_descs = ((void *)priv->rx_skbs_dma_addr) + CEILING(priv->rx_desc_count * sizeof(unsigned long), L1_CACHE_SHIFT);
 	priv->tx_report = ((void *)priv->tx_descs) + CEILING(priv->tx_desc_count * sizeof(struct enet_desc), L1_CACHE_SHIFT);
 	priv->tx_skbs = ((void *)priv->tx_report) + CEILING(priv->tx_desc_count * sizeof(unsigned long), L1_CACHE_SHIFT);
-	priv->tx_bufs = ((void *)priv->tx_skbs) + CEILING(priv->tx_desc_count * sizeof(struct skb_buff *), L1_CACHE_SHIFT);
+	priv->tx_skbs_dma_addr = ((void *)priv->tx_skbs) + CEILING(priv->tx_desc_count * sizeof(struct skb_buff *), L1_CACHE_SHIFT);
+	priv->tx_skbs_dma_sz = ((void *)priv->tx_skbs_dma_addr) + CEILING(priv->tx_desc_count * sizeof(unsigned long), L1_CACHE_SHIFT);
+	priv->tx_bufs = ((void *)priv->tx_skbs_dma_sz) + CEILING(priv->tx_desc_count * sizeof(unsigned int), L1_CACHE_SHIFT);
 	tx_ptr = ((void *)priv->tx_bufs) + CEILING(priv->tx_desc_count * sizeof(char *), L1_CACHE_SHIFT); 
 
 	/*
@@ -1479,12 +1502,12 @@ static int enet_dma_init(struct net_device *dev)
 		priv->tx_bufs[i] = tx_ptr + (i * CEILING(data_aligned, L1_CACHE_SHIFT));
 		tx = &priv->tx_descs[i];
 		priv->tx_report[i] = 0; 
-		tx->r_addr = DMA_ADDR((void *)&priv->tx_report[i]);
+		tx->r_addr = enet_dma_addr(dev, (void *)&priv->tx_report[i]);
 		tx->s_addr = 0;
 		tx->config = DESC_EOF;
 		if (i == (priv->tx_desc_count - 1)) {
 			tx->config |= DESC_EOC;
-			tx->n_addr = DMA_ADDR((void *)&priv->tx_descs[0]);
+			tx->n_addr = enet_dma_addr(dev, (void *)&priv->tx_descs[0]);
 		}
 		//DBG("tx[%d]=0x%08x\n", i, (unsigned int)tx);
 	}
@@ -1498,8 +1521,8 @@ static int enet_dma_init(struct net_device *dev)
 	/*
 	 * write rx desc list & tx desc list addresses in registers
 	 */
-	gbus_write_reg32(ENET_TX_DESC_ADDR(priv->enet_mac_base), DMA_ADDR((void *)&priv->tx_descs[0]));
-	gbus_write_reg32(ENET_RX_DESC_ADDR(priv->enet_mac_base), DMA_ADDR((void *)&priv->rx_descs[0]));
+	gbus_write_reg32(ENET_TX_DESC_ADDR(priv->enet_mac_base), enet_dma_addr(dev, (void *)&priv->tx_descs[0]));
+	gbus_write_reg32(ENET_RX_DESC_ADDR(priv->enet_mac_base), enet_dma_addr(dev, (void *)&priv->rx_descs[0]));
 	return 0;
 }
 
@@ -1507,25 +1530,30 @@ static int enet_dma_init(struct net_device *dev)
  * free all dma rings memory, called at uninit time or when error
  * occurs at init time
  */
-static void enet_dma_free(struct tangox_enet_priv *priv)
+static void enet_dma_free(struct net_device *dev)
 {
+	struct tangox_enet_priv *priv = netdev_priv(dev);
 	int i;
 
-	if (priv->alloc_pages_cached == NULL)
+	if (priv->alloc_buffer == NULL)
 		return;
 
 	/* note: kfree_skb(NULL) is _not_ ok */
 	for (i = 0; i < priv->rx_desc_count; i++) {
-		if (priv->rx_skbs[i]) 
+		if (priv->rx_skbs[i]) {
+			enet_dma_unmap(dev, priv->rx_skbs_dma_addr[i], RX_BUF_SIZE + SKB_RESERVE_SIZE, DMA_FROM_DEVICE);
 			kfree_skb(priv->rx_skbs[i]);
+		}
 	}
 
 	for (i = 0; i < priv->tx_desc_count; i++) {
-		if (priv->tx_skbs[i]) 
+		if (priv->tx_skbs[i]) {
+			enet_dma_unmap(dev, priv->tx_skbs_dma_addr[i], priv->tx_skbs_dma_sz[i], DMA_TO_DEVICE);
 			kfree_skb(priv->tx_skbs[i]);
+		}
 	}
 
-	free_pages((u32)priv->alloc_pages_cached, priv->alloc_order);
+	dma_free_coherent(&dev->dev, priv->alloc_size, priv->alloc_buffer, priv->alloc_dma_addr);
 }
 
 static int phy_reset(struct net_device *dev)
@@ -1880,9 +1908,6 @@ no_mdio:
 	if ((ret = enet_dma_init(dev)))
 		goto err_free_dma;
 
-//	printk("descs ga: 0x%lx, reports ga: 0x%lx, priv ga/sz: 0x%lx/%d, alloc_pages va: 0x%p, order: %d\n", DMA_ADDR((void *)priv->rx_descs),
-//			DMA_ADDR((void *)priv->rx_report), DMA_ADDR((void *)priv), sizeof(*priv), priv->alloc_pages, priv->alloc_order);
-
 	SET_ETHTOOL_OPS(dev, &enet_ethtool_ops);
 	netif_napi_add(dev, &priv->napi, enet_poll, priv->rx_desc_count/2 + 1);
 
@@ -1935,7 +1960,7 @@ no_mdio:
 
 	free_irq(eth_mac_cores[idx].irq, dev);
 err_free_dma:
-	enet_dma_free(priv);
+	enet_dma_free(dev);
 err_free_netdev:
 	free_netdev(dev);
 err_out:
@@ -1975,7 +2000,6 @@ int __init tangox_enet_init(void)
  */
 void __exit tangox_enet_exit(void)
 {
-	struct tangox_enet_priv *priv;
 	struct net_device *dev;
 	int i;
 
@@ -1986,8 +2010,7 @@ void __exit tangox_enet_exit(void)
 		free_irq(dev->irq, dev);
 		unregister_netdev(dev);
 
-		priv = netdev_priv(dev);
-		enet_dma_free(priv);
+		enet_dma_free(dev);
 
 		free_netdev(dev);
 	}
