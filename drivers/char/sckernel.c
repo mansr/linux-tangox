@@ -514,7 +514,7 @@ static int scard_negotiate(struct scard_private *priv)
 	/* change ETU back to FD/DD */
 	DBG_PRINT("Default ETU of 371 is used.\n");
 	gbus_write_reg32(SCARD_EGT_ETU_REG(priv->base_addr), 
-			(gbus_read_reg32(SCARD_EGT_ETU_REG(priv->base_addr)) & 0xffff0000) | ((372 -1) << 0));
+			(gbus_read_reg32(SCARD_EGT_ETU_REG(priv->base_addr)) & 0xffff0000) | ((372 - 1) << 0));
 	
 	/* form pps request */
 	pps[1] = 0x10 | 0; /* with PPS1 and T=0 */
@@ -851,6 +851,19 @@ static int parse_ans2reset(struct scard_private *priv, int v3, const unsigned ch
 		}
 	} else {
 		DBG_PRINT("No TCK needed.\n");
+	}
+
+	/* check how many protocols are offered */
+	for (i = idx = 0; i < 16; i++) {
+		if (t_array[i] != 0)
+			idx++;
+	}
+	if ((idx == 1) && (priv->fi == 0) && (priv->di == 0)) { /* only one protocol, and use default FD(372) and DD(1) */
+		/* change ETU back to FD/DD */
+		DBG_PRINT("Default ETU of 371 is used.\n");
+		gbus_write_reg32(SCARD_EGT_ETU_REG(priv->base_addr),
+				(gbus_read_reg32(SCARD_EGT_ETU_REG(priv->base_addr)) & 0xffff0000) | ((372 - 1) << 0));
+		return(ATR_DONE);
 	}
 
 	return((ta2 == 0) ? ATR_WITH_NEGOTIATION : ATR_DONE);
