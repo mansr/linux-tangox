@@ -132,7 +132,6 @@ EXPORT_SYMBOL(tangox_phy_power_up);
 void tangox_usb_init(int ctrl)
 {
 	unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
-	int  i;
 	unsigned long temp;
 #ifdef CONFIG_TANGOX_XENV_READ
 	if (!tangox_usb_enabled())
@@ -293,6 +292,7 @@ void tangox_usb_init(int ctrl)
 	}
 #ifndef CONFIG_TANGO4
 	else {
+		int  i;
 #if 0		/* If you want to use external crystal at 24MHZ */
 		printk("TangoX USB using 24MHz external crystal.\n");
 		gbus_write_reg32(REG_BASE_system_block + SYS_hostclk_mux, 0x300);

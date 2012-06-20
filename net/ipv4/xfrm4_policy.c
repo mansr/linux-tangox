@@ -15,6 +15,7 @@
 #include <net/dst.h>
 #include <net/xfrm.h>
 #include <net/ip.h>
+#include <asm/unaligned.h>
 
 static struct xfrm_policy_afinfo xfrm4_policy_afinfo;
 
