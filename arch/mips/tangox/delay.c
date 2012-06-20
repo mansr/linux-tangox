@@ -184,7 +184,7 @@ int __init tangox_timer0_init(void)
 	WR_CPU_REG32(CPU_time0_clr, 1);
 	spin_lock_init(&timer0_lock);
 
-	if (request_irq(LOG2_CPU_TIMER0_INT + IRQ_CONTROLLER_IRQ_BASE, timer0_isr, IRQF_DISABLED, "timer0", 
+	if (request_irq(LOG2_CPU_TIMER0_INT + IRQ_CONTROLLER_IRQ_BASE, timer0_isr, IRQF_DISABLED|IRQF_NO_THREAD, "timer0", 
 			&timer0_wq) != 0) {
 		printk(KERN_ERR "timer0: cannot register IRQ (%d)\n", LOG2_CPU_TIMER0_INT + IRQ_CONTROLLER_IRQ_BASE);
 		return -EIO;

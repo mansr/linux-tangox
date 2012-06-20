@@ -310,14 +310,14 @@ static irqreturn_t ipi_call_interrupt(int irq, void *dev_id)
 #if 0
 static struct irqaction irq_resched = {
 	.handler    = ipi_resched_interrupt,
-	.flags      = IRQF_DISABLED|IRQF_PERCPU,
+	.flags      = IRQF_DISABLED|IRQF_PERCPU|IRQF_NO_THREAD,
 	.name       = "IPI_resched"
 };
 #endif
 
 static struct irqaction irq_call = {
 	.handler    = ipi_call_interrupt,
-	.flags      = IRQF_DISABLED|IRQF_PERCPU,
+	.flags      = IRQF_DISABLED|IRQF_PERCPU|IRQF_NO_THREAD,
 	.name       = "IPI_call"
 };
 
@@ -658,7 +658,7 @@ static struct irq_chip tangox_iiq_controller = {
 #ifdef CONFIG_SMP
 static struct irqaction gicirq = {
 	.handler	= no_action,
-	.flags		= IRQF_SHARED,
+	.flags		= IRQF_SHARED|IRQF_NO_THREAD,
 	.name		= "GIC",
 	.dev_id		= NULL,
 	.next		= NULL,
@@ -668,7 +668,7 @@ static struct irqaction gicirq = {
 
 static struct irqaction irq_cascade = {
 	.handler	= no_action,
-	.flags		= IRQF_SHARED,
+	.flags		= IRQF_SHARED|IRQF_NO_THREAD,
 	.name		= "cascade",
 	.dev_id		= NULL,
 	.next		= NULL,
@@ -682,7 +682,7 @@ static irqreturn_t handle_perf_irq(int irqn, void *dummy)
 
 static struct irqaction irq_perf_counters = {
 	.handler	= handle_perf_irq,
-	.flags		= 0,
+	.flags		= IRQF_DISABLED|IRQF_NO_THREAD,
 	.name		= "perf_counter",
 	.dev_id		= NULL,
 	.next		= NULL,

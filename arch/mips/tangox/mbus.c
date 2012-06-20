@@ -471,9 +471,9 @@ static __init void mbus_register_intr(void)
 	for (chnpptr = &mchnp_list[0], i = 0; i < NUM_MBUS_CHNPS; i++, chnpptr++) {
 		if (chnpptr->iface < 0) 
 			continue;
-		if (request_irq(chnpptr->wx_irq + IRQ_CONTROLLER_IRQ_BASE, tangox_mbus_intr, IRQF_DISABLED, chnpptr->wx_irq_name, chnpptr) != 0) 
+		if (request_irq(chnpptr->wx_irq + IRQ_CONTROLLER_IRQ_BASE, tangox_mbus_intr, IRQF_DISABLED|IRQF_NO_THREAD, chnpptr->wx_irq_name, chnpptr) != 0) 
 			printk("MBUS: fail to register MBUS ISR(%d)\n", chnpptr->wx_irq + IRQ_CONTROLLER_IRQ_BASE);
-		if (request_irq(chnpptr->rx_irq + IRQ_CONTROLLER_IRQ_BASE, tangox_mbus_intr, IRQF_DISABLED, chnpptr->rx_irq_name, chnpptr) != 0) 
+		if (request_irq(chnpptr->rx_irq + IRQ_CONTROLLER_IRQ_BASE, tangox_mbus_intr, IRQF_DISABLED|IRQF_NO_THREAD, chnpptr->rx_irq_name, chnpptr) != 0) 
 			printk("MBUS: fail to register MBUS ISR(%d)\n", chnpptr->rx_irq + IRQ_CONTROLLER_IRQ_BASE);
 	}
 }
