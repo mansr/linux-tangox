@@ -7,7 +7,7 @@
  published by the Free Software Foundation.
  *********************************************************************/
 /*
- * Driver for tangox SMP864x/SMP865x/SMP867x/SMP89xx builtin Ethernet Mac.
+ * Driver for tangox SMP864x/SMP865x/SMP867x/SMP868x/SMP89xx builtin Ethernet Mac.
  * The Driver makes use of the tango2_enet framework
  * written by Maxime Bizon.
  *
@@ -1782,6 +1782,11 @@ static int enet_probe(int idx)
 		data_aligned = 4;
 		if (((chip_id >> 16) & 0x000e) != 0) /* 8672/8674 */
 			arb = ((125 * 32) / (sysfreq / 1000000)) + 1;
+	} else if (((chip_id >> 16) & 0xfff0) == 0x8680) {
+		priv->gigabit = 1;
+		priv->rx_desc_count *= 2;
+		priv->tx_desc_count *= 2;
+		data_aligned = 4;
 	} else if (((chip_id >> 16) & 0xff00) == 0x8900) {
 		priv->gigabit = 1;
 		priv->rx_desc_count *= 2;

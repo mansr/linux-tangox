@@ -148,7 +148,7 @@ void tangox_usb_init(int ctrl)
 		
 	/* Unreset USB block if needed */
 	if ((chip_id != 0x8652) && (chip_id != 0x8646) && 
-			((chip_id & 0xfff0) != 0x8670) && (chip_id != 0x8910)) {
+			((chip_id & 0xfff0) != 0x8670) && ((chip_id & 0xfff0) != 0x8680) && (chip_id != 0x8910)) {
 		/* reset phy software reset */
 		temp = gbus_read_reg32(tangox_ctrl_base[ctrl] + 0x0);				
 		gbus_write_reg32(tangox_ctrl_base[ctrl] + 0x0, temp & ~(1<<0));
@@ -206,7 +206,7 @@ void tangox_usb_init(int ctrl)
 		temp |= 3 ;
 		gbus_write_reg32(tangox_ehci_base[ctrl] + TANGOX_EHCI_REG_OFFSET +0xA8, temp);
 		wait_ms(20);
-	} else if ((chip_id & 0xfff0) == 0x8670) {
+	} else if (((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680)) {
 		/* 0. Program the clean divider and clock multiplexors to provide 48MHz clock reference*/
 		/* this is to be done in zboot */
 
@@ -351,7 +351,7 @@ void tangox_usb_deinit(int ctrl)
 	if (atomic_sub_return(1, &usb_ref_cnt[ctrl]) == 0) {
 		/* Reset USB block if needed */
 		if ((chip_id != 0x8652) && (chip_id != 0x8646) && 
-				((chip_id & 0xfff0) != 0x8670) && (chip_id != 0x8910)) { 
+				((chip_id & 0xfff0) != 0x8670) && ((chip_id & 0xfff0) != 0x8680) && (chip_id != 0x8910)) { 
 			unsigned long temp;
 			/* put phy in power saving mode */
 			temp = gbus_read_reg32(tangox_ctrl_base[ctrl] + 0xc);				

@@ -76,7 +76,7 @@ config TANGOX_WATCHDOG
 	tristate "SMP8xxx watchdog"
 	depends on TANGO3 || TANGO4
 	help
-	  Hardware watch dog for Sigma Designs' SMP864x/SMP865x/SMP867x/SMP89xx chips.
+	  Hardware watch dog for Sigma Designs' SMP864x/SMP865x/SMP867x/SMP868x/SMP89xx chips.
 
 config WM8350_WATCHDOG
 	tristate "WM8350 watchdog"

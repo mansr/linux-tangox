@@ -1,5 +1,5 @@
 /*
- *	TangoXDog 0.2 Hardware Watchdog Device for SMP864x/SMP865x/SMP867x/SMP89xx
+ *	TangoXDog 0.2 Hardware Watchdog Device for SMP864x/SMP865x/SMP867x/SMP868x/SMP89xx
  *
  *	(c) Copyright 2009-2011 Sigma Designs, Inc.
  *
@@ -231,7 +231,7 @@ static struct notifier_block tangoxdog_notifier = {
 	.notifier_call = tangoxdog_notify_sys,
 };
 
-static char banner[] __initdata = KERN_INFO PFX "Hardware Watchdog Timer for SMP864x/SMP865x/SMP867x/SMP89xx 0.2 (def. timeout: %d sec)\n";
+static char banner[] __initdata = KERN_INFO PFX "Hardware Watchdog Timer for SMP864x/SMP865x/SMP867x/SMP868x/SMP89xx 0.2 (def. timeout: %d sec)\n";
 
 static int __init watchdog_init(void)
 {

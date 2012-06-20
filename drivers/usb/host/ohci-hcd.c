@@ -1155,8 +1155,8 @@ static int __init ohci_hcd_mod_init(void)
 		unsigned long tangox_chip_id(void);
 		unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
 
-		if ((chip_id == 0x8652) || (chip_id == 0x8646) || ((chip_id & 0xfff0) == 0x8670)) {
-			printk("No OHCI in SMP8652/SMP8653/SMP8646/SMP8647/SMP867X.\n");
+		if ((chip_id == 0x8652) || (chip_id == 0x8646) || ((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680)) {
+			printk("No OHCI in SMP8652/SMP8653/SMP8646/SMP8647/SMP867X/SMP868X.\n");
 			return -ENODEV;
 		}
 	}

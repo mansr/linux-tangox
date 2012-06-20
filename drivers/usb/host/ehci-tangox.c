@@ -166,13 +166,13 @@ int tangox_hcd_probe (struct platform_device *pdev, int ctrl)
 	hcd->rsrc_start = NON_CACHED(res->start);
 	hcd->regs = (void *) NON_CACHED(res->start);
 
-	if ((chip_id == 0x8652) || ((chip_id & 0xfff0) == 0x8670)) {
+	if ((chip_id == 0x8652) || ((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680)) {
 		if (ctrl == 0) {
 			if (test_and_set_bit(0, &tangox_otg_bits) != 0) {
 				printk("Controller %d is used in different mode.\n", ctrl);
 				return -EIO;
 			}
-		} else if ((chip_id & 0xfff0) == 0x8670) {
+		} else if (((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680)) {
 			if (test_and_set_bit(1, &tangox_otg_bits) != 0) {
 				printk("Controller %d is used in different mode.\n", ctrl);
 				return -EIO;
@@ -215,7 +215,7 @@ err1:
 	return retval;
 }
 
-int tangox_hcd_remove (struct platform_device *pdev, int ctrl)
+int tangox_hcd_remove(struct platform_device *pdev, int ctrl)
 {
 	unsigned long tangox_chip_id(void);
 	unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
@@ -226,10 +226,10 @@ int tangox_hcd_remove (struct platform_device *pdev, int ctrl)
 
 	usb_remove_hcd (hcd);
 	usb_put_hcd (hcd);
-	if ((chip_id == 0x8652) || ((chip_id & 0xfff0) == 0x8670)) {
+	if ((chip_id == 0x8652) || ((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680)) {
 		if (ctrl == 0)
 			clear_bit(0, &tangox_otg_bits);
-		else if ((chip_id & 0xfff0) == 0x8670)
+		else if (((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680))
 			clear_bit(1, &tangox_otg_bits);
 	}
 

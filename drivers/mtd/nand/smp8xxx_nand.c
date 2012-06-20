@@ -1194,8 +1194,10 @@ static void __init smp8xxx_set_nand_ctrler(void)
 			max_page_shift = 12; /* up to 4KB page */
 		case 0x8670:
 		case 0x8672:
+		case 0x8674:
+		case 0x8680:	/* 868A uses old controller */
+		case 0x8682:
 		case 0x8910:
-		case 0x8920:
 			new_ctrler = 1;
 			break;
 		default:

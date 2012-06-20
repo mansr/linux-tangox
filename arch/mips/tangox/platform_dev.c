@@ -149,7 +149,7 @@ static void tangox_init_ehci(void)
 	unsigned long tangox_chip_id(void);
 	unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
 	platform_device_register(&tangox_ehci_device0);
-	if ((chip_id & 0xfff0) == 0x8670){ 
+	if (((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680)) { 
 		platform_device_register(&tangox_ehci_device1);
 	}
 #else
@@ -221,7 +221,7 @@ static void tangox_init_udc(void)
 
 	platform_device_register(&tangox_udc_device0);
 #ifdef CONFIG_TANGO3
-	if ((chip_id & 0xfff0) == 0x8670)
+	if (((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680)) 
 		platform_device_register(&tangox_udc_device1);
 #endif
 }

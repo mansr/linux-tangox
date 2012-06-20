@@ -66,7 +66,6 @@
 #endif /* CONFIG_TANGO3_SMP86XX || CONFIG_TANGO4_89XX */
 
 #define RMCHIP_ID_SMP8910 (8910)
-#define RMCHIP_ID_SMP8920 (8920)
 
 #endif // __TANGO4_H__
 

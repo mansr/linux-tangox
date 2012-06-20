@@ -109,7 +109,7 @@ static const char	hcd_name [] = "ehci_hcd";
 						/* 5-ms async qh unlink delay */
 
 #ifdef CONFIG_TANGO3
-/* for 867x, it has two controller */
+/* for 867x/868x, it has two controllers */
 static int controller = 2;		// 0,1,2(both)
 module_param (controller, int, S_IRUGO);
 MODULE_PARM_DESC (controller, "TANGOX USB host Controller 0, 1 or 2(both)");
@@ -359,7 +359,7 @@ static int ehci_reset (struct ehci_hcd *ehci)
 		unsigned long tangox_chip_id(void);
 		unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
 
-		if ((chip_id == 0x8652) || (chip_id == 0x8646) || ((chip_id & 0xfff0) == 0x8670) || (chip_id == 0x8910)) {
+		if ((chip_id == 0x8652) || (chip_id == 0x8646) || ((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680) || (chip_id == 0x8910)) {
 			int ctrl = (ehci_to_hcd(ehci)->irq == TANGOX_EHCI0_IRQ) ? 0 : 1;
 			int val =	ehci_readl(ehci, (void *)(NON_CACHED(tangox_ehci_base[ctrl]) + TANGOX_USB_MODE));
 			ehci_writel(ehci, val | 0x3, (void *)(NON_CACHED(tangox_ehci_base[ctrl]) + TANGOX_USB_MODE));
@@ -1467,13 +1467,13 @@ static int __init ehci_hcd_init(void)
 		unsigned long tangox_chip_id(void);
 		unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
 
-		if (((chip_id & 0xfff0) != 0x8670) || (controller != 1)) {
+		if ((((chip_id & 0xfff0) != 0x8670) && ((chip_id & 0xfff0) != 0x8680)) || (controller != 1)) {
 			retval = platform_driver_register(&PLATFORM_DRIVER);
 			if (retval < 0)
 				goto clean0;
 		}
 
-		if (((chip_id & 0xfff0) == 0x8670) && (controller != 0)) {
+		if ((((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680)) && (controller != 0)) {
 			retval = platform_driver_register(&PLATFORM_DRIVER1);
 			if (retval < 0) {
 				printk("Controller 1 driver is not loaded\n");	
@@ -1556,10 +1556,10 @@ static void __exit ehci_hcd_cleanup(void)
 		unsigned long tangox_chip_id(void);
 		unsigned long chip_id = (tangox_chip_id() >> 16) & 0xfffe;
 
-		if (((chip_id & 0xfff0) != 0x8670) || (controller != 1))
+		if ((((chip_id & 0xfff0) != 0x8670) && ((chip_id & 0xfff0) != 0x8680)) || (controller != 1))
 			platform_driver_unregister(&PLATFORM_DRIVER);
 
-		if (((chip_id & 0xfff0) == 0x8670) && (controller != 0))
+		if ((((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680)) && (controller != 0))
 			platform_driver_unregister(&PLATFORM_DRIVER1);
 	}
 #else

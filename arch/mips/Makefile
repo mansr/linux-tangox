@@ -280,12 +280,42 @@ ifneq ($(CERT_SET),y)
                 CERT_TYPE=8644_ES1_dev
               endif
             else
-              ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
-                CERT_ID=000f
-                CERT_TYPE=8644_ES1_prod
+              ifdef CONFIG_TANGO3_SMP8680
+                ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+                  CERT_ID=000f
+                  CERT_TYPE=8644_ES1_prod
+                else
+                  CERT_ID=000f
+                  CERT_TYPE=8644_ES1_dev
+                endif
               else
-                CERT_ID=000f
-                CERT_TYPE=8644_ES1_dev
+                ifdef CONFIG_TANGO3_SMP8682
+                  ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+                    CERT_ID=000f
+                    CERT_TYPE=8644_ES1_prod
+                  else
+                    CERT_ID=000f
+                    CERT_TYPE=8644_ES1_dev
+                  endif
+                else
+                  ifdef CONFIG_TANGO3_SMP868A
+                    ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+                      CERT_ID=000f
+                      CERT_TYPE=8644_ES1_prod
+                    else
+                      CERT_ID=000f
+                      CERT_TYPE=8644_ES1_dev
+                    endif
+                  else
+                    ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+                      CERT_ID=000f
+                      CERT_TYPE=8644_ES1_prod
+                    else
+                      CERT_ID=000f
+                      CERT_TYPE=8644_ES1_dev
+                    endif
+                  endif
+                endif
               endif
             endif
           endif
@@ -333,6 +363,9 @@ else
     cflags-$(CONFIG_TANGO3_SMP8670)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8670 -DRMCHIP_REVISION=3
     cflags-$(CONFIG_TANGO3_SMP8672)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8672 -DRMCHIP_REVISION=1
     cflags-$(CONFIG_TANGO3_SMP8674)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8674 -DRMCHIP_REVISION=1
+    cflags-$(CONFIG_TANGO3_SMP8680)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8680 -DRMCHIP_REVISION=1
+    cflags-$(CONFIG_TANGO3_SMP8682)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8682 -DRMCHIP_REVISION=1
+    cflags-$(CONFIG_TANGO3_SMP868A)	+= -DRMCHIP_ID=RMCHIP_ID_SMP868A -DRMCHIP_REVISION=1
   else
     ifdef CONFIG_TANGO4
       KERNEL_START_ADDRESS		:= $(CPU_remap2_address)
@@ -342,7 +375,6 @@ else
       cflags-$(CONFIG_TANGO4)		+= -DCPU_REMAP_SPACE=$(KERNEL_START_ADDRESS)UL -mtune=24kf
       cflags-$(CONFIG_TANGO4)		+= -DRMCHIP_REVISION=2
       cflags-$(CONFIG_TANGO4_SMP8910)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8910
-      cflags-$(CONFIG_TANGO4_SMP8920)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8920
     endif
   endif
 endif

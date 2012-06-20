@@ -108,6 +108,30 @@ config TANGO3_SMP8674
 	help
 	  Sigma Designs SMP8674 chip (MIPS 24Kf core based), ES1 or above (Tango3).
 
+config TANGO3_SMP8680
+	bool "SMP8680"
+	select TANGO3_SMP86XX
+	select TANGO3_868X
+	select TANGO3
+	help
+	  Sigma Designs SMP8680 chip (MIPS 24Kf core based), ES1 or above (Tango3).
+
+config TANGO3_SMP8682
+	bool "SMP8682"
+	select TANGO3_SMP86XX
+	select TANGO3_868X
+	select TANGO3
+	help
+	  Sigma Designs SMP8682 chip (MIPS 24Kf core based), ES1 or above (Tango3).
+
+config TANGO3_SMP868A
+	bool "SMP868A"
+	select TANGO3_SMP86XX
+	select TANGO3_868X
+	select TANGO3
+	help
+	  Sigma Designs SMP868A chip (MIPS 24Kf core based, aka 8652HA), ES1 or above (Tango3).
+
 config TANGO4_SMP8910
 	bool "SMP8910"
 	select TANGO4_89XX
@@ -117,15 +141,6 @@ config TANGO4_SMP8910
 	help
 	  Sigma Designs SMP891x chip (MIPS 1004Kf core based), ES1 or above (Tango4).
 	  Newer compiler may be needed to support 1004Kf core.
-
-config TANGO4_SMP8920
-	bool "SMP8920"
-	select TANGO4_89XX
-	select TANGO4_892X
-	select TANGO4
-	help
-	  Sigma Designs SMP892x chip (MIPS 1074Kf core based), ES1 or above (Tango4).
-	  Newer compiler may be needed to support 1074Kf core.
 
 endchoice
 
@@ -163,15 +178,16 @@ config TANGO3_867X
 	bool 
 	select USB_ARCH_HAS_EHCI
 
+config TANGO3_868X
+	bool 
+	select USB_ARCH_HAS_EHCI
+
 config TANGO3_864X
 	bool
 	select USB_ARCH_HAS_OHCI
 	select USB_ARCH_HAS_EHCI
 
 config TANGO4_891X
-	bool
-
-config TANGO4_892X
 	bool
 
 config TANGO4_89XX

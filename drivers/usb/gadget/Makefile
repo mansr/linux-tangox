@@ -3,7 +3,10 @@
 #
 ccflags-$(CONFIG_USB_GADGET_DEBUG) := -DDEBUG
 
-obj-$(CONFIG_USB_GADGET)	+= udc-core.o
+# Temporary hack by disabling the build of udc-core as it 
+# conflict with tangox-udc ... need to merge tangox-udc into
+# the udc dore ...
+#obj-$(CONFIG_USB_GADGET)	+= udc-core.o
 obj-$(CONFIG_USB_DUMMY_HCD)	+= dummy_hcd.o
 obj-$(CONFIG_USB_TANGOX_UDC)	+= tangox_udc.o
 obj-$(CONFIG_USB_NET2272)	+= net2272.o

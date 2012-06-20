@@ -20,7 +20,7 @@ config TANGO2_ENET
 	  support.
 
 config TANGOX_ENET
-	tristate "SMP8xxx Builtin Gigabit Ethernet support (SMP864x/SMP865x/SMP867x/SMP89xx)"
+	tristate "SMP8xxx Builtin Gigabit Ethernet support (SMP864x/SMP865x/SMP867x/SMP868x/SMP89xx)"
 	depends on ETHERNET && (TANGO3 || TANGO4) && NET_VENDOR_SIGMADESIGNS
 	select MII
 	select CRC32

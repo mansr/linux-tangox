@@ -130,7 +130,7 @@ unsigned long tangox_get_pllclock(int pll)
 #elif defined(CONFIG_TANGO3) || defined(CONFIG_TANGO4)
 	if (pll != 0) { /* PLL1/PLL2 */
  		unsigned int chip_id = (tangox_chip_id() >> 16) & 0xfffe;
-		if ((chip_id == 0x8646) || ((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xff00) == 0x8900))
+		if ((chip_id == 0x8646) || ((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680) || ((chip_id & 0xff00) == 0x8900))
 			m = 0;
 		else
 			m = (sys_clkgen_pll >> 16) & 0x1;
@@ -553,15 +553,13 @@ void __init prom_init(void)
 			"864x"
 #elif defined(CONFIG_TANGO3_867X)
 			"867x"
+#elif defined(CONFIG_TANGO3_868X)
+			"868x"
 #endif
 	      );
 #elif defined(CONFIG_TANGO4_891X)
 	printk("Configured for SM891%c (revision %s), ",
 			'x', "ES2"
-	      );
-#elif defined(CONFIG_TANGO4_892X)
-	printk("Configured for SM892%c (revision %s), ",
-			'x', "ES1"
 	      );
 #else
 #error Unsupported platform.
@@ -874,6 +872,9 @@ static inline int is_tango3_revision(unsigned char revid)
 			case 0x8672:
 			case 0x8674:
 			case 0x8670:
+			case 0x8680:
+			case 0x8682:
+			case 0x868A:
 			case 0x8656:
 			case 0x8646:
 				rev += 2;
@@ -889,7 +890,7 @@ static inline int is_tango3_revision(unsigned char revid)
 int is_tango3_chip(void)
 {
 	unsigned long chip = (tangox_chip_id()>>16) & 0xfff0;
-	return ((chip == 0x8640) || (chip == 0x8650) || (chip == 0x8670)) ? 1 : 0;
+	return ((chip == 0x8640) || (chip == 0x8650) || (chip == 0x8670) || (chip == 0x8680)) ? 1 : 0;
 }
 
 int is_tango4_chip(void)

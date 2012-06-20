@@ -427,7 +427,7 @@ void __init plat_mem_setup(void)
 		printk("early_serial_setup failed\n");
 
 #ifdef CONFIG_TANGO3
-	if ((chip_id != 0x8652) && ((chip_id & 0xfff0) != 0x8670))
+	if ((chip_id != 0x8652) && ((chip_id & 0xfff0) != 0x8670) && ((chip_id & 0xfff0) != 0x8680))
 		uinfo_size--;
 #endif
 

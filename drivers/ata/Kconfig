@@ -215,11 +215,11 @@ config SATA_DWC_VDEBUG
 	  This option enables the taskfile dumping and NCQ debugging.
 
 config SATA_TANGOX
-	tristate "SMP864x/SMP865x/SMP867x/SMP89xx Embedded SATA support"
+	tristate "SMP864x/SMP865x/SMP867x/SMP868x/SMP89xx Embedded SATA support"
 	depends on TANGO3 || TANGO4 
 	help
 	  This option enables SATA support for Sigma Designs' 
-	  SMP864x/SMP865x/SMP867x/SMP89xx chips.
+	  SMP864x/SMP865x/SMP867x/SMP868x/SMP89xx chips.
 
 config SATA_MV
 	tristate "Marvell SATA support"
