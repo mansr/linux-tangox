@@ -115,7 +115,7 @@ static inline dma_addr_t __plat_map_dma_mem(struct device *dev, void *addr, size
 {
 	if (IS_PCIDEV(dev))
 		return __pci_virt_to_bus((unsigned long)addr);
-	return tangox_dma_address(virt_to_phys(addr));
+	return tangox_dma_address(virt_to_phys((void *)CKSEG0ADDR(addr)));
 }
 
 static inline dma_addr_t __plat_map_dma_mem_page(struct device *dev, struct page *page)
