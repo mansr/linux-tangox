@@ -144,7 +144,19 @@ void tangox_usb_init(int ctrl)
 		printk("TangoX USB was initialized.\n");
 		return;
 	}
-		
+
+#if defined(CONFIG_TANGO3) || defined(CONFIG_TANGO4)
+	/* Reset USB host(s), redo USB initialization */
+	gbus_write_reg32(TANGOX_CTRL0_BASE, gbus_read_reg32(TANGOX_CTRL0_BASE) | 0x2);
+	if (((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680))
+		gbus_write_reg32(TANGOX_CTRL1_BASE, gbus_read_reg32(TANGOX_CTRL1_BASE) | 0x2);
+	mdelay(2);
+	gbus_write_reg32(TANGOX_CTRL0_BASE, gbus_read_reg32(TANGOX_CTRL0_BASE) & ~0x2);
+	if (((chip_id & 0xfff0) == 0x8670) || ((chip_id & 0xfff0) == 0x8680))
+		gbus_write_reg32(TANGOX_CTRL1_BASE, gbus_read_reg32(TANGOX_CTRL1_BASE) & ~0x2);
+	mdelay(2);
+#endif
+
 	/* Unreset USB block if needed */
 	if ((chip_id != 0x8652) && (chip_id != 0x8646) && 
 			((chip_id & 0xfff0) != 0x8670) && ((chip_id & 0xfff0) != 0x8680) && (chip_id != 0x8910)) {
