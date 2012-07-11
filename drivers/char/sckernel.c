@@ -117,9 +117,8 @@ static void inline MSG_PRINT(const char *x, ...) { ; }
 #define SCARD_DEV_MAJOR		0
 #define SCARD_DEV_NAME		"scard"
 
-#define RST_WAIT		130	/* Wait time to drive RSTIN low */
-					/* Min. 50, Max. 130 */
-#define RST_WIDTH		5	/* Keep RSTIN for this long */
+#define CMDVCC_WAIT		125	/* >4T+200ns, T=~25us */
+#define RESET_WAIT		100	/* Keep RSTIN for this long, >3T+200ns */
 
 #define TX_FIFO_SIZE            0x0f
 
@@ -889,19 +888,15 @@ static int activate_scard(struct scard_private *priv)
 		DBG_PRINT("%s: Try 3V ..\n", priv->devname);
 		scard_ctrlpin_write(priv->idx, priv->scard_5v_pin, 0); /* Use 3V */
 		scard_ctrlpin_write(priv->idx, priv->scard_cmd_pin, 0); /* Drive CMDVCC low */
-		udelay(RST_WAIT);
+		udelay(CMDVCC_WAIT);
 
 		/* Drive RSTIN low */
-//		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) & ~0x20);
-//		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) & ~0x620);
 		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) & ~0x6620);
 		gbus_write_reg32(SCARD_INTEN_REG(priv->base_addr), 0x3f); /* Re-enable interrupt */
 		gbus_write_reg32(SCARD_STATE_REG(priv->base_addr), (unsigned long)PWR_IDLE);
-		udelay(RST_WIDTH);
+		udelay(RESET_WAIT);
 		spin_unlock_irqrestore(&priv->lock, flags);
 
-//		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) | 0x20);
-//		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) | 0x620);
 		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) | 0x6620);
 
 		scard_schedule_timeout(HZ); /* Wait for activity from SCARD (max. 1sec)*/ ;
@@ -960,19 +955,15 @@ static int activate_scard(struct scard_private *priv)
 		DBG_PRINT("%s: Try 5V ..\n", priv->devname);
 		scard_ctrlpin_write(priv->idx, priv->scard_5v_pin, 1); /* Use 5V */
 		scard_ctrlpin_write(priv->idx, priv->scard_cmd_pin, 0); /* Drive CMDVCC low */
-		udelay(RST_WAIT);
+		udelay(CMDVCC_WAIT);
 
 		/* Drive RSTIN low */
-//		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) & ~0x20);
-//		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) & ~0x620);
 		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) & ~0x6620);
 		gbus_write_reg32(SCARD_INTEN_REG(priv->base_addr), 0x3f); /* Re-enable interrupt */
 		gbus_write_reg32(SCARD_STATE_REG(priv->base_addr), (unsigned long)PWR_IDLE);
-		udelay(RST_WIDTH);
+		udelay(RESET_WAIT);
 		spin_unlock_irqrestore(&priv->lock, flags);
 
-//		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) | 0x20);
-//		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) | 0x620);
 		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) | 0x6620);
 
 		scard_schedule_timeout(HZ); /* Wait for activity from SCARD (max. 1sec)*/ ;
@@ -1026,8 +1017,6 @@ static int activate_scard(struct scard_private *priv)
 
 out:
 	if (atomic_read(&(priv->answer2reset)) != 0) {
-//		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) & ~0x600);
-//		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) | 0x600);
 		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) & ~0x6600);
 		gbus_write_reg32(SCARD_SOFT_OUT_REG(priv->base_addr), gbus_read_reg32(SCARD_SOFT_OUT_REG(priv->base_addr)) | 0x6600);
 		MSG_PRINT("%s: got response from the scard --> switch to normal\n", priv->devname);
@@ -1347,8 +1336,6 @@ static void scard_reset(struct scard_private *priv, int cold)
 	atomic_set(&(priv->state), (int)UNKNOWN);
 	atomic_set(&(priv->normal_mode), 0);
 	atomic_set(&(priv->answer2reset), 0);
-
-//	gbus_write_reg32(SCARD_INTEN_REG(priv->base_addr), 0x3f); /* Re-enable interrupt */
 }
 
 /* Monitor the status of smart card */
