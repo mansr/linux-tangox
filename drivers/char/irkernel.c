@@ -180,7 +180,7 @@ static void ir_produce(struct ir_private *priv, unsigned long status)
 	unsigned long data = 0;
 	unsigned pidx;
 	unsigned long flags;
-	int repeat_key = 0;
+	int repeat_key = 0, i;
 #ifdef WITH_RC6_CONTROL
 	static unsigned long save_rc6_key[RC6_DWORDS];	/* Only used for RC6 */
 #endif
@@ -190,11 +190,8 @@ static void ir_produce(struct ir_private *priv, unsigned long status)
 #ifdef WITH_RC6_CONTROL
 	if ((status & 0x80000000) != 0) {	// RC6 Data in IRQ
 		unsigned long dx[RC6_DWORDS];
-		dx[0] = gbus_read_reg32(IR_RC6_DATA_OUT0);
-		dx[1] = gbus_read_reg32(IR_RC6_DATA_OUT1);
-		dx[2] = gbus_read_reg32(IR_RC6_DATA_OUT2);
-		dx[3] = gbus_read_reg32(IR_RC6_DATA_OUT3);
-		dx[4] = gbus_read_reg32(IR_RC6_DATA_OUT4);
+		for (i = 0; i < RC6_DWORDS; i++)
+			dx[i] = gbus_read_reg32(IR_RC6_DATA_OUT0 + (4 * i));
 #ifdef DEBUG_IR
 		printk(KERN_DEBUG "D0-4: 0x%08lx 0x%08lx 0x%08lx 0x%08lx 0x%08lx\n", dx[0], 
 				dx[1], dx[2], dx[3], dx[4]);
@@ -221,44 +218,19 @@ static void ir_produce(struct ir_private *priv, unsigned long status)
 		priv->last_jiffies = jiffies;
 		pidx = priv->p_idx;	/* Save the old index before proceeding */
 
-		/* Save it to buffer */
-		if (((priv->p_idx + 1) % buffer_size) == priv->c_idx) {
-			/* Adjust consumer index since buffer is full */
-			/* Keep the latest one and drop the oldest one */
-			priv->c_idx = (priv->c_idx + 1) % buffer_size;
-			printk(KERN_WARNING "%s: buffer full\n", ir_devname);
-		} else if (((priv->p_idx + 2) % buffer_size) == priv->c_idx) {
-			/* Adjust consumer index since buffer is full */
-			/* Keep the latest one and drop the oldest ones */
-			priv->c_idx = (priv->c_idx + 2) % buffer_size;
-			printk(KERN_WARNING "%s: buffer full\n", ir_devname);
-		} else if (((priv->p_idx + 3) % buffer_size) == priv->c_idx) {
-			/* Adjust consumer index since buffer is full */
-			/* Keep the latest one and drop the oldest ones */
-			priv->c_idx = (priv->c_idx + 3) % buffer_size;
-			printk(KERN_WARNING "%s: buffer full\n", ir_devname);
-		} else if (((priv->p_idx + 4) % buffer_size) == priv->c_idx) {
-			/* Adjust consumer index since buffer is full */
-			/* Keep the latest one and drop the oldest ones */
-			priv->c_idx = (priv->c_idx + 4) % buffer_size;
-			printk(KERN_WARNING "%s: buffer full\n", ir_devname);
-		} else if (((priv->p_idx + 5) % buffer_size) == priv->c_idx) {
-			/* Adjust consumer index since buffer is full */
-			/* Keep the latest one and drop the oldest ones */
-			priv->c_idx = (priv->c_idx + 5) % buffer_size;
-			printk(KERN_WARNING "%s: buffer full\n", ir_devname);
+		/* Save it to buffer, make room if needed */
+		for (i = 0; i < RC6_DWORDS; i++) {
+			if (((priv->p_idx + 1 + i) % buffer_size) == priv->c_idx) 
+				break;
 		}
+		/* Adjust consumer index when buffer is full */
+		if (i < RC6_DWORDS)
+			priv->c_idx = (priv->c_idx + (RC6_DWORDS - i)) % buffer_size;
 
-		priv->buffer[priv->p_idx] = dx[0];
-		priv->p_idx = (priv->p_idx + 1) % buffer_size;
-		priv->buffer[priv->p_idx] = dx[1];
-		priv->p_idx = (priv->p_idx + 1) % buffer_size;
-		priv->buffer[priv->p_idx] = dx[2];
-		priv->p_idx = (priv->p_idx + 1) % buffer_size;
-		priv->buffer[priv->p_idx] = dx[3];
-		priv->p_idx = (priv->p_idx + 1) % buffer_size;
-		priv->buffer[priv->p_idx] = dx[4];
-		priv->p_idx = (priv->p_idx + 1) % buffer_size;
+		for (i = 0; i < RC6_DWORDS; i++) {
+			priv->buffer[priv->p_idx] = dx[i];
+			priv->p_idx = (priv->p_idx + 1) % buffer_size;
+		}
 
 		/* Buffer was empty and block mode is on, wake up the reader */
 		if (priv->c_idx == pidx)
