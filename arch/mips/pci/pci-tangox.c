@@ -371,7 +371,7 @@ static int __init tangox_pci_init(void)
 	 * register the PCI bus fault interrupt
 	 */
 	if (request_irq(PCIEM86XX_PCIFAULT_INTR, pci_busfault_intr,
-		    IRQF_DISABLED, "tangox_pci_fault", &tangox_controller) != 0) {
+		    IRQF_DISABLED|IRQF_NO_THREAD, "tangox_pci_fault", &tangox_controller) != 0) {
 		printk("PCI: fail to register PCI fault ISR(%d)\n", PCIEM86XX_PCIFAULT_INTR);
 		return 0;
 	}
