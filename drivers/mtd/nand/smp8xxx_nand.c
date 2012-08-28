@@ -652,7 +652,7 @@ static int smp8xxx_packet_config(struct mtd_info *mtd, struct nand_chip *chip, i
 		// May not be supported by current nand filesystems 
 		WR_HOST_REG32(XFER_CFG(chx_reg[cs]), 0x10010104 | csel);//xfer
 		WR_HOST_REG32(PACKET_0_CFG(chx_reg[cs]), 0x02040004);	//packet_0
-		WR_HOST_REG32(BAD_BLOCK_CFG(chx_reg[cs]), 0x02000002);	//bad_block
+		WR_HOST_REG32(BAD_BLOCK_CFG(chx_reg[cs]), 0x02040002);	//bad_block
 		ret = 0;
 		break;
 
@@ -702,10 +702,10 @@ static int smp8xxx_packet_config(struct mtd_info *mtd, struct nand_chip *chip, i
 static int smp8xxx_validecc(struct mtd_info *mtd)
 {
 	struct nand_chip *chip = (struct nand_chip *)mtd->priv;
-	unsigned int cs = ((struct chip_private *)chip->priv)->cs;
-	unsigned int code = RD_HOST_REG32(chx_mem[cs] + MLC_ECCREPORT_OFFSET) & 0xffff;
-	
-	if (((code & 0x8080) != 0x8080) && (code != 0)) { /* (code == 0) is most likey blank page */
+	unsigned int cs = ((struct chip_private *)chip->priv)->cs, len = mtd->writesize;
+	unsigned int code = RD_HOST_REG32(chx_mem[cs] + MLC_ECCREPORT_OFFSET) & ((len == 512) ? 0x00ff : 0xffff), mask = ((len == 512) ? 0x80 : 0x8080);
+
+	if (((code & mask) != mask) && (code != 0)) { /* (code == 0) is most likey blank page */
 		if (printk_ratelimit())
 			printk(KERN_WARNING "%s: ecc error detected (code=0x%x)\n", smp_nand_devname, code);
 		return 0;
