@@ -445,17 +445,6 @@ static void hsata_dma_xfer_complete(struct ata_host *host, u32 check_status)
 				}
 			}
 			spin_unlock_irqrestore(&hsdev->lock, flags);
-			if (qc->dma_dir == DMA_FROM_DEVICE) {
-				struct scatterlist *sg;
-				unsigned int si;
-				for_each_sg(qc->sg, sg, qc->n_elem, si) {
-					unsigned long len, addr;
-
-					len = sg_dma_len(sg);
-					addr = (unsigned long)sg_virt(sg);
-					dma_cache_inv(addr, len);
-				}
-			}
 			dma_unmap_sg((struct device *)qc->dev, qc->sg, qc->n_elem, qc->dma_dir);
 
 			/* fall thru */
@@ -1082,11 +1071,7 @@ static int hsata_bmdma_setup_noexec(struct ata_queued_cmd *qc)
 	if (dir==DMA_TO_DEVICE) {
 		unsigned int si;
 		for_each_sg(qc->sg, sg, qc->n_elem, si) {
-			unsigned long len, addr;
-			len = sg_dma_len(sg);
-			addr = (unsigned long)sg_virt(sg);
-			dma_cache_wback(addr, len);
-			dev_dma_len += len;
+			dev_dma_len += sg_dma_len(sg);
 		}
 	} else
 		dev_dma_len = get_dma_len(qc);

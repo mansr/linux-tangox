@@ -117,8 +117,10 @@ static inline unsigned long tangox_dma_address(unsigned long physaddr)
 	extern unsigned long em8xxx_kmem_size;
 
 	if ((physaddr < CPU_REMAP_SPACE) || (physaddr >= (CPU_REMAP_SPACE + em8xxx_kmem_size))) {
-/*		printk("<3>" "dma_address conversion failure (0x%08lx in range 0x%08lx-0x%08lx)\n", */
-/*			physaddr, (unsigned long)CPU_REMAP_SPACE, (unsigned long)CPU_REMAP_SPACE + em8xxx_kmem_size); */
+#if !defined(CONFIG_SD_DIRECT_DMA) && !defined(CONFIG_HIGHMEM)
+//		printk("<3>" "dma_address conversion failure (0x%08lx in range 0x%08lx-0x%08lx)\n", 
+//			physaddr, (unsigned long)CPU_REMAP_SPACE, (unsigned long)CPU_REMAP_SPACE + em8xxx_kmem_size); 
+#endif
 		return(physaddr); /* use whatever is specified */
 	} else {
 		return(em8xxx_remap_registers[((physaddr & 0x1c000000UL) >> 26) + 1] + (physaddr & 0x03ffffffUL));
@@ -132,6 +134,7 @@ static inline unsigned long tangox_inv_dma_address(unsigned long mapaddr)
 	extern unsigned long em8xxx_kmem_size;
 	int i;
 	unsigned long msize = 0, offset = mapaddr & 0x03ffffffUL, base = mapaddr & 0xfc000000UL;
+
 	for (i = REMAP_IDX; (msize < em8xxx_kmem_size) && (i < 9); msize += 0x04000000, i++) {
 		if (base == em8xxx_remap_registers[i]) {	/* found the remap register to match */
 			if (((em8xxx_kmem_size - msize) >= 0x04000000UL) || ((em8xxx_kmem_size - msize) > offset))
@@ -140,7 +143,9 @@ static inline unsigned long tangox_inv_dma_address(unsigned long mapaddr)
 				break;	/* outside kernel memory area, don't translate it */
 		}
 	}
-/*	printk("<3>" "dma_address inversion failure (0x%08lx)\n", mapaddr); */
+#if !defined(CONFIG_SD_DIRECT_DMA) && !defined(CONFIG_HIGHMEM)
+//	printk("<3>" "dma_address inversion failure (0x%08lx)\n", mapaddr); 
+#endif
 	return(mapaddr); /* use whatever is specified */
 }
 #endif

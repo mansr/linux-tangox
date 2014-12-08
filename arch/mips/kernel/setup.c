@@ -470,6 +470,10 @@ static int __init early_parse_mem(char *p)
 #ifdef CONFIG_TANGOX
         extern unsigned long em8xxx_kmem_start;
         extern unsigned long em8xxx_kmem_size;
+#ifdef CONFIG_HIGHMEM
+	extern unsigned long em8xxx_himem_start;
+	extern unsigned long em8xxx_himem_size;
+#endif
 #endif
 
 	/*
@@ -494,6 +498,7 @@ static int __init early_parse_mem(char *p)
         }
 
 #ifdef CONFIG_TANGOX
+	printk("parsing kernel command line for memory options ..\n");
 	if (start == CPHYSADDR(em8xxx_kmem_start)) {
 		void tangox_mem_setup(unsigned long size);
 		tangox_mem_setup(size);
@@ -502,6 +507,12 @@ static int __init early_parse_mem(char *p)
 		/* We just add this blindly as the alignment can be wrong, use it as own risk */
 		add_memory_region(start, size, BOOT_MEM_RAM);
 	}
+#ifdef CONFIG_HIGHMEM
+	if ((em8xxx_himem_start != 0) && (em8xxx_himem_size != 0)) {
+		add_memory_region(em8xxx_himem_start, em8xxx_himem_size, BOOT_MEM_RAM);
+		printk("adding [0x%08lx..0x%08lx) as highmem area.\n", em8xxx_himem_start, em8xxx_himem_start + em8xxx_himem_size);
+	}
+#endif
 #else
 	add_memory_region(start, size, BOOT_MEM_RAM);
 #endif 

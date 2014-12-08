@@ -30,6 +30,8 @@ unsigned long em8xxx_cpu_frequency;
 unsigned long orig_cpu_freq;
 unsigned long em8xxx_kmem_start;
 unsigned long em8xxx_kmem_size;
+unsigned long em8xxx_himem_start;
+unsigned long em8xxx_himem_size;
 unsigned long em8xxx_sys_clkgen_pll;
 unsigned long em8xxx_sys_premux;
 unsigned long em8xxx_sys_mux;
@@ -42,6 +44,7 @@ int is_tango2_chip(void);
 int is_tango3_chip(void);
 int is_tango3_es1(void);
 int is_tango3_es2(void);
+void tangox_get_himem_info(unsigned long *start, unsigned long *size);
 
 /*
  * we will restore remap registers before rebooting
@@ -365,6 +368,75 @@ void __init tangox_mem_setup(unsigned long size)
 	return;
 }
 
+#ifdef CONFIG_HIGHMEM
+static void __init tangox_himem_setup(unsigned long *start, unsigned long *size)
+{
+	unsigned long himem_ga = *start, himem_sz = *size, himem_end;
+	
+#ifdef CONFIG_TANGO3
+	int i;
+	unsigned long remap_ga, remap_sz, remap_end, kmem_sz;
+
+	if ((himem_ga == 0) || (himem_sz == 0))
+		return;
+	/* align highmem area to page boundary */
+	himem_ga = (himem_ga & PAGE_MASK) + ((himem_ga & ~PAGE_MASK) ? PAGE_SIZE : 0);
+	himem_end = (himem_ga + himem_sz) & PAGE_MASK;
+	if (himem_ga >= himem_end) 
+		goto no_highmem;
+
+	for (i = REMAP_IDX, kmem_sz = em8xxx_kmem_size; (kmem_sz > 0) && (i < 8); i++) {
+		remap_ga = em8xxx_remap_registers[i];
+		remap_sz = (kmem_sz >= 0x04000000UL) ? 0x04000000UL : kmem_sz;
+		remap_end = remap_ga + remap_sz;
+
+		/* if overlap found in remapped memory and highmem area, we need
+		   to adjust highmem area accordingly. */
+		if ((himem_ga >= remap_ga) && (himem_ga < remap_end))
+			himem_ga = remap_end;
+		if ((himem_end > remap_ga) && (himem_end <= remap_end))
+			himem_end = remap_ga;
+
+		if (himem_ga >= himem_end) 
+			goto no_highmem;
+		kmem_sz -= remap_sz;
+	}
+#else
+	memcfg_t *m = (memcfg_t *)KSEG1ADDR(MEM_BASE_dram_controller_0 + FM_MEMCFG);
+
+	if ((himem_ga == 0) || (himem_sz == 0))
+		return;
+	/* align highmem area to page boundary */
+	himem_ga = (himem_ga & PAGE_MASK) + ((himem_ga & ~PAGE_MASK) ? PAGE_SIZE : 0);
+	himem_end = (himem_ga + himem_sz) & PAGE_MASK;
+	if (himem_ga >= himem_end) 
+		goto no_highmem;
+
+	/* adjust highmem area to restrict it to DRAM1 only */
+	if (himem_ga < MEM_BASE_dram_controller_1)
+		himem_ga = MEM_BASE_dram_controller_1;
+	else if (himem_ga > MEM_BASE_dram_controller_1 + m->dram1_size) 
+		goto no_highmem;
+
+	if (himem_end > MEM_BASE_dram_controller_1 + m->dram1_size)
+		himem_end = MEM_BASE_dram_controller_1 + m->dram1_size;
+	else if (highmem_end < MEM_BASE_dram_controller_1) 
+		goto no_highmem;
+
+	if (himem_ga >= himem_end) 
+		goto no_highmem;
+#endif
+
+	*start = himem_ga;
+	*size = himem_end - himem_ga;
+	return;
+
+no_highmem:
+	*start = *size = 0; /* no highmem available */
+	return;
+}
+#endif
+
 void __init prom_init(void)
 {
 	extern char _text;
@@ -576,6 +648,10 @@ void __init prom_init(void)
 #endif
 
 	tangox_mem_setup(em8xxx_kmem_size);
+#ifdef CONFIG_HIGHMEM
+	tangox_get_himem_info(&em8xxx_himem_start, &em8xxx_himem_size);
+	tangox_himem_setup(&em8xxx_himem_start, &em8xxx_himem_size);
+#endif
 
 	/*
 	 * tell kernel about available memory size/offset
@@ -586,6 +662,12 @@ void __init prom_init(void)
 #else
 	offset = KSEG1ADDR(em8xxx_kmem_start) - KSEG1ADDR(MEM_BASE_dram_controller_0);
 	add_memory_region(MEM_BASE_dram_controller_0 + offset, em8xxx_kmem_size, BOOT_MEM_RAM);
+#endif
+#ifdef CONFIG_HIGHMEM
+	if ((em8xxx_himem_start != 0) && (em8xxx_himem_size != 0)) {
+		add_memory_region(em8xxx_himem_start, em8xxx_himem_size, BOOT_MEM_RAM);
+		printk("adding [0x%08lx..0x%08lx) as highmem area.\n", em8xxx_himem_start, em8xxx_himem_start + em8xxx_himem_size);
+	}
 #endif
 
 	arcs_cmdline[CL_SIZE - 1] = '\0';
@@ -818,8 +900,8 @@ int is_contiguous_memory(void __user *userbuf, unsigned int len, unsigned long *
 
 	*physaddr = 0;
 	start_pg_addr = start & PAGE_MASK; /* address of start page */
-	start_pg_offset = start & (PAGE_SIZE - 1); /* offset within start page */
-	end_pg_addr = ((start + len) & PAGE_MASK) - (((start + len) & (PAGE_SIZE - 1)) ? 0 : PAGE_SIZE); /* address of last page */
+	start_pg_offset = start & ~PAGE_MASK; /* offset within start page */
+	end_pg_addr = ((start + len) & PAGE_MASK) - (((start + len) & ~PAGE_MASK) ? 0 : PAGE_SIZE); /* address of last page */
 
 	for (ppaddr = 0, pg_addr = start_pg_addr; pg_addr <= end_pg_addr; pg_addr += PAGE_SIZE) {
 		if (pg_addr > TASK_SIZE)

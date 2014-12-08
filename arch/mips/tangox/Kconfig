@@ -24,6 +24,7 @@ config TANGO3_SMP8652
 	select TANGO3_865X
 	select TANGO3_8652
 	select TANGO3
+#	select HIGHMEM
 	help 
 	  Support for Sigma Designs SMP8652 chip (Tango3 architecture).
 
@@ -33,6 +34,7 @@ config TANGO3_SMP8654
 	select TANGO3_865X
 	select TANGO3_8654
 	select TANGO3
+#	select HIGHMEM
 	help 
 	  Support for Sigma Designs SMP8654 chip (Tango3 architecture).
 
@@ -41,6 +43,7 @@ config TANGO3_SMP8656OTP
 	select TANGO3_SMP86XX
 	select TANGO3_865X
 	select TANGO3
+#	select HIGHMEM
 	help 
 	  Support for Sigma Designs SMP8656 chip with OTP technology (aka 8656PS4/8656Bxx, Tango3)).
 
@@ -49,6 +52,7 @@ config TANGO3_SMP8656SF
 	select TANGO3_SMP86XX
 	select TANGO3_865X
 	select TANGO3
+#	select HIGHMEM
 	help 
 	  Support for Sigma Designs SMP8656 chip with embedded serial flash (aka 8656ES1/8656ES5/8656Axx/8656Cxx, Tango3)).
 
@@ -84,6 +88,7 @@ config TANGO3_SMP8670
 	select TANGO3_SMP86XX
 	select TANGO3_867X
 	select TANGO3
+#	select HIGHMEM
 	help
 	  Sigma Designs SMP8670 chip (MIPS 24Kf core based), ES1 or above (Tango3).
 

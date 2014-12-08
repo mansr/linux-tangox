@@ -112,6 +112,9 @@
 #define XENV_KEYS_CS_PART_SIZE      "l.cs%d_part%d_size"
 #define XENV_KEYS_CS_PART_OFFSET    "l.cs%d_part%d_offset" 
 
+#define XENV_KEY_HIMEM_GA	    "l.himem_ga"
+#define XENV_KEY_HIMEM_SZ	    "l.himem_sz"
+
 #if defined(CONFIG_TANGO3)
 #define XENV_KEYS_CS_RSVD_PBLK	    "a.cs%d_rsvd_pblk"
 #define XENV_KEY_SATA_CHANNEL_CFG   "a.sata_channel_cfg"

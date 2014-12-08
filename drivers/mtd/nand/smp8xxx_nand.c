@@ -44,6 +44,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/nand_ecc.h>
 #include <linux/mtd/partitions.h>
+#include <linux/dma-mapping.h>
 
 #include <asm/io.h>
 
@@ -146,8 +147,9 @@ static const unsigned int sbox_tgt[2] = { SBOX_PCIMASTER, SBOX_PCISLAVE };
 #define NAND_PARAM	"a.nandpart%d_params"
 #define HIGH_32		"_hi"
 
-/* Prototype of routine that gets XENV */
+/* Prototype of routine that gets XENV and others .. */
 extern int zxenv_get(char *recordname, void *dst, u32 *datasize);
+extern unsigned long tangox_virt_to_phys(void *pvaddr);
 
 /* Internal data structure */
 static struct mtd_info smp8xxx_mtds[MAX_CS];
@@ -280,6 +282,7 @@ static void smp8xxx_write_buf(struct mtd_info *mtd, const u_char *buf, int len)
 #ifdef USE_AUTOPIO
 	unsigned int cs = ((struct chip_private *)this->priv)->cs;
 	unsigned long g_mbus_reg = 0;
+	dma_addr_t dma_addr;
 
 	if ((in_atomic()) || (len <= mtd->oobsize))
 		goto pio;
@@ -288,13 +291,14 @@ static void smp8xxx_write_buf(struct mtd_info *mtd, const u_char *buf, int len)
 	else if (em86xx_mbus_alloc_dma(SBOX_IDEFLASH, 0, &g_mbus_reg, NULL, 0))
 		goto pio;
 
-	dma_cache_wback_inv((unsigned long)buf, len);
+	dma_addr = dma_map_single(NULL, (void *)buf, len, DMA_TO_DEVICE);
+
 	gbus_write_reg32(REG_BASE_host_interface + PB_automode_control + 4, 0);
 	gbus_write_reg32(REG_BASE_host_interface + PB_automode_start_address, SMP8XXX_REG_DATA);
 	/* 22:nand 17:8bit width 16:DRAM to PB len:number of PB accesses */
 	gbus_write_reg32(REG_BASE_host_interface + PB_automode_control, (cs << 24) | (2 << 22) | (1 << 17) | (0 << 16) | len);
 	
-	em86xx_mbus_setup_dma(g_mbus_reg, tangox_dma_address(virt_to_phys(buf)), len, pbi_mbus_intr, NULL, 1);
+	em86xx_mbus_setup_dma(g_mbus_reg, dma_addr, len, pbi_mbus_intr, NULL, 1);
 
 	wait_event_interruptible(mbus_wq, mbus_done != 0);
 	while (gbus_read_reg32(REG_BASE_host_interface + PB_automode_control) & 0xffff)
@@ -302,6 +306,8 @@ static void smp8xxx_write_buf(struct mtd_info *mtd, const u_char *buf, int len)
 	mbus_done = 0;
 	
 	em86xx_mbus_free_dma(g_mbus_reg, SBOX_IDEFLASH);
+	dma_unmap_single(NULL, dma_addr, len, DMA_TO_DEVICE);
+
 	goto done;
 
 pio:
@@ -331,6 +337,7 @@ static void smp8xxx_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 #ifdef USE_AUTOPIO
 	unsigned int cs = ((struct chip_private *)this->priv)->cs;
 	unsigned long g_mbus_reg = 0;
+	dma_addr_t dma_addr;
 
 	if ((in_atomic()) || (len <= mtd->oobsize))
 		goto pio;
@@ -339,13 +346,14 @@ static void smp8xxx_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 	else if (em86xx_mbus_alloc_dma(SBOX_IDEFLASH, 1, &g_mbus_reg, NULL, 0))
 		goto pio;
 
-	dma_cache_inv((unsigned long)buf, len);
+	dma_addr = dma_map_single(NULL, (void *)buf, len, DMA_FROM_DEVICE);
+
 	gbus_write_reg32(REG_BASE_host_interface + PB_automode_control + 4, 0);
 	gbus_write_reg32(REG_BASE_host_interface + PB_automode_start_address, SMP8XXX_REG_DATA);
 	/* 22:nand 17:8bit width 16:DRAM to PB len:number of PB accesses */
 	gbus_write_reg32(REG_BASE_host_interface + PB_automode_control, (cs << 24) | (2 << 22) | (1 << 17) | (1 << 16) | len);
 
-	em86xx_mbus_setup_dma(g_mbus_reg, tangox_dma_address(virt_to_phys(buf)), len, pbi_mbus_intr, NULL, 1);
+	em86xx_mbus_setup_dma(g_mbus_reg, dma_addr, len, pbi_mbus_intr, NULL, 1);
 
 	wait_event_interruptible(mbus_wq, mbus_done != 0);
 	while (gbus_read_reg32(REG_BASE_host_interface + PB_automode_control) & 0xffff)
@@ -353,6 +361,8 @@ static void smp8xxx_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 	mbus_done = 0;
 
 	em86xx_mbus_free_dma(g_mbus_reg, SBOX_IDEFLASH);
+	dma_unmap_single(NULL, dma_addr, len, DMA_FROM_DEVICE);
+
 	goto done;
 pio:
 #endif
@@ -734,6 +744,7 @@ static int smp8xxx_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 	unsigned long g_mbus_reg = 0;
 	uint8_t *buf = buffer;
 	uint8_t *bbuf = ((struct chip_private *)chip->priv)->bbuf;
+	dma_addr_t dma_addr;
 
 	if ((in_atomic()) || (len <= mtd->oobsize))
 		return -EIO;
@@ -747,7 +758,7 @@ static int smp8xxx_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 	if (em86xx_mbus_alloc_dma(sbox_tgt[cs], 1, &g_mbus_reg, NULL, 1) < 0)
 		return -EIO;
 
-	dma_cache_inv((unsigned long)buf, len);
+	dma_addr = dma_map_single(NULL, (void *)buf, len, DMA_FROM_DEVICE);
 
 	// poll ready status
 	while ((RD_HOST_REG32(STATUS_REG(chx_reg[cs])) & 0x80000000) == 0)
@@ -757,10 +768,10 @@ static int smp8xxx_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 	WR_HOST_REG32(FLASH_CMD(chx_reg[cs]), 0x1);
 
 #ifdef USE_CTRLER_IRQ
-	em86xx_mbus_setup_dma(g_mbus_reg, tangox_dma_address(virt_to_phys(buf)), len, callbacks[cs], NULL, 1);
+	em86xx_mbus_setup_dma(g_mbus_reg, dma_addr, len, callbacks[cs], NULL, 1);
 	wait_event_interruptible(*wqueues[cs], chx_mbus_done[cs] != 0);
 #else
-	em86xx_mbus_setup_dma(g_mbus_reg, tangox_dma_address(virt_to_phys(buf)), len, NULL, NULL, 1);
+	em86xx_mbus_setup_dma(g_mbus_reg, dma_addr, len, NULL, NULL, 1);
 #endif
 
 	// poll ready status
@@ -771,6 +782,7 @@ static int smp8xxx_read_page_hwecc(struct mtd_info *mtd, struct nand_chip *chip,
 #endif
 
 	em86xx_mbus_free_dma(g_mbus_reg, sbox_tgt[cs]);
+	dma_unmap_single(NULL, dma_addr, len, DMA_FROM_DEVICE);
 
 	if (buf == bbuf) {
 		/* copy back */
@@ -798,6 +810,7 @@ static void smp8xxx_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chi
 	unsigned long g_mbus_reg = 0;
 	uint8_t *buf = (uint8_t *)buffer;
 	uint8_t *bbuf = ((struct chip_private *)chip->priv)->bbuf;
+	dma_addr_t dma_addr;
 
 	if ((in_atomic()) || (len <= mtd->oobsize)) {
 		smp8xxx_nand_bug(mtd);
@@ -818,7 +831,7 @@ static void smp8xxx_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chi
 		return /* TODO: -EIO? */;
 	}
 
-	dma_cache_wback_inv((unsigned long)buf, len);
+	dma_addr = dma_map_single(NULL, (void *)buf, len, DMA_TO_DEVICE);
 
 	// poll ready status
 	while ((RD_HOST_REG32(STATUS_REG(chx_reg[cs])) & 0x80000000) == 0)
@@ -828,10 +841,10 @@ static void smp8xxx_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chi
 	WR_HOST_REG32(FLASH_CMD(chx_reg[cs]), 0x2);
 
 #ifdef USE_CTRLER_IRQ
-	em86xx_mbus_setup_dma(g_mbus_reg, tangox_dma_address(virt_to_phys(buf)), len, callbacks[cs], NULL, 1);
+	em86xx_mbus_setup_dma(g_mbus_reg, dma_addr, len, callbacks[cs], NULL, 1);
 	wait_event_interruptible(*wqueues[cs], chx_mbus_done[cs] != 0);
 #else
-	em86xx_mbus_setup_dma(g_mbus_reg, tangox_dma_address(virt_to_phys(buf)), len, NULL, NULL, 1);
+	em86xx_mbus_setup_dma(g_mbus_reg, dma_addr, len, NULL, NULL, 1);
 #endif
 	// poll ready status
 	while ((RD_HOST_REG32(STATUS_REG(chx_reg[cs])) & 0x80000000) == 0)
@@ -841,6 +854,7 @@ static void smp8xxx_write_page_hwecc(struct mtd_info *mtd, struct nand_chip *chi
 #endif
 
 	em86xx_mbus_free_dma(g_mbus_reg, sbox_tgt[cs]);
+	dma_unmap_single(NULL, dma_addr, len, DMA_TO_DEVICE);
 
 	return;
 }

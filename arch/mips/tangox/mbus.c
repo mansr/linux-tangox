@@ -517,7 +517,7 @@ static void __mbus_setup_dma_linear(struct mbus_channel_pair *chnpptr,
 					unsigned int regbase)
 {
 	unsigned int rwbase;
-#ifndef CONFIG_SD_DIRECT_DMA
+#if !defined(CONFIG_SD_DIRECT_DMA) && !defined(CONFIG_HIGHMEM)
 	if ((tangox_inv_dma_address(addr) < CPHYSADDR(em8xxx_kmem_start)) || (tangox_inv_dma_address(addr) >= (CPHYSADDR(em8xxx_kmem_start) + em8xxx_kmem_size)))
 		printk("MBUS Warning (linear): bad transfer address 0x%08x\n", addr);
 #endif
@@ -553,7 +553,7 @@ static void __mbus_setup_dma_double(struct mbus_channel_pair *chnpptr,
 					unsigned int regbase)
 {
 	unsigned int rwbase;
-#ifndef CONFIG_SD_DIRECT_DMA
+#if !defined(CONFIG_SD_DIRECT_DMA) && !defined(CONFIG_HIGHMEM)
 	if ((tangox_inv_dma_address(addr) < CPHYSADDR(em8xxx_kmem_start)) || (tangox_inv_dma_address(addr) >= (CPHYSADDR(em8xxx_kmem_start) + em8xxx_kmem_size)))
 		printk("MBUS Warning (double): bad transfer address 0x%08x\n", addr);
 	if ((tangox_inv_dma_address(addr2) < CPHYSADDR(em8xxx_kmem_start)) || (tangox_inv_dma_address(addr2) >= (CPHYSADDR(em8xxx_kmem_start) + em8xxx_kmem_size)))
@@ -591,7 +591,7 @@ static void __mbus_setup_dma_rectangle(struct mbus_channel_pair *chnpptr,
 					unsigned int regbase)
 {
 	unsigned int rwbase;
-#ifndef CONFIG_SD_DIRECT_DMA
+#if !defined(CONFIG_SD_DIRECT_DMA) && !defined(CONFIG_HIGHMEM)
 	if ((tangox_inv_dma_address(addr) < CPHYSADDR(em8xxx_kmem_start)) || (tangox_inv_dma_address(addr) >= (CPHYSADDR(em8xxx_kmem_start) + em8xxx_kmem_size)))
 		printk("MBUS Warning (rectangle): bad transfer address 0x%08x\n", addr);
 #endif

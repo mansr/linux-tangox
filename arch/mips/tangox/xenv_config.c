@@ -196,6 +196,8 @@ static u32 isaide_timing_slot = 0;
 static u32 isaide_irq = 0;
 
 static u32 xenv_gbus_addr = 0;
+static u32 himem_ga = 0;
+static u32 himem_sz = 0;
 
 /* mac address to use if xenv is not readable  */
 static const u8 def_mac_address[6] = { 0x48, 0x4a, 0xe5, 0x00, 0x00, 0x01 };
@@ -282,6 +284,9 @@ void __init xenv_val_cb(char *recordname, void *data, u32 datasize)
 	CHECK_AND_STORE(XENV_KEY_SCARD1_CMD, 4, scard1_cmd_pin);
 	CHECK_AND_STORE(XENV_KEY_SATA_CHANNEL_CFG, 4, sata_channel_cfg);
 #endif
+
+	CHECK_AND_STORE(XENV_KEY_HIMEM_GA, 4, himem_ga);
+	CHECK_AND_STORE(XENV_KEY_HIMEM_SZ, 4, himem_sz);
 
 	for (i = 0; i < 4; i++) {
 		int j;
@@ -843,8 +848,18 @@ void tangox_get_standby_config(unsigned long *pll2, unsigned long *pll0, unsigne
 }
 #endif
 
+void tangox_get_himem_info(unsigned long *start, unsigned long *size)
+{
+	*start = *size = 0;
+	if ((himem_ga != 0) && (himem_sz != 0)) {
+		*start = himem_ga;
+		*size = himem_sz;
+	}
+}
+
 EXPORT_SYMBOL(tangox_ethernet_getmac);
 EXPORT_SYMBOL(tangox_get_scard_info);
 EXPORT_SYMBOL(tangox_get_ps_config);
 EXPORT_SYMBOL(tangox_get_standby_config);
+EXPORT_SYMBOL(tangox_get_himem_info);
 
