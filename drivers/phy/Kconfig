@@ -256,4 +256,9 @@ config PHY_STIH41X_USB
 	  Enable this to support the USB transceiver that is part of
 	  STMicroelectronics STiH41x SoC series.
 
+config PHY_TANGOX_USB
+	tristate "SMP86xx USB PHY driver"
+	depends on TANGOX
+	select GENERIC_PHY
+
 endmenu
