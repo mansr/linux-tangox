@@ -98,6 +98,7 @@ obj-$(CONFIG_GPIO_VR41XX)	+= vr41xx_giu.o
 obj-$(CONFIG_GPIO_TB0219)	+= tb0219.o
 obj-$(CONFIG_TELCLOCK)		+= tlclk.o
 obj-$(CONFIG_TANGOX_IR)		+= irkernel.o
+obj-$(CONFIG_TANGOX_FIP) 	+= fipkernel.o
 
 obj-$(CONFIG_MWAVE)		+= mwave/
 obj-$(CONFIG_AGP)		+= agp/
