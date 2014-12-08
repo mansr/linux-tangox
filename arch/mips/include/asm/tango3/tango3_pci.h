@@ -48,20 +48,19 @@
 static inline int tangox_cfg_##pfx(void __iomem *addr, u32 *data)	\
 {									\
 	unsigned long flags, status;					\
+	extern spinlock_t tangox_pci_lock;				\
 									\
-	local_irq_save(flags);						\
+	spin_lock_irqsave(&tangox_pci_lock, flags);			\
 									\
 	__x;								\
 	status = (RD_HOST_REG8(PCI_host_reg2 + 3) >> 1) & 0x3;		\
 	if (status) {							\
 		WR_HOST_REG8(PCI_host_reg2 + 3, 1);			\
 		WR_HOST_REG8(PCI_host_reg2 + 3, 0);			\
-		local_irq_restore(flags);				\
-		return 1;						\
 	}								\
 									\
-	local_irq_restore(flags);					\
-	return 0;							\
+	spin_unlock_irqrestore(&tangox_pci_lock, flags);		\
+	return status ? 1 : 0;						\
 }
 
 BUILD_TANGOX_CFG_ACCESS(read8, *data = readb(addr) & 0xff)

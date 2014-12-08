@@ -78,4 +78,8 @@ extern void * dma_mark_declared_memory_occupied(struct device *dev,
 	dma_addr_t device_addr, size_t size);
 #endif
 
+#ifdef CONFIG_TANGOX
+#define HAVE_ARCH_PCI_SET_DMA_MASK
+#endif
+
 #endif /* _ASM_DMA_MAPPING_H */

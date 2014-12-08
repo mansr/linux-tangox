@@ -796,3 +796,84 @@ void tangox_do_timer(unsigned long ticks)
   
 EXPORT_SYMBOL(tangox_do_timer);
 
+#ifdef CONFIG_SD_DIRECT_DMA
+
+/* Given an address and length, determine if this area is physically contiguous or not, and
+   return the physical address of starting point, caller needs to ensure the page_table is
+   locked so no change is allowed. */
+int is_contiguous_memory(void __user *userbuf, unsigned int len, unsigned long *physaddr)
+{
+	pgd_t *pgd;
+	pud_t *pud;
+	pmd_t *pmd;
+	pte_t *pte;
+	unsigned long start = (unsigned long)userbuf;
+	unsigned long paddr, ppaddr;
+	unsigned long start_pg_addr, start_pg_offset, end_pg_addr, pg_addr;
+	struct mm_struct *mm = current->mm;
+	int ret = 0;
+
+//printk("%s:%d: start=0x%08lx, len=0x%x\n", __FILE__, __LINE__, start, len);
+
+	*physaddr = 0;
+	start_pg_addr = start & PAGE_MASK; /* address of start page */
+	start_pg_offset = start & (PAGE_SIZE - 1); /* offset within start page */
+	end_pg_addr = ((start + len) & PAGE_MASK) - (((start + len) & (PAGE_SIZE - 1)) ? 0 : PAGE_SIZE); /* address of last page */
+
+	for (ppaddr = 0, pg_addr = start_pg_addr; pg_addr <= end_pg_addr; pg_addr += PAGE_SIZE) {
+		if (pg_addr > TASK_SIZE)
+			pgd = pgd_offset_k(pg_addr);
+		else
+			pgd = pgd_offset_gate(mm, pg_addr);
+		BUG_ON(pgd_none(*pgd));
+		pud = pud_offset(pgd, pg_addr);
+		BUG_ON(pud_none(*pud));
+		pmd = pmd_offset(pud, pg_addr);
+		if (pmd_none(*pmd)) 
+			goto error;
+		pte = pte_offset_map(pmd, pg_addr);
+		if (pte_none(*pte)) {
+			pte_unmap(pte);
+			goto error;
+		}
+		paddr = pte_val(*pte) & PAGE_MASK;
+//printk("TRANSLATED 0x%08lx, pte=0x%p, paddr=0x%lx\n", pg, pte, paddr);
+		pte_unmap(pte);
+
+		if (ppaddr == 0) { /* first page */
+			ppaddr = paddr;
+			*physaddr = (ppaddr | start_pg_offset);
+		} else if ((ppaddr + PAGE_SIZE) != paddr) /* not contiguous */
+			goto not_contiguous;
+		else
+			ppaddr = paddr;
+	}
+	ret = 1;
+
+not_contiguous:
+error:
+//printk("%s:%d: return %d\n", __FILE__, __LINE__, ret);
+	return ret;
+}
+
+EXPORT_SYMBOL(is_contiguous_memory);
+
+#endif /* CONFIG_SD_DIRECT_DMA */
+
+/* convering virtual address to physical address (perform page table walking if needed) */
+unsigned long tangox_virt_to_phys(void *pvaddr)
+{
+#if defined(CONFIG_SD_DIRECT_DMA) || defined(CONFIG_HIGHMEM)
+	unsigned long vpa = (unsigned long)pvaddr & PAGE_MASK;
+	if (vpa >= KSEG2)
+		return (pte_val(*(pte_t *)pte_offset(pmd_offset(pud_offset(pgd_offset_k(vpa), vpa), vpa), vpa)) & PAGE_MASK) + ((unsigned long)pvaddr & ~PAGE_MASK);
+	else if (vpa >= KSEG0)
+		return virt_to_phys(pvaddr);
+ 	else
+		return (pte_val(*(pte_t *)pte_offset(pmd_offset(pud_offset(pgd_offset_gate(current->mm, vpa), vpa), vpa), vpa)) & PAGE_MASK) + ((unsigned long)pvaddr & ~PAGE_MASK);
+#else
+	return virt_to_phys(pvaddr);
+#endif
+}
+EXPORT_SYMBOL(tangox_virt_to_phys);
+

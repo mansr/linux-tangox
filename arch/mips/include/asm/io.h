@@ -381,7 +381,7 @@ static inline void pfx##out##bwlq##p(type val, unsigned long port)	\
 									\
 	war_octeon_io_reorder_wmb();					\
 									\
-	__addr = (void *)__swizzle_addr_##bwlq(mips_io_port_base + port); \
+	__addr = (void *)(mips_io_port_base + __swizzle_addr_##bwlq(port)); \
 									\
 	__val = pfx##ioswab##bwlq(__addr, val);				\
 									\
@@ -398,7 +398,7 @@ static inline type pfx##in##bwlq##p(unsigned long port)			\
 	volatile type *__addr;						\
 	type __val;							\
 									\
-	__addr = (void *)__swizzle_addr_##bwlq(mips_io_port_base + port); \
+	__addr = (void *)(mips_io_port_base + __swizzle_addr_##bwlq(port)); \
 									\
 	BUILD_BUG_ON(sizeof(type) > sizeof(unsigned long));		\
 									\
