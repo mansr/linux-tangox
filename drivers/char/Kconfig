@@ -420,6 +420,13 @@ config SGI_MBCS
 
 source "drivers/serial/Kconfig"
 
+config TANGOX_IR
+       tristate "SMP8xxx IR remote support" 
+       depends on TANGOX
+       default m
+       help
+         Support Infra-Red remote controller interface for SMP8xxx.
+
 config UNIX98_PTYS
 	bool "Unix98 PTY support" if EMBEDDED
 	default y
