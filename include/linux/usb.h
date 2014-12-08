@@ -1144,6 +1144,7 @@ extern int usb_disabled(void);
 #define URB_DIR_IN		0x0200	/* Transfer from device to host */
 #define URB_DIR_OUT		0
 #define URB_DIR_MASK		URB_DIR_IN
+#define URB_HCD_DRIVER_TEST     0xFFFF  /* Do NOT hand back or free this URB. */
 
 struct usb_iso_packet_descriptor {
 	unsigned int offset;

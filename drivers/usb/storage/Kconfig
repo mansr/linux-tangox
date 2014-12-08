@@ -24,6 +24,14 @@ config USB_STORAGE
 	  To compile this driver as a module, choose M here: the
 	  module will be called usb-storage.
 
+config USB_STORAGE_DELAY_USE
+	int "Delay use (in seconds)"
+	default "5"
+	depends on USB_STORAGE
+	help
+	  The delay (in seconds) needed before making use of mass storage 
+          device once it has been detected.
+
 config USB_STORAGE_DEBUG
 	bool "USB Mass Storage verbose debug"
 	depends on USB_STORAGE

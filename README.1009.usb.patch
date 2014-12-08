@@ -1,0 +1,20 @@
+Feature:
+--------
+Support for SMP8xxx builtin USB controllers
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1001
+1006
+
+Primary author:
+---------------
+Craig Qu/YH Lin
+
+Related to which chip version SMP86xx xx=?
+------------------------------------------
+Tango2 ES6/RevA or above, or Tango3 ES1 or above.
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

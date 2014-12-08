@@ -17,6 +17,26 @@ config USB_C67X00_HCD
 	  To compile this driver as a module, choose M here: the
 	  module will be called c67x00.
 
+config TANGOX_EHCI_HCD
+        tristate "SMP86xx EHCI HCD (USB 2.0) support"
+        depends on USB && TANGOX 
+	---help---
+	  SMP86xx chips has an USB 2.0 host controller integrated. 
+	  Enable this option if your board has this chip. If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tangox-ehci-hcd.
+
+config TANGOX_OHCI_HCD
+        tristate "SMP86xx OHCI HCD support"
+        depends on USB && USB_ARCH_HAS_OHCI && TANGOX && !USB_EHSET
+        ---help---
+	  SMP86xx chips has an USB 1.1 OHCI controller integrated. 
+	  Enable this option if your board has this chip. If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tangox-ohci-hcd.
+
 config USB_EHCI_HCD
 	tristate "EHCI HCD (USB 2.0) support"
 	depends on USB && USB_ARCH_HAS_EHCI
@@ -44,7 +64,7 @@ config USB_EHCI_HCD
 
 config USB_EHCI_ROOT_HUB_TT
 	bool "Root Hub Transaction Translators"
-	depends on USB_EHCI_HCD
+	depends on (USB_EHCI_HCD || TANGOX_EHCI_HCD) 
 	---help---
 	  Some EHCI chips have vendor-specific extensions to integrate
 	  transaction translators, so that no OHCI or UHCI companion
@@ -56,7 +76,7 @@ config USB_EHCI_ROOT_HUB_TT
 
 config USB_EHCI_TT_NEWSCHED
 	bool "Improved Transaction Translator scheduling (EXPERIMENTAL)"
-	depends on USB_EHCI_HCD && EXPERIMENTAL
+	depends on (USB_EHCI_HCD || TANGOX_EHCI_HCD) && EXPERIMENTAL
 	---help---
 	  This changes the periodic scheduling code to fill more of the low
 	  and full speed bandwidth available from the Transaction Translator
