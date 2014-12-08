@@ -33,7 +33,7 @@ int mac_partition(struct parsed_partitions *state, struct block_device *bdev)
 	Sector sect;
 	unsigned char *data;
 	int blk, blocks_in_map;
-	unsigned secsize;
+	sector_t secsize;
 #ifdef CONFIG_PPC_PMAC
 	int found_root = 0;
 	int found_root_goodness = 0;
@@ -62,7 +62,7 @@ int mac_partition(struct parsed_partitions *state, struct block_device *bdev)
 	printk(" [mac]");
 	blocks_in_map = be32_to_cpu(part->map_count);
 	for (blk = 1; blk <= blocks_in_map; ++blk) {
-		int pos = blk * secsize;
+		sector_t pos = blk * secsize;
 		put_dev_sector(sect);
 		data = read_dev_sector(bdev, pos/512, &sect);
 		if (!data)

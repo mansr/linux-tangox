@@ -394,7 +394,8 @@ uart_get_baud_rate(struct uart_port *port, struct ktermios *termios,
 			tty_termios_encode_baud_rate(termios, 9600, 9600);
 	}
 
-	return 0;
+//	return 0;
+	return baud;
 }
 
 EXPORT_SYMBOL(uart_get_baud_rate);
@@ -419,7 +420,8 @@ uart_get_divisor(struct uart_port *port, unsigned int baud)
 	else
 		quot = (port->uartclk + (8 * baud)) / (16 * baud);
 
-	return quot;
+//	return quot;
+	return (quot ? quot : 1);
 }
 
 EXPORT_SYMBOL(uart_get_divisor);

@@ -1478,6 +1478,7 @@ __alloc_pages_internal(gfp_t gfp_mask, unsigned int order,
 	int alloc_flags;
 	unsigned long did_some_progress;
 	unsigned long pages_reclaimed = 0;
+	int num_retries = 0;
 
 	might_sleep_if(wait);
 
@@ -1661,6 +1662,12 @@ nofail_alloc:
 
 nopage:
 	if (!(gfp_mask & __GFP_NOWARN) && printk_ratelimit()) {
+		if (wait && !in_atomic() && !in_interrupt() && (++num_retries < 16)) {
+			set_current_state(TASK_INTERRUPTIBLE);
+			schedule_timeout(HZ);
+			goto rebalance;
+		}
+
 		printk(KERN_WARNING "%s: page allocation failure."
 			" order:%d, mode:0x%x\n",
 			p->comm, order, gfp_mask);

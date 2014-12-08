@@ -24,7 +24,7 @@ static __initdata char chosen_lsm[SECURITY_NAME_MAX + 1];
 extern struct security_operations default_security_ops;
 extern void security_fixup_ops(struct security_operations *ops);
 
-struct security_operations *security_ops;	/* Initialized to NULL */
+struct security_operations *security_ops = NULL;	/* Initialized to NULL */
 
 /* amount of vm to protect from userspace access */
 unsigned long mmap_min_addr = CONFIG_SECURITY_DEFAULT_MMAP_MIN_ADDR;
@@ -204,7 +204,7 @@ int security_quota_on(struct dentry *dentry)
 
 int security_syslog(int type)
 {
-	return security_ops->syslog(type);
+	return security_ops ? security_ops->syslog(type) : -EPERM;
 }
 
 int security_settime(struct timespec *ts, struct timezone *tz)

@@ -42,9 +42,15 @@ static int show_cpuinfo(struct seq_file *m, void *v)
 	seq_printf(m, fmt, __cpu_name[n],
 	                           (version >> 4) & 0x0f, version & 0x0f,
 	                           (fp_vers >> 4) & 0x0f, fp_vers & 0x0f);
+#ifdef CONFIG_TANGOX
 	seq_printf(m, "BogoMIPS\t\t: %lu.%02lu\n",
 	              cpu_data[n].udelay_val / (500000/HZ),
 	              (cpu_data[n].udelay_val / (5000/HZ)) % 100);
+#else
+	seq_printf(m, "BogoMIPS\t\t: %lu.%02lu\n",
+	              cpu_data[n].udelay_val / (500000/HZ),
+	              (cpu_data[n].udelay_val / (5000/HZ)) % 100);
+#endif
 	seq_printf(m, "wait instruction\t: %s\n", cpu_wait ? "yes" : "no");
 	seq_printf(m, "microsecond timers\t: %s\n",
 	              cpu_has_counter ? "yes" : "no");
@@ -79,6 +85,21 @@ static int show_cpuinfo(struct seq_file *m, void *v)
 	seq_printf(m, fmt, 'I', vcei_count);
 	seq_printf(m, "\n");
 
+#ifdef CONFIG_TANGOX
+	{
+		extern unsigned long tangox_get_cpuclock(void);
+		extern unsigned long tangox_get_sysclock(void);
+		extern unsigned long tangox_get_dspclock(void);
+		extern unsigned long tangox_chip_id(void);
+		unsigned long chip_id = (tangox_chip_id() >> 16) & 0xffff;
+		unsigned long chip_rev = tangox_chip_id() & 0xff;
+		seq_printf(m, "SMP8XXX Chip ID\t\t: %lx\n", chip_id);
+		seq_printf(m, "SMP8XXX Rev ID\t\t: %lx\n", chip_rev);
+		seq_printf(m, "System bus frequency\t: %ld Hz\n", tangox_get_sysclock());
+		seq_printf(m, "CPU frequency\t\t: %ld Hz\n", tangox_get_cpuclock());
+		seq_printf(m, "DSP frequency\t\t: %ld Hz\n", tangox_get_dspclock());
+	}
+#endif
 	return 0;
 }
 

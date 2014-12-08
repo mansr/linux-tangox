@@ -552,6 +552,23 @@ config SNI_RM
 	  Technology and now in turn merged with Fujitsu.  Say Y here to
 	  support this machine type.
 
+config TANGOX
+	bool "Sigma Designs TangoX chips/boards"
+	select BOOT_RAW
+	select CEVT_R4K
+#	select CSRC_R4K
+ 	select CRYPTO_SHA1
+	select DMA_NONCOHERENT
+	select SYS_SUPPORTS_32BIT_KERNEL
+	select SYS_SUPPORTS_LITTLE_ENDIAN
+	select SYS_HAS_CPU_MIPS32_R1
+	select SYS_HAS_CPU_MIPS32_R2
+	select OWN_DMA
+	select DMA_TANGOX
+	select ZONE_DMA
+	help
+	  Enable the support for Sigma Designs chips/boards. 
+
 config MACH_TX39XX
 	bool "Toshiba TX39 series based machines"
 
@@ -646,6 +663,7 @@ source "arch/mips/lasat/Kconfig"
 source "arch/mips/pmc-sierra/Kconfig"
 source "arch/mips/sgi-ip27/Kconfig"
 source "arch/mips/sibyte/Kconfig"
+source "arch/mips/tangox/Kconfig"
 source "arch/mips/txx9/Kconfig"
 source "arch/mips/vr41xx/Kconfig"
 source "arch/mips/cavium-octeon/Kconfig"
@@ -763,6 +781,10 @@ config CFE
 
 config DMA_COHERENT
 	bool
+
+config DMA_TANGOX
+	bool
+	select DMA_NEED_PCI_MAP_STATE
 
 config DMA_NONCOHERENT
 	bool
@@ -984,6 +1006,8 @@ config MIPS_L1_CACHE_SHIFT
 	default "7" if SGI_IP22 || SGI_IP27 || SGI_IP28 || SNI_RM || CPU_CAVIUM_OCTEON
 	default "6" if MIPS_CPU_SCACHE
 	default "4" if PMC_MSP4200_EVAL
+	default "4" if TANGO2
+	default "5" if TANGO3 && !MIPS_CPU_SCACHE
 	default "5"
 
 config HAVE_STD_PC_SERIAL_PORT
@@ -1342,6 +1366,7 @@ config WEAK_ORDERING
 #
 config WEAK_REORDERING_BEYOND_LLSC
 	bool
+
 endmenu
 
 #
@@ -1385,7 +1410,6 @@ config HARDWARE_WATCHPOINTS
 menu "Kernel type"
 
 choice
-
 	prompt "Kernel code model"
 	help
 	  You should only select this option if you have a workload that
@@ -1505,6 +1529,7 @@ config MIPS_MT_SMP
 	select SYS_SUPPORTS_SCHED_SMT if SMP
 	select SYS_SUPPORTS_SMP
 	select SMP_UP
+	select MIPS_CMP
 	help
 	  This is a kernel model which is also known a VSMP or lately
 	  has been marketesed into SMVP.
@@ -1521,6 +1546,7 @@ config MIPS_MT_SMTC
 	select SMP
 	select SYS_SUPPORTS_SMP
 	select SMP_UP
+	select MIPS_CMP
 	help
 	  This is a kernel model which is known a SMTC or lately has been
 	  marketesed into SMVP.
@@ -1541,7 +1567,6 @@ config SCHED_SMT
 
 config SYS_SUPPORTS_SCHED_SMT
 	bool
-
 
 config SYS_SUPPORTS_MULTITHREADING
 	bool
@@ -1612,7 +1637,7 @@ config MIPS_APSP_KSPD
 
 config MIPS_CMP
 	bool "MIPS CMP framework support"
-	depends on SYS_SUPPORTS_MIPS_CMP
+	depends on SYS_SUPPORTS_MIPS_CMP && (MIPS_MT_SMP || MIPS_MT_SMTC)
 	select SYNC_R4K
 	select SYS_SUPPORTS_SMP
 	select SYS_SUPPORTS_SCHED_SMT if SMP
@@ -2144,3 +2169,4 @@ source "security/Kconfig"
 source "crypto/Kconfig"
 
 source "lib/Kconfig"
+

@@ -80,6 +80,14 @@ SECTIONS
 		*(.data.init_task)
 
 		DATA_DATA
+
+		/* Align the initial ramdisk image (INITRD) on page boundaries. */
+		. = ALIGN(_PAGE_SIZE);
+		__rd_start = .;
+		*(.initrd)
+		. = ALIGN(_PAGE_SIZE);
+		__rd_end = .;
+
 		CONSTRUCTORS
 	}
 	_gp = . + 0x8000;

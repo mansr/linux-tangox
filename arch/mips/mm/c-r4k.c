@@ -524,6 +524,12 @@ static void r4k_flush_cache_page(struct vm_area_struct *vma,
 	r4k_on_each_cpu(local_r4k_flush_cache_page, &args, 1);
 }
 
+static void r4k_flush_icache_range(unsigned long start, unsigned long end);
+static void r4k_flush_icache_page(struct vm_area_struct *vma, struct page *page)
+{
+	r4k_flush_icache_range((unsigned long)page_address(page), (unsigned long)page_address(page) + PAGE_SIZE);
+}
+
 static inline void local_r4k_flush_data_cache_page(void * addr)
 {
 	r4k_blast_dcache_page((unsigned long) addr);
@@ -1402,6 +1408,7 @@ void __cpuinit r4k_cache_init(void)
 	flush_data_cache_page	= r4k_flush_data_cache_page;
 	flush_icache_range	= r4k_flush_icache_range;
 	local_flush_icache_range	= local_r4k_flush_icache_range;
+	flush_icache_page       = r4k_flush_icache_page;
 
 #if defined(CONFIG_DMA_NONCOHERENT)
 	if (coherentio) {

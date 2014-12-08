@@ -602,6 +602,164 @@ else
 load-$(CONFIG_CPU_CAVIUM_OCTEON) 	+= 0xffffffff81100000
 endif
 
+ifdef CONFIG_TANGO2
+#
+# Sigma Designs Tango2 boards
+#
+  include $(srctree)/arch/mips/include/asm/tango2/emhwlib_registers_tango2.inc
+  include $(srctree)/arch/mips/include/asm/tango2/emhwlib_dram_tango2.inc
+else
+  ifdef CONFIG_TANGO3
+#
+# Sigma Designs Tango3 boards
+#
+    include $(srctree)/arch/mips/include/asm/tango3/emhwlib_registers_tango3.inc
+    include $(srctree)/arch/mips/include/asm/tango3/emhwlib_dram_tango3.inc
+  endif
+endif
+
+ifdef CONFIG_TANGOX
+ifneq ($(XSDK_DEFAULT_CPU_CERTID),)
+CERT_ID=$(XSDK_DEFAULT_CPU_CERTID)
+endif
+
+ifneq ($(XSDK_DEFAULT_KEY_DOMAIN),)
+CERT_TYPE=$(XSDK_DEFAULT_KEY_DOMAIN)
+endif
+
+ifneq ($(CERT_TYPE),)
+  ifneq ($(CERT_ID),)
+    CERT_SET=y
+  endif
+endif
+
+ifneq ($(CERT_SET),y)
+  ifdef CONFIG_TANGO2
+    ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+      CERT_ID=000c
+      CERT_TYPE=8634_ES4_prod
+    else
+      CERT_ID=000b
+      CERT_TYPE=8634_ES4_dev
+    endif
+  else
+    ifdef CONFIG_TANGO3
+      # Use 0001 for encrypted image (instead of signed-only image) 
+      ifdef CONFIG_TANGO3_SMP8656SF
+        ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+          CERT_ID=000f
+          CERT_TYPE=8656_ES1_prod
+        else
+          CERT_ID=000f
+          CERT_TYPE=8656_ES1_dev
+        endif
+      else
+        ifdef CONFIG_TANGO3_SMP8656OTP
+          ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+            CERT_ID=000f
+            CERT_TYPE=8644_ES1_prod
+          else
+            CERT_ID=000f
+            CERT_TYPE=8644_ES1_dev
+          endif
+        else
+          ifdef CONFIG_TANGO3_SMP8672
+            ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+              CERT_ID=000f
+              CERT_TYPE=8644_ES1_prod
+            else
+              CERT_ID=000f
+              CERT_TYPE=8644_ES1_dev
+            endif
+          else
+            ifdef CONFIG_TANGO3_SMP8674
+              ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+                CERT_ID=000f
+                CERT_TYPE=8644_ES1_prod
+              else
+                CERT_ID=000f
+                CERT_TYPE=8644_ES1_dev
+              endif
+            else
+              ifdef CONFIG_TANGO3_SMP8680
+                ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+                  CERT_ID=000f
+                  CERT_TYPE=8644_ES1_prod
+                else
+                  CERT_ID=000f
+                  CERT_TYPE=8644_ES1_dev
+                endif
+              else
+                ifdef CONFIG_TANGO3_SMP868A
+                  ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+                    CERT_ID=000f
+                    CERT_TYPE=8644_ES1_prod
+                  else
+                    CERT_ID=000f
+                    CERT_TYPE=8644_ES1_dev
+                  endif
+                else
+                  ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+                    CERT_ID=000f
+                    CERT_TYPE=8644_ES1_prod
+                  else
+                    CERT_ID=000f
+                    CERT_TYPE=8644_ES1_dev
+                  endif
+                endif
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+  endif
+endif
+
+internal_hex = 0x$(shell printf "%x" $$(($(1))))
+
+core-$(CONFIG_TANGOX)		+= arch/mips/tangox/
+
+ifdef CONFIG_TANGO2
+  cflags-$(CONFIG_TANGO2)		+= -I$(srctree)/arch/mips/include/asm/mach-tango2
+  load-$(CONFIG_TANGO2)			:= $(call internal_hex,0x80000000+$(MEM_BASE_dram_controller_0)+$(FM_linuxmips__ftext))
+  cflags-$(CONFIG_TANGO2)		+= -DEM86XX_CHIP=EM86XX_CHIPID_TANGO2 -DEM86XX_REVISION=6
+  cflags-$(CONFIG_TANGO2)		+= -DRMCHIP_ID=RMCHIP_ID_SMP8634 -DRMCHIP_REVISION=6
+  cflags-$(CONFIG_TANGO2)		+= -mtune=4kc
+else
+  ifdef CONFIG_TANGO3
+    KERNEL_START_ADDRESS		:= $(CPU_remap2_address)
+    cflags-$(CONFIG_TANGO3)		+= -I$(srctree)/arch/mips/include/asm/mach-tango3
+    load-$(CONFIG_TANGO3)		:= $(call internal_hex,0x80000000+$(KERNEL_START_ADDRESS))
+    cflags-$(CONFIG_TANGO3)		+= -DEM86XX_CHIP=EM86XX_CHIPID_TANGO3 -DEM86XX_REVISION=3
+    cflags-$(CONFIG_TANGO3)		+= -DCPU_REMAP_SPACE=$(KERNEL_START_ADDRESS)UL -mtune=24kf
+    cflags-$(CONFIG_TANGO3_SMP8652)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8652 -DRMCHIP_REVISION=3
+    cflags-$(CONFIG_TANGO3_SMP8654)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8654 -DRMCHIP_REVISION=3
+    cflags-$(CONFIG_TANGO3_SMP8656OTP)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8656 -DRMCHIP_REVISION=3
+    cflags-$(CONFIG_TANGO3_SMP8656SF)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8658 -DRMCHIP_REVISION=3
+    cflags-$(CONFIG_TANGO3_SMP8642)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8642 -DRMCHIP_REVISION=3
+    cflags-$(CONFIG_TANGO3_SMP8644)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8644 -DRMCHIP_REVISION=3
+    cflags-$(CONFIG_TANGO3_SMP8646)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8646 -DRMCHIP_REVISION=3
+    cflags-$(CONFIG_TANGO3_SMP8670)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8670 -DRMCHIP_REVISION=3
+    cflags-$(CONFIG_TANGO3_SMP8672)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8672 -DRMCHIP_REVISION=1
+    cflags-$(CONFIG_TANGO3_SMP8674)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8674 -DRMCHIP_REVISION=1
+    cflags-$(CONFIG_TANGO3_SMP8680)	+= -DRMCHIP_ID=RMCHIP_ID_SMP8680 -DRMCHIP_REVISION=1
+    cflags-$(CONFIG_TANGO3_SMP868A)	+= -DRMCHIP_ID=RMCHIP_ID_SMP868A -DRMCHIP_REVISION=1
+  endif
+endif
+endif
+
+CLEAN_FILES += arch/mips/boot/vmlinux.gz \
+		arch/mips/boot/*.bin \
+		arch/mips/boot/*.xload \
+		arch/mips/boot/*.zbf \
+		arch/mips/boot/zbimage-linux-* 
+
+# ramdisk/initrd support
+# You may need a compressed ramdisk image, named ramdisk.gz in
+# arch/mips/ramdisk
+core-$(CONFIG_EMBEDDED_RAMDISK) += arch/mips/ramdisk/
+
 cflags-y			+= -I$(srctree)/arch/mips/include/asm/mach-generic
 drivers-$(CONFIG_PCI)		+= arch/mips/pci/
 
@@ -694,7 +852,11 @@ vmlinux.32: vmlinux
 vmlinux.64: vmlinux
 	$(OBJCOPY) -O $(64bit-bfd) $(OBJCOPYFLAGS) $< $@
 
-makeboot =$(Q)$(MAKE) $(build)=arch/mips/boot VMLINUX=$(vmlinux-32) $(1)
+ifdef CONFIG_TANGOX
+makeboot =$(Q)$(MAKE) $(build)=arch/mips/boot VMLINUX=$(vmlinux-32) $(1) loadaddr=$(2) certtype=$(3) certid=$(4)
+else
+makeboot =$(Q)$(MAKE) $(build)=arch/mips/boot VMLINUX=$(vmlinux-32) $(1) 
+endif
 
 all:	$(all-y)
 

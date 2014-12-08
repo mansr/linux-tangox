@@ -39,6 +39,20 @@
 #include <linux/nmi.h>
 #include <linux/mutex.h>
 
+#ifdef CONFIG_TANGO2
+#include <asm/tango2/rmdefs.h>
+#include <asm/tango2/tango2_gbus.h>
+#include <asm/tango2/tango2.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/rmdefs.h>
+#include <asm/tango3/tango3_gbus.h>
+#include <asm/tango3/tango3.h>
+#endif
+
+#ifdef CONFIG_TANGOX
+extern unsigned long tangox_get_sysclock(void);
+#endif
+
 #include <asm/io.h>
 #include <asm/irq.h>
 
@@ -388,13 +402,33 @@ static void hub6_serial_out(struct uart_port *p, int offset, int value)
 static unsigned int mem_serial_in(struct uart_port *p, int offset)
 {
 	offset = map_8250_in_reg(p, offset) << p->regshift;
+#ifdef CONFIG_TANGOX
+	{
+		unsigned long v;
+
+		/* no EFR on tango2/tango3 */
+		if (offset == (UART_EFR << p->regshift))
+			v = 0;
+		else
+			v = gbus_read_reg32((unsigned long)p->membase + offset);
+		return v;
+	}
+#else
 	return readb(p->membase + offset);
+#endif
 }
 
 static void mem_serial_out(struct uart_port *p, int offset, int value)
 {
 	offset = map_8250_out_reg(p, offset) << p->regshift;
+#ifdef CONFIG_TANGOX
+	/* no EFR on tango2/tango3 */
+	if (offset != (UART_EFR << p->regshift))
+		gbus_write_reg32((unsigned long)p->membase + offset, value);
+	return;
+#else
 	writeb(value, p->membase + offset);
+#endif
 }
 
 static void mem32_serial_out(struct uart_port *p, int offset, int value)
@@ -547,19 +581,6 @@ serial_out_sync(struct uart_8250_port *up, int offset, int value)
 #define serial_inp(up, offset)		serial_in(up, offset)
 #define serial_outp(up, offset, value)	serial_out(up, offset, value)
 
-/* Uart divisor latch read */
-static inline int _serial_dl_read(struct uart_8250_port *up)
-{
-	return serial_inp(up, UART_DLL) | serial_inp(up, UART_DLM) << 8;
-}
-
-/* Uart divisor latch write */
-static inline void _serial_dl_write(struct uart_8250_port *up, int value)
-{
-	serial_outp(up, UART_DLL, value & 0xff);
-	serial_outp(up, UART_DLM, value >> 8 & 0xff);
-}
-
 #if defined(CONFIG_SERIAL_8250_AU1X00)
 /* Au1x00 haven't got a standard divisor latch */
 static int serial_dl_read(struct uart_8250_port *up)
@@ -595,7 +616,30 @@ static void serial_dl_write(struct uart_8250_port *up, int value)
 		_serial_dl_write(up, value);
 	}
 }
+#elif defined(CONFIG_TANGOX)
+static inline int serial_dl_read(struct uart_8250_port *up)
+{
+	return serial_inp(up, UART_DL);
+}
+
+/* Uart divisor latch write */
+static inline void serial_dl_write(struct uart_8250_port *up, int value)
+{
+	serial_outp(up, UART_DL, value);
+}
 #else
+/* Uart divisor latch read */
+static inline int _serial_dl_read(struct uart_8250_port *up)
+{
+	return serial_inp(up, UART_DLL) | serial_inp(up, UART_DLM) << 8;
+}
+
+/* Uart divisor latch write */
+static inline void _serial_dl_write(struct uart_8250_port *up, int value)
+{
+	serial_outp(up, UART_DLL, value & 0xff);
+	serial_outp(up, UART_DLM, value >> 8 & 0xff);
+}
 #define serial_dl_read(up) _serial_dl_read(up)
 #define serial_dl_write(up, value) _serial_dl_write(up, value)
 #endif
@@ -774,6 +818,16 @@ static unsigned int autoconfig_read_divisor_id(struct uart_8250_port *p)
 	old_lcr = serial_inp(p, UART_LCR);
 	serial_outp(p, UART_LCR, UART_LCR_DLAB);
 
+#ifdef CONFIG_TANGOX
+	old_dll = serial_inp(p, UART_DL) & 0xff;
+	old_dlm = serial_inp(p, UART_DL) >> 8;
+
+	serial_outp(p, UART_DL, 0);
+
+	id = serial_inp(p, UART_DL);
+
+	serial_outp(p, UART_DL, (old_dlm << 8) | old_dll);
+#else
 	old_dll = serial_inp(p, UART_DLL);
 	old_dlm = serial_inp(p, UART_DLM);
 
@@ -784,6 +838,7 @@ static unsigned int autoconfig_read_divisor_id(struct uart_8250_port *p)
 
 	serial_outp(p, UART_DLL, old_dll);
 	serial_outp(p, UART_DLM, old_dlm);
+#endif
 	serial_outp(p, UART_LCR, old_lcr);
 
 	return id;
@@ -1076,7 +1131,6 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 	unsigned char status1, scratch, scratch2, scratch3;
 	unsigned char save_lcr, save_mcr;
 	unsigned long flags;
-
 	if (!up->port.iobase && !up->port.mapbase && !up->port.membase)
 		return;
 
@@ -1635,7 +1689,7 @@ static int serial_link_irq_chain(struct uart_8250_port *up)
 	struct hlist_head *h;
 	struct hlist_node *n;
 	struct irq_info *i;
-	int ret, irq_flags = up->port.flags & UPF_SHARE_IRQ ? IRQF_SHARED : 0;
+	int ret, irq_flags = ((up->port.flags & UPF_SHARE_IRQ) ? IRQF_SHARED : 0);
 
 	mutex_lock(&hash_mutex);
 
@@ -2267,7 +2321,6 @@ serial8250_set_termios(struct uart_port *port, struct ktermios *termios,
 	 */
 	baud = uart_get_baud_rate(port, termios, old, 0, port->uartclk/16);
 	quot = serial8250_get_divisor(port, baud);
-
 	/*
 	 * Oxford Semi 952 rev B workaround
 	 */
@@ -2636,10 +2689,10 @@ static void __init serial8250_isa_init_ports(void)
 	struct uart_8250_port *up;
 	static int first = 1;
 	int i;
-
 	if (!first)
 		return;
 	first = 0;
+
 
 	for (i = 0; i < nr_uarts; i++) {
 		struct uart_8250_port *up = &serial8250_ports[i];
@@ -2768,7 +2821,13 @@ serial8250_console_write(struct console *co, const char *s, unsigned int count)
 static int __init serial8250_console_setup(struct console *co, char *options)
 {
 	struct uart_port *port;
+#ifdef CONFIG_TANGOX
+	extern int tangox_uart_baudrate(int uart);
+	extern int tangox_uart_console_port(void);
+	int baud = tangox_uart_baudrate(tangox_uart_console_port());
+#else
 	int baud = 9600;
+#endif
 	int bits = 8;
 	int parity = 'n';
 	int flow = 'n';

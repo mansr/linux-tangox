@@ -49,6 +49,16 @@
 #include <asm/stacktrace.h>
 #include <asm/irq.h>
 
+#ifdef CONFIG_TANGO2
+#include <asm/tango2/emhwlib_registers_tango2.h>
+#include <asm/tango2/emhwlib_dram_tango2.h>
+#include <asm/tango2/hardware.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/emhwlib_registers_tango3.h>
+#include <asm/tango3/emhwlib_dram_tango3.h>
+#include <asm/tango3/hardware.h>
+#endif
+
 extern void check_wait(void);
 extern asmlinkage void r4k_wait(void);
 extern asmlinkage void rollback_handle_int(void);
@@ -1502,6 +1512,15 @@ void __cpuinit per_cpu_trap_init(void)
 	change_c0_status(ST0_CU|ST0_MX|ST0_RE|ST0_FR|ST0_BEV|ST0_TS|ST0_KX|ST0_SX|ST0_UX,
 			 status_set);
 
+#ifdef CONFIG_TANGOX
+#if defined(CONFIG_TANGO3)
+	ebase = KSEG0ADDR(CPU_REMAP_SPACE);
+#else
+	ebase = KSEG0ADDR(MEM_BASE_dram_controller_0 + FM_RESERVED);
+#endif
+	write_c0_ebase(ebase);
+#endif
+
 	if (cpu_has_mips_r2) {
 		unsigned int enable = 0x0000000f;
 
@@ -1554,6 +1573,10 @@ void __cpuinit per_cpu_trap_init(void)
 		cp0_compare_irq = CP0_LEGACY_COMPARE_IRQ;
 		cp0_perfcount_irq = -1;
 	}
+#ifdef CONFIG_TANGO2
+	cp0_compare_irq = 7; /* hard-wired, cannot be checked by c0_intctl */
+	cp0_perfcount_irq = -1; /* no perfcount_irq */
+#endif
 
 #ifdef CONFIG_MIPS_MT_SMTC
 	}

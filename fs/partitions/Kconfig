@@ -249,3 +249,13 @@ config SYSV68_PARTITION
 	  partition table format used by Motorola Delta machines (using
 	  sysv68).
 	  Otherwise, say N.
+
+config XENV_PARTITION
+	bool "XENV partition support" if PARTITION_ADVANCED 
+	depends on TANGO3
+	default TANGOX_XENV_READ 
+	help
+	  Say Y here if you would like to be able to read the partition
+	  information from XENV.
+	  Otherwise, say N.
+

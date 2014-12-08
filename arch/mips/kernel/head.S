@@ -131,7 +131,7 @@
 
 EXPORT(_stext)
 
-#ifdef CONFIG_BOOT_RAW
+#if defined(CONFIG_BOOT_RAW)
 	/*
 	 * Give us a fighting chance of running if execution beings at the
 	 * kernel load address.  This is needed because this platform does
@@ -139,6 +139,12 @@ EXPORT(_stext)
 	 */
 FEXPORT(__kernel_entry)
 	j	kernel_entry
+#endif
+
+#if defined(CONFIG_TANGOX)
+	/* Creating some buffer for power management purpose */
+	/* Mark 16KB off the starting point */
+	.org 0x4000
 #endif
 
 	__REF
