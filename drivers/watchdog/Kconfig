@@ -55,6 +55,12 @@ config SOFT_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called softdog.
 
+config TANGOX_WATCHDOG
+	tristate "SMP8xxx watchdog"
+	depends on TANGO3
+	help
+	  Hardware watch dog for Sigma Designs' SMP864x/SMP865x/SMP867x/SMP868x chips.
+
 config WM8350_WATCHDOG
 	tristate "WM8350 watchdog"
 	depends on MFD_WM8350
