@@ -686,6 +686,11 @@ extern size_t __copy_user(void *__to, const void *__from, size_t __n);
 	__cu_len_r;							\
 })
 
+#ifdef CONFIG_TANGOX
+extern size_t __invoke_copy_to_user_dma(void __user * __cu_to, const void * __cu_from, long __cu_len);
+extern size_t __invoke_copy_from_user_dma(void * __cu_to, const void __user * __cu_from, long __cu_len);
+#endif
+
 /*
  * __copy_to_user: - Copy a block of data into user space, with less checking.
  * @to:   Destination address, in user space.
@@ -700,6 +705,21 @@ extern size_t __copy_user(void *__to, const void *__from, size_t __n);
  * Returns number of bytes that could not be copied.
  * On success, this will be zero.
  */
+#ifdef CONFIG_TANGOX
+#define __copy_to_user(to, from, n)					\
+({									\
+	void __user *__cu_to;						\
+	const void *__cu_from;						\
+	long __cu_len;							\
+									\
+	might_sleep();							\
+	__cu_to = (to);							\
+	__cu_from = (from);						\
+	__cu_len = (n);							\
+	__cu_len = __invoke_copy_to_user_dma(__cu_to, __cu_from, __cu_len);	\
+	__cu_len;							\
+})
+#else
 #define __copy_to_user(to, from, n)					\
 ({									\
 	void __user *__cu_to;						\
@@ -713,9 +733,24 @@ extern size_t __copy_user(void *__to, const void *__from, size_t __n);
 	__cu_len = __invoke_copy_to_user(__cu_to, __cu_from, __cu_len);	\
 	__cu_len;							\
 })
+#endif
 
 extern size_t __copy_user_inatomic(void *__to, const void *__from, size_t __n);
 
+#ifdef CONFIG_TANGOX
+#define __copy_to_user_inatomic(to, from, n)				\
+({									\
+	void __user *__cu_to;						\
+	const void *__cu_from;						\
+	long __cu_len;							\
+									\
+	__cu_to = (to);							\
+	__cu_from = (from);						\
+	__cu_len = (n);							\
+	__cu_len = __invoke_copy_to_user_dma(__cu_to, __cu_from, __cu_len);	\
+	__cu_len;							\
+})
+#else
 #define __copy_to_user_inatomic(to, from, n)				\
 ({									\
 	void __user *__cu_to;						\
@@ -728,6 +763,7 @@ extern size_t __copy_user_inatomic(void *__to, const void *__from, size_t __n);
 	__cu_len = __invoke_copy_to_user(__cu_to, __cu_from, __cu_len);	\
 	__cu_len;							\
 })
+#endif
 
 #define __copy_from_user_inatomic(to, from, n)				\
 ({									\
@@ -756,6 +792,23 @@ extern size_t __copy_user_inatomic(void *__to, const void *__from, size_t __n);
  * Returns number of bytes that could not be copied.
  * On success, this will be zero.
  */
+#ifdef CONFIG_TANGOX
+#define copy_to_user(to, from, n)					\
+({									\
+	void __user *__cu_to;						\
+	const void *__cu_from;						\
+	long __cu_len;							\
+									\
+	might_sleep();							\
+	__cu_to = (to);							\
+	__cu_from = (from);						\
+	__cu_len = (n);							\
+	if (access_ok(VERIFY_WRITE, __cu_to, __cu_len))			\
+		__cu_len = __invoke_copy_to_user_dma(__cu_to, __cu_from,	\
+		                                 __cu_len);		\
+	__cu_len;							\
+})
+#else
 #define copy_to_user(to, from, n)					\
 ({									\
 	void __user *__cu_to;						\
@@ -771,6 +824,7 @@ extern size_t __copy_user_inatomic(void *__to, const void *__from, size_t __n);
 		                                 __cu_len);		\
 	__cu_len;							\
 })
+#endif
 
 #define __invoke_copy_from_user(to, from, n)				\
 ({									\
@@ -835,6 +889,22 @@ extern size_t __copy_user_inatomic(void *__to, const void *__from, size_t __n);
  * If some data could not be copied, this function will pad the copied
  * data to the requested size using zero bytes.
  */
+#ifdef CONFIG_TANGOX
+#define __copy_from_user(to, from, n)					\
+({									\
+	void *__cu_to;							\
+	const void __user *__cu_from;					\
+	long __cu_len;							\
+									\
+	might_sleep();							\
+	__cu_to = (to);							\
+	__cu_from = (from);						\
+	__cu_len = (n);							\
+	__cu_len = __invoke_copy_from_user_dma(__cu_to, __cu_from,	\
+	                                   __cu_len);			\
+	__cu_len;							\
+})
+#else
 #define __copy_from_user(to, from, n)					\
 ({									\
 	void *__cu_to;							\
@@ -849,6 +919,7 @@ extern size_t __copy_user_inatomic(void *__to, const void *__from, size_t __n);
 	                                   __cu_len);			\
 	__cu_len;							\
 })
+#endif
 
 /*
  * copy_from_user: - Copy a block of data from user space.
@@ -866,6 +937,23 @@ extern size_t __copy_user_inatomic(void *__to, const void *__from, size_t __n);
  * If some data could not be copied, this function will pad the copied
  * data to the requested size using zero bytes.
  */
+#ifdef CONFIG_TANGOX
+#define copy_from_user(to, from, n)					\
+({									\
+	void *__cu_to;							\
+	const void __user *__cu_from;					\
+	long __cu_len;							\
+									\
+	might_sleep();							\
+	__cu_to = (to);							\
+	__cu_from = (from);						\
+	__cu_len = (n);							\
+	if (access_ok(VERIFY_READ, __cu_from, __cu_len))		\
+		__cu_len = __invoke_copy_from_user_dma(__cu_to, __cu_from,	\
+		                                   __cu_len);		\
+	__cu_len;							\
+})
+#else
 #define copy_from_user(to, from, n)					\
 ({									\
 	void *__cu_to;							\
@@ -881,9 +969,28 @@ extern size_t __copy_user_inatomic(void *__to, const void *__from, size_t __n);
 		                                   __cu_len);		\
 	__cu_len;							\
 })
+#endif
 
 #define __copy_in_user(to, from, n)	__copy_from_user(to, from, n)
 
+#ifdef CONFIG_TANGOX
+#define copy_in_user(to, from, n)					\
+({									\
+	void __user *__cu_to;						\
+	const void __user *__cu_from;					\
+	long __cu_len;							\
+									\
+	might_sleep();							\
+	__cu_to = (to);							\
+	__cu_from = (from);						\
+	__cu_len = (n);							\
+	if (likely(access_ok(VERIFY_READ, __cu_from, __cu_len) &&	\
+	           access_ok(VERIFY_WRITE, __cu_to, __cu_len)))		\
+		__cu_len = __invoke_copy_from_user_dma(__cu_to, __cu_from,	\
+		                                   __cu_len);		\
+	__cu_len;							\
+})
+#else
 #define copy_in_user(to, from, n)					\
 ({									\
 	void __user *__cu_to;						\
@@ -900,6 +1007,7 @@ extern size_t __copy_user_inatomic(void *__to, const void *__from, size_t __n);
 		                                   __cu_len);		\
 	__cu_len;							\
 })
+#endif
 
 /*
  * __clear_user: - Zero a block of memory in user space, with less checking.

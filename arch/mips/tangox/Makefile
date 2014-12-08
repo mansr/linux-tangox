@@ -14,3 +14,5 @@ obj-$(CONFIG_TANGOX_XENV_READ) += sha.o xenv.o xenv_config.o
 
 obj-$(CONFIG_TANGOX) += gpio.o
 
+obj-$(CONFIG_TANGOX) += mbus.o
+
