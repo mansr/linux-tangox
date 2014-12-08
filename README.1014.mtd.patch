@@ -1,0 +1,22 @@
+Feature:
+--------
+Customization of MTD layer for SMP86xx chips
+	NOR flash for Tango2
+	NAND flash for Tango3 (outside management zone)
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+1001
+
+Primary author:
+---------------
+Ilhong Yoon/YH Lin/Daniel Ross
+
+Related to which chip version SMP86xx xx=?
+------------------------------------------
+Tango2 ES6/RevA or above, or Tango3 ES1 or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

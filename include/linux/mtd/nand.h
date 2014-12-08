@@ -357,6 +357,8 @@ struct nand_buffers {
  * @badblock_pattern:	[REPLACEABLE] bad block scan pattern used for initial bad block scan
  * @controller:		[REPLACEABLE] a pointer to a hardware controller structure
  *			which is shared among multiple independend devices
+ * @maf_id:		[OPTOINAL] manufacture ID 
+ * @dev_id:		[OPTIONAL] device ID
  * @priv:		[OPTIONAL] pointer to private chip date
  * @errstat:		[OPTIONAL] hardware specific function to perform additional error status checks
  *			(determine if errors are correctable)
@@ -419,6 +421,9 @@ struct nand_chip {
 
 	struct nand_bbt_descr	*badblock_pattern;
 
+	int		maf_id;
+	int		dev_id;
+
 	void		*priv;
 };
 
@@ -434,6 +439,7 @@ struct nand_chip {
 #define NAND_MFR_HYNIX		0xad
 #define NAND_MFR_MICRON		0x2c
 #define NAND_MFR_AMD		0x01
+#define NAND_MFR_ESMT		0x92
 
 /**
  * struct nand_flash_dev - NAND Flash Device ID Structure

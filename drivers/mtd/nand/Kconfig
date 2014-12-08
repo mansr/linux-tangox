@@ -43,6 +43,14 @@ config MTD_NAND_AUTCPU12
 	  This enables the driver for the autronix autcpu12 board to
 	  access the SmartMediaCard.
 
+config MTD_TANGOX_NAND
+        tristate "TANGOX NAND Device Support"
+        depends on TANGO3
+	select MTD_PARTITIONS
+        default m
+        help
+          Support TANGOX NAND Flash in the NAND flash reserved zone.
+
 config MTD_NAND_EDB7312
 	tristate "Support for Cirrus Logic EBD7312 evaluation board"
 	depends on ARCH_EDB7312
