@@ -12,3 +12,5 @@ obj-$(CONFIG_TANGO2) += cpucache.o
 
 obj-$(CONFIG_TANGOX_XENV_READ) += sha.o xenv.o xenv_config.o
 
+obj-$(CONFIG_TANGOX) += gpio.o
+
