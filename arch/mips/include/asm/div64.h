@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2000, 2004  Maciej W. Rozycki
  * Copyright (C) 2003, 07 Ralf Baechle (ralf@linux-mips.org)
+ * Copyright (C) 2009 Wu Zhangjin (wuzj@lemote.com)
  *
  * This file is subject to the terms and conditions of the GNU General Public
  * License.  See the file "COPYING" in the main directory of this archive
@@ -56,6 +57,24 @@
 	(res) = __quot32; \
 	__mod32; })
 
+/*
+ * __do_divu -- unsigned interger dividing
+ *
+ * handle removal of 'h' constraint in GCC 4.4
+ */
+#ifndef GCC_NO_H_CONSTRAINT    /* gcc <= 4.3*/
+#define __do_divu() ({ \
+       __asm__("divu   $0, %z2, %z3" \
+               : "=h" (__upper), "=l" (__high) \
+               : "Jr" (__high), "Jr" (__base) \
+               : GCC_REG_ACCUM); })
+
+#else          /* gcc >= 4.4 */
+#define __do_divu() ({ \
+       __upper = (uintx_t)__high % __base; \
+       __high = (uintx_t)__high / __base; })
+#endif
+
 #define do_div(n, base) ({ \
 	unsigned long long __quot; \
 	unsigned long __mod; \
@@ -70,10 +89,7 @@
 	__upper = __high; \
 	\
 	if (__high) \
-		__asm__("divu	$0, %z2, %z3" \
-			: "=h" (__upper), "=l" (__high) \
-			: "Jr" (__high), "Jr" (__base) \
-			: GCC_REG_ACCUM); \
+		__do_divu(); \
 	\
 	__mod = do_div64_32(__low, __upper, __low, __base); \
 	\
