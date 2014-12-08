@@ -190,14 +190,6 @@ static int ehci_platform_probe(struct platform_device *dev)
 		if (of_property_read_bool(dev->dev.of_node, "big-endian"))
 			ehci->big_endian_mmio = ehci->big_endian_desc = 1;
 
-		priv->phy = devm_phy_get(&dev->dev, "usb");
-		if (IS_ERR(priv->phy)) {
-			err = PTR_ERR(priv->phy);
-			if (err == -EPROBE_DEFER)
-				goto err_put_hcd;
-			priv->phy = NULL;
-		}
-
 		for (clk = 0; clk < EHCI_MAX_CLKS; clk++) {
 			priv->clks[clk] = of_clk_get(dev->dev.of_node, clk);
 			if (IS_ERR(priv->clks[clk])) {
@@ -208,6 +200,14 @@ static int ehci_platform_probe(struct platform_device *dev)
 				break;
 			}
 		}
+	}
+
+	priv->phy = devm_phy_get(&dev->dev, "usb");
+	if (IS_ERR(priv->phy)) {
+		err = PTR_ERR(priv->phy);
+		if (err == -EPROBE_DEFER)
+			goto err_put_hcd;
+		priv->phy = NULL;
 	}
 
 	priv->rst = devm_reset_control_get_optional(&dev->dev, NULL);
