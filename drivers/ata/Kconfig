@@ -361,6 +361,14 @@ config SATA_SVW
 
 	  If unsure, say N.
 
+config SATA_TANGOX
+	tristate "Sigma Designs SMP86xx SATA support"
+	depends on TANGOX
+	select DMA_ENGINE
+	select GENERIC_PHY
+	help
+	  This option enables SATA support for Sigma Designs SMP86xx chips.
+
 config SATA_ULI
 	tristate "ULi Electronics SATA support"
 	depends on PCI

@@ -11,6 +11,8 @@
 #ifndef __TANGOX_SETUP_H
 #define __TANGOX_SETUP_H
 
+#include <linux/platform_data/sata-tangox-phy.h>
+
 #ifdef CONFIG_EARLY_PRINTK
 void prom_console_init(void);
 #else
@@ -42,6 +44,7 @@ void tangox_mem_setup(void);
 int xenv_config(void);
 const char *tangox_xenv_cmdline(void);
 int tangox_sata_enabled(void);
+int tangox_sata_cfg(struct tangox_sata_phy_pdata *pd);
 int tangox_usb_enabled(void);
 int tangox_ethernet_enabled(unsigned int i);
 int tangox_ethernet_getmac(unsigned int i, unsigned char *addr);

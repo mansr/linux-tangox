@@ -261,4 +261,9 @@ config PHY_TANGOX_USB
 	depends on TANGOX
 	select GENERIC_PHY
 
+config PHY_TANGOX_SATA
+	tristate "SMP86xx SATA PHY driver"
+	depends on TANGOX
+	select GENERIC_PHY
+
 endmenu

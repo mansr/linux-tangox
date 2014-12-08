@@ -32,3 +32,4 @@ obj-$(CONFIG_PHY_XGENE)			+= phy-xgene.o
 obj-$(CONFIG_PHY_STIH407_USB)		+= phy-stih407-usb.o
 obj-$(CONFIG_PHY_STIH41X_USB)		+= phy-stih41x-usb.o
 obj-$(CONFIG_PHY_TANGOX_USB)		+= phy-tangox-usb.o
+obj-$(CONFIG_PHY_TANGOX_SATA)		+= phy-tangox-sata.o
