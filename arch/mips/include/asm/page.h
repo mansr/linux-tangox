@@ -63,8 +63,9 @@ static inline void clear_user_page(void *addr, unsigned long vaddr,
 	extern void (*flush_data_cache_page)(unsigned long addr);
 
 	clear_page(addr);
-	if (pages_do_alias((unsigned long) addr, vaddr & PAGE_MASK))
-		flush_data_cache_page((unsigned long)addr);
+	if (cpu_has_vtag_dcache ||
+		pages_do_alias((unsigned long) addr, vaddr & PAGE_MASK))
+			flush_data_cache_page((unsigned long)addr);
 }
 
 extern void copy_user_page(void *vto, void *vfrom, unsigned long vaddr,

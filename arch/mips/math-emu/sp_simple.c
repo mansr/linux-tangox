@@ -61,9 +61,6 @@ ieee754sp ieee754sp_neg(ieee754sp x)
 		SPSIGN(y) = SPSIGN(x);
 		return ieee754sp_nanxcpt(y, "neg");
 	}
-
-	if (ieee754sp_isnan(x))	/* but not infinity */
-		return ieee754sp_nanxcpt(x, "neg", x);
 	return x;
 }
 

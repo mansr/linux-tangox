@@ -152,7 +152,7 @@ static void vsmp_send_ipi_mask(cpumask_t mask, unsigned int action)
 static void __cpuinit vsmp_init_secondary(void)
 {
 	extern int gic_present;
-
+	pr_debug("SMPMT: CPU%d: vsmp_init_secondary\n", smp_processor_id());
 	/* This is Malta specific: IPI,performance and timer inetrrupts */
 	if (gic_present)
 		change_c0_status(ST0_IM, STATUSF_IP3 | STATUSF_IP4 |
@@ -164,6 +164,8 @@ static void __cpuinit vsmp_init_secondary(void)
 
 static void __cpuinit vsmp_smp_finish(void)
 {
+	pr_debug("SMPMT: CPU%d: vsmp_smp_finish\n", smp_processor_id());
+
 	/* CDFIXME: remove this? */
 	write_c0_compare(read_c0_count() + (8* mips_hpt_frequency/HZ));
 
@@ -178,6 +180,7 @@ static void __cpuinit vsmp_smp_finish(void)
 
 static void vsmp_cpus_done(void)
 {
+	pr_debug("SMPMT: CPU%d: vsmp_cpus_done\n", smp_processor_id());
 }
 
 /*
@@ -191,6 +194,8 @@ static void vsmp_cpus_done(void)
 static void __cpuinit vsmp_boot_secondary(int cpu, struct task_struct *idle)
 {
 	struct thread_info *gp = task_thread_info(idle);
+	pr_debug("SMPMT: CPU%d: vsmp_boot_secondary cpu %d\n",
+		smp_processor_id(), cpu);
 	dvpe();
 	set_c0_mvpcontrol(MVPCONTROL_VPC);
 
@@ -232,6 +237,7 @@ static void __init vsmp_smp_setup(void)
 	unsigned int mvpconf0, ntc, tc, ncpu = 0;
 	unsigned int nvpe;
 
+	pr_debug("SMPMT: CPU%d: vsmp_smp_setup\n", smp_processor_id());
 #ifdef CONFIG_MIPS_MT_FPAFF
 	/* If we have an FPU, enroll ourselves in the FPU-full mask */
 	if (cpu_has_fpu)
@@ -272,6 +278,8 @@ static void __init vsmp_smp_setup(void)
 
 static void __init vsmp_prepare_cpus(unsigned int max_cpus)
 {
+	pr_debug("SMPMT: CPU%d: vsmp_prepare_cpus %d\n",
+		smp_processor_id(), max_cpus);
 	mips_mt_set_cpuoptions();
 }
 

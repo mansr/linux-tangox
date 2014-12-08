@@ -76,15 +76,12 @@ ieee754dp ieee754dp_abs(ieee754dp x)
 	CLEARCX;
 	FLUSHXDP;
 
+	/* Clear sign ALWAYS, irrespective of NaN */
+	DPSIGN(x) = 0;
+
 	if (xc == IEEE754_CLASS_SNAN) {
 		SETCX(IEEE754_INVALID_OPERATION);
-		return ieee754dp_nanxcpt(ieee754dp_indef(), "neg");
+		return ieee754dp_nanxcpt(ieee754dp_indef(), "abs");
 	}
-
-	if (ieee754dp_isnan(x))	/* but not infinity */
-		return ieee754dp_nanxcpt(x, "abs", x);
-
-	/* quick fix up */
-	DPSIGN(x) = 0;
 	return x;
 }
