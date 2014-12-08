@@ -1,0 +1,21 @@
+Feature:
+--------
+Supporting YAFFS(2) based on 2010/10/20 snapshot from 
+git://www.aleph1.co.uk/yaffs2 
+
+plus TangoX specific changes.
+
+Prerequisite patch numbers:
+---------------------------
+none
+
+Primary author:
+---------------
+YH Lin
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango3 ES3 or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------
