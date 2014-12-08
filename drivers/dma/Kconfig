@@ -409,6 +409,12 @@ config NBPFAXI_DMA
 	help
 	  Support for "Type-AXI" NBPF DMA IPs from Renesas
 
+config TANGOX_DMA
+	tristate "Sigma Designs SMP86xx DMA support"
+	depends on TANGOX
+	select DMA_ENGINE
+	select DMA_VIRTUAL_CHANNELS
+
 config DMA_ENGINE
 	bool
 
