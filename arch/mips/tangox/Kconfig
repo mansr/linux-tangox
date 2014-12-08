@@ -1,0 +1,84 @@
+if TANGOX
+
+config TANGOX_EXT_CLOCK
+	int "External clock frequency"
+	default 27000000
+	help
+	 External crystal frequency in Hz.
+
+config TANGOX_XENV_READ
+	bool "Read XENV parameters"
+
+menu "XENV fallback settings"
+
+config TANGOX_XENV_DEF_UART0
+	bool "UART0 enabled"
+	default y
+
+config TANGOX_XENV_DEF_UART1
+	bool "UART1 enabled"
+	default y
+
+config TANGOX_XENV_DEF_BAUDRATE
+	int "Default baudrate"
+	default 115200
+
+config TANGOX_XENV_DEF_CONSOLE_UART_PORT
+	int "Console UART port"
+	default 0
+
+config TANGOX_XENV_DEF_ENET
+	bool "Ethernet enabled"
+	default n
+
+config TANGOX_XENV_DEF_FIP
+	bool "FIP enabled"
+	default n
+
+config TANGOX_XENV_DEF_I2CM
+	bool "I2CM enabled"
+	default n
+
+config TANGOX_XENV_DEF_I2CS
+	bool "I2CS enabled"
+	default n
+
+config TANGOX_XENV_DEF_IR
+	bool "IR enabled"
+	default n
+
+config TANGOX_XENV_DEF_USB
+	bool "USB enabled"
+	default n
+
+config TANGOX_XENV_DEF_SATA
+	bool "SATA enabled"
+	default n
+
+config TANGOX_XENV_DEF_PCIHOST
+	bool "PCI Host enabled"
+	default n
+
+config TANGOX_XENV_DEF_PCI_ID1
+	bool "PCI device 1 enabled"
+	depends on TANGOX_XENV_DEF_PCIHOST
+	default n
+
+config TANGOX_XENV_DEF_PCI_ID2
+	bool "PCI device 2 enabled"
+	depends on TANGOX_XENV_DEF_PCIHOST
+	default n
+
+config TANGOX_XENV_DEF_PCI_ID3
+	bool "PCI device 3 enabled"
+	depends on TANGOX_XENV_DEF_PCIHOST
+	default n
+
+config TANGOX_XENV_DEF_PCI_ID4
+	bool "PCI device 4 enabled"
+	depends on TANGOX_XENV_DEF_PCIHOST
+	default n
+
+endmenu
+
+endif
