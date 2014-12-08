@@ -39,7 +39,7 @@ void sha256_full(u8 *digest, const u8 *src, u32 len);
 #define xos_strcmp(x,y)	   strcmp(x,y)
 #define xos_memcpy(x,y,z)  memcpy(x,y,z)
 
-void __init xenv_digest_full(u8 *digest, const u8 *src, u32 len)
+void xenv_digest_full(u8 *digest, const u8 *src, u32 len)
 {
 #if defined(CONFIG_TANGO2)
 	sha1_full(digest, src, len);
@@ -62,7 +62,7 @@ static void dump_digest(const u8 *digest)
 /*
  * check for valid XENV at given address
  */
-int __init xenv_isvalid(u32 *base, u32 maxsize)
+int xenv_isvalid(u32 *base, u32 maxsize)
 {
 	u32 env_size = base[0];
 	u32 hash[XENV_DIGEST_SIZE/4];
@@ -81,7 +81,7 @@ int __init xenv_isvalid(u32 *base, u32 maxsize)
 	return -1;
 }
 
-int __init xenv_foreach(u32 *xenv_base, u32 size,
+int xenv_foreach(u32 *xenv_base, u32 size,
 			void (*cb)(char *recordname, void *data, u32 datasize))
 {
 	int i;
@@ -112,7 +112,7 @@ int __init xenv_foreach(u32 *xenv_base, u32 size,
 
 #if defined(CONFIG_TANGO3)
 /* Use this to set xenv to lrrw */
-static int __init xenv_lookup(RMuint32 *base,RMuint32 size,RMascii *recordname)
+static int xenv_lookup(RMuint32 *base,RMuint32 size,RMascii *recordname)
 {
 	RMascii *p;
 	int i;
@@ -141,7 +141,7 @@ static int __init xenv_lookup(RMuint32 *base,RMuint32 size,RMascii *recordname)
 }
 
 /* Use this to get xenv to lrrw/lrro */
-int __init xenv_get(u32 *base, u32 size, char *recordname, void *dst, u32 *datasize)
+int xenv_get(u32 *base, u32 size, char *recordname, void *dst, u32 *datasize)
 {
 	RMascii *p = (RMascii *)base;
 	RMuint32 data_len;
@@ -177,7 +177,7 @@ int __init xenv_get(u32 *base, u32 size, char *recordname, void *dst, u32 *datas
 	return 0 /* RM_OK */;
 }
 
-int __init xenv_set(u32 *base, u32 size, char *recordname, void *src, u8 attr, u32 datasize)
+int xenv_set(u32 *base, u32 size, char *recordname, void *src, u8 attr, u32 datasize)
 {
 	RMascii *p;
 	RMuint32 env_size;
@@ -244,7 +244,7 @@ int __init xenv_set(u32 *base, u32 size, char *recordname, void *src, u8 attr, u
 #endif
 
 #ifdef CONFIG_TANGOX_XENV_DUMP
-void __init xenv_dump(u32 *xenv_base, u32 size)
+void xenv_dump(u32 *xenv_base, u32 size)
 {
 	int i;
 	u32 records = 0;
@@ -278,4 +278,8 @@ void __init xenv_dump(u32 *xenv_base, u32 size)
 
 	printk("%d records, %d bytes\n\n", records, size);
 }
+#endif
+
+#if defined(CONFIG_TANGO3)
+EXPORT_SYMBOL(xenv_get);
 #endif

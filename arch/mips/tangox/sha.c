@@ -23,7 +23,7 @@
 #define SHA1_HMAC_BLOCK_SIZE	64
 #define SHA_WORKSPACE_WORDS 	80
 
-static void __init __sha1_init(struct sha1_ctx *sctx)
+static void __sha1_init(struct sha1_ctx *sctx)
 {
 	static const struct sha1_ctx initstate = {
 	  0,
@@ -33,7 +33,7 @@ static void __init __sha1_init(struct sha1_ctx *sctx)
 	*sctx = initstate;
 }
 
-static void __init __sha1_update(struct sha1_ctx *sctx, const u8 *data, unsigned int len)
+static void __sha1_update(struct sha1_ctx *sctx, const u8 *data, unsigned int len)
 {
 	unsigned int partial, done;
 	const u8 *src;
@@ -65,7 +65,7 @@ static void __init __sha1_update(struct sha1_ctx *sctx, const u8 *data, unsigned
 }
 
 /* Add padding and return the message digest. */
-static void __init __sha1_final(struct sha1_ctx *sctx, u8 *out)
+static void __sha1_final(struct sha1_ctx *sctx, u8 *out)
 {
 	__be32 *dst = (__be32 *)out;
 	u32 i, index, padlen;
@@ -92,7 +92,7 @@ static void __init __sha1_final(struct sha1_ctx *sctx, u8 *out)
 #endif /* CONFIG_CRYPTO_SHA1 */
 
 #ifdef CONFIG_CRYPTO_SHA1
-void __init sha1_full(u8 *digest, const u8 *src, u32 len)
+void sha1_full(u8 *digest, const u8 *src, u32 len)
 {
 	int i;
 	u8 tmp;
@@ -150,7 +150,7 @@ static inline void BLEND_OP(int I, u32 *W)
 	W[I] = s1(W[I-2]) + W[I-7] + s0(W[I-15]) + W[I-16];
 }
 
-static void __init __sha256_transform(u32 *state, const u8 *input)
+static void __sha256_transform(u32 *state, const u8 *input)
 {
 	u32 a, b, c, d, e, f, g, h, t1, t2;
 	u32 W[64];
@@ -313,7 +313,7 @@ static void __init __sha256_transform(u32 *state, const u8 *input)
 	memset(W, 0, 64 * sizeof(u32));
 }
 
-static void __init __sha256_init(struct sha256_ctx *sctx)
+static void __sha256_init(struct sha256_ctx *sctx)
 {
 	sctx->state[0] = H0;
 	sctx->state[1] = H1;
@@ -326,7 +326,7 @@ static void __init __sha256_init(struct sha256_ctx *sctx)
 	sctx->count[0] = sctx->count[1] = 0;
 }
 
-static void __init __sha256_update(struct sha256_ctx *sctx, const u8 *data, unsigned int len)
+static void __sha256_update(struct sha256_ctx *sctx, const u8 *data, unsigned int len)
 {
 	unsigned int i, index, part_len;
 
@@ -357,7 +357,7 @@ static void __init __sha256_update(struct sha256_ctx *sctx, const u8 *data, unsi
 	memcpy(&sctx->buf[index], &data[i], len-i);
 }
 
-static void __init __sha256_final(struct sha256_ctx *sctx, u8 *out)
+static void __sha256_final(struct sha256_ctx *sctx, u8 *out)
 {
 	__be32 *dst = (__be32 *)out;
 	__be32 bits[2];
@@ -387,7 +387,7 @@ static void __init __sha256_final(struct sha256_ctx *sctx, u8 *out)
 #endif
 
 #ifdef CONFIG_CRYPTO_SHA256
-void __init sha256_full(u8 *digest, const u8 *src, u32 len)
+void sha256_full(u8 *digest, const u8 *src, u32 len)
 {
 	int i;
 	u8 tmp;

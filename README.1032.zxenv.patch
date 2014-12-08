@@ -1,0 +1,20 @@
+Feature:
+--------
+Expose in-memory zxenv for user level access (read-only).
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+1001
+
+Primary author:
+---------------
+YH Lin
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango3
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

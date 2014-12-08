@@ -16,3 +16,7 @@ obj-$(CONFIG_TANGOX) += gpio.o
 
 obj-$(CONFIG_TANGOX) += mbus.o
 
+ifdef CONFIG_TANGO3
+obj-$(CONFIG_TANGOX_XENV_READ) += zxenv.o
+endif
+ 

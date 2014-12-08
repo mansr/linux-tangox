@@ -221,7 +221,7 @@ static u32 standby_gpiodir = 0, standby_gpiodata = 0;
 static char xenv_cmdline[CL_SIZE] = { 0 };
 
 #if defined(CONFIG_TANGO3)
-static unsigned long zxenv[MAX_XENV_SIZE/sizeof(unsigned long)] __initdata = { 0 };
+extern unsigned long tangox_zxenv[];
 #endif
 
 #ifdef CONFIG_TANGOX_XENV_READ
@@ -371,7 +371,7 @@ static int __init xenv_read_content(void)
 	 */
 #if defined(CONFIG_TANGO3)
 	unsigned int size, tmp, copy_size;
-	unsigned char *xenv_blk = (unsigned char *)zxenv;
+	unsigned char *xenv_blk = (unsigned char *)tangox_zxenv;
 	xenv_gbus_addr = xenv_addr = gbus_read_reg32(REG_BASE_cpu_block + LR_ZBOOTXENV_LOCATION);
 #else
 	xenv_gbus_addr = xenv_addr = gbus_read_reg32(REG_BASE_cpu_block + LR_XENV_LOCATION);
@@ -390,7 +390,7 @@ static int __init xenv_read_content(void)
 
 #if defined(CONFIG_TANGO3)
 	/*
-	 * may need to make a copy of XENV (if it acrosses remap boundary)
+	 * make a copy of XENV
 	 */
 	xenv_size = *((int *)xenv_addr);
 	copy_size = TMP_REMAPPED_SIZE - (xenv_gbus_addr & (TMP_REMAPPED_SIZE-1));
@@ -402,8 +402,10 @@ static int __init xenv_read_content(void)
 		gbus_write_reg32(REG_BASE_cpu_block + TMP_REMAPPED_REG, (xenv_gbus_addr + TMP_REMAPPED_SIZE) & TMP_REMAPPED_MASK);
 		iob();
 		memcpy(xenv_blk + copy_size, (void *)KSEG1ADDR(TMP_REMAPPED_BASE), xenv_size - copy_size);
-		xenv_addr = (unsigned long)xenv_blk; /* use the copy */
+	} else {
+		memcpy(xenv_blk, (void *)xenv_addr, xenv_size);
 	}
+	xenv_addr = (unsigned long)xenv_blk; /* use the copy */
 #endif
 
 	/*

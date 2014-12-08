@@ -50,6 +50,7 @@ int is_tango3_es2(void);
 unsigned long em8xxx_remap_registers[5];
 #elif defined(CONFIG_TANGO3)
 unsigned long em8xxx_remap_registers[9];
+unsigned long tangox_zxenv[MAX_XENV_SIZE/sizeof(unsigned long)] = { 0 };
 #endif 
 
 /*
