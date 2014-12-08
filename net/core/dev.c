@@ -443,6 +443,10 @@ void dev_remove_pack(struct packet_type *pt)
 /* Boot time configuration table */
 static struct netdev_boot_setup dev_boot_setup[NETDEV_BOOT_SETUP_MAX];
 
+#ifdef CONFIG_SD_IPFILTER
+void *(*sd_ipfilter)(unsigned char *, int) = NULL;
+#endif
+
 /**
  *	netdev_boot_setup_add	- add new setup entry
  *	@name: name of the device
@@ -1948,6 +1952,13 @@ int netif_rx(struct sk_buff *skb)
 	struct softnet_data *queue;
 	unsigned long flags;
 
+#ifdef CONFIG_SD_IPFILTER
+	if ((sd_ipfilter != NULL) && (((*sd_ipfilter)(skb->data, skb->len)) == NULL)) {
+		kfree_skb(skb);
+		return NET_RX_SUCCESS;
+	}
+#endif
+
 	/* if netpoll wants it, pretend we never saw it */
 	if (netpoll_rx(skb))
 		return NET_RX_DROP;
@@ -2234,6 +2245,13 @@ int netif_receive_skb(struct sk_buff *skb)
 	struct net_device *null_or_orig;
 	int ret = NET_RX_DROP;
 	__be16 type;
+
+#ifdef CONFIG_SD_IPFILTER
+	if ((sd_ipfilter != NULL) && (((*sd_ipfilter)(skb->data, skb->len)) == NULL)) {
+		kfree_skb(skb);
+		return NET_RX_SUCCESS;
+	}
+#endif
 
 	if (skb->vlan_tci && vlan_hwaccel_do_receive(skb))
 		return NET_RX_SUCCESS;
@@ -5267,6 +5285,10 @@ EXPORT_SYMBOL(dev_get_flags);
 EXPORT_SYMBOL(br_handle_frame_hook);
 EXPORT_SYMBOL(br_fdb_get_hook);
 EXPORT_SYMBOL(br_fdb_put_hook);
+#endif
+
+#ifdef CONFIG_SD_IPFILTER
+EXPORT_SYMBOL(sd_ipfilter);
 #endif
 
 EXPORT_SYMBOL(dev_load);
