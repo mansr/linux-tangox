@@ -92,6 +92,13 @@ config ATA_SFF
 
 if ATA_SFF
 
+config SATA_TANGOX
+	tristate "SMP864x/SMP865x/SMP867x/SMP868x Embedded SATA support"
+	depends on TANGO3
+	help
+	  This option enables SATA support for Sigma Designs' 
+	  SMP864x/SMP865x/SMP867x/SMP868x chips.
+   
 config SATA_SVW
 	tristate "ServerWorks Frodo / Apple K2 SATA support"
 	depends on PCI

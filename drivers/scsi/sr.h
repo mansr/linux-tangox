@@ -32,7 +32,7 @@ struct scsi_device;
 
 typedef struct scsi_cd {
 	struct scsi_driver *driver;
-	unsigned capacity;	/* size in blocks                       */
+	long capacity;	/* size in blocks                       */
 	struct scsi_device *device;
 	unsigned int vendor;	/* vendor code, see sr_vendor.c         */
 	unsigned long ms_offset;	/* for reading multisession-CD's        */

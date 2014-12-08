@@ -3728,7 +3728,7 @@ int sata_link_resume(struct ata_link *link, const unsigned long *params,
 	if ((rc = sata_scr_read(link, SCR_CONTROL, &scontrol)))
 		return rc;
 
-	scontrol = (scontrol & 0x0f0) | 0x300;
+	scontrol = (scontrol & 0x0f0) | 0x000;
 
 	if ((rc = sata_scr_write(link, SCR_CONTROL, scontrol)))
 		return rc;
@@ -3837,7 +3837,7 @@ int sata_link_hardreset(struct ata_link *link, const unsigned long *timing,
 		if ((rc = sata_scr_read(link, SCR_CONTROL, &scontrol)))
 			goto out;
 
-		scontrol = (scontrol & 0x0f0) | 0x304;
+		scontrol = (scontrol & 0x0f0) | 0x004;
 
 		if ((rc = sata_scr_write(link, SCR_CONTROL, scontrol)))
 			goto out;
@@ -3849,7 +3849,7 @@ int sata_link_hardreset(struct ata_link *link, const unsigned long *timing,
 	if ((rc = sata_scr_read(link, SCR_CONTROL, &scontrol)))
 		goto out;
 
-	scontrol = (scontrol & 0x0f0) | 0x301;
+	scontrol = (scontrol & 0x0f0) | 0x001;
 
 	if ((rc = sata_scr_write_flush(link, SCR_CONTROL, scontrol)))
 		goto out;
