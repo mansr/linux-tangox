@@ -1,0 +1,18 @@
+Feature:
+--------
+Common patch
+
+Prerequisite patch numbers:
+---------------------------
+None
+
+Primary author:
+---------------
+YH Lin/Emmanuel Michon
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango2 ES6/RevA, Tango3 ES1 or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------
