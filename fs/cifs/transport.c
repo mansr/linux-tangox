@@ -611,8 +611,12 @@ SendReceive2(const unsigned int xid, struct cifsSesInfo *ses,
 		if (receive_len >= sizeof(struct smb_hdr) - 4
 		    /* do not count RFC1001 header */  +
 		    (2 * midQ->resp_buf->WordCount) + 2 /* bcc */ )
+#ifdef CONFIG_MIPS
+			BCC_SET(midQ->resp_buf, le16_to_cpu(BCC_LE(midQ->resp_buf)));
+#else
 			BCC(midQ->resp_buf) =
 				le16_to_cpu(BCC_LE(midQ->resp_buf));
+#endif
 		if ((flags & CIFS_NO_RESP) == 0)
 			midQ->resp_buf = NULL;  /* mark it so buf will
 						   not be freed by
@@ -800,7 +804,11 @@ SendReceive(const unsigned int xid, struct cifsSesInfo *ses,
 		if (receive_len >= sizeof(struct smb_hdr) - 4
 		    /* do not count RFC1001 header */  +
 		    (2 * out_buf->WordCount) + 2 /* bcc */ )
+#ifdef CONFIG_MIPS
+			BCC_SET(out_buf, le16_to_cpu(BCC_LE(out_buf)));
+#else
 			BCC(out_buf) = le16_to_cpu(BCC_LE(out_buf));
+#endif
 	} else {
 		rc = -EIO;
 		cERROR(1, ("Bad MID state?"));
@@ -1050,7 +1058,11 @@ SendReceiveBlockingLock(const unsigned int xid, struct cifsTconInfo *tcon,
 	if (receive_len >= sizeof(struct smb_hdr) - 4
 	    /* do not count RFC1001 header */  +
 	    (2 * out_buf->WordCount) + 2 /* bcc */ )
+#ifdef CONFIG_MIPS
+		BCC_SET(out_buf, le16_to_cpu(BCC_LE(out_buf)));
+#else
 		BCC(out_buf) = le16_to_cpu(BCC_LE(out_buf));
+#endif
 
 out:
 	DeleteMidQEntry(midQ);

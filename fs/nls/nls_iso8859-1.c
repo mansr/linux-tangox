@@ -12,6 +12,7 @@
 #include <linux/string.h>
 #include <linux/nls.h>
 #include <linux/errno.h>
+#include <asm/unaligned.h>
 
 static const wchar_t charset2uni[256] = {
 	/* 0x00*/
@@ -227,8 +228,8 @@ static int uni2char(wchar_t uni, unsigned char *out, int boundlen)
 
 static int char2uni(const unsigned char *rawstring, int boundlen, wchar_t *uni)
 {
-	*uni = charset2uni[*rawstring];
-	if (*uni == 0x0000)
+	put_unaligned((wchar_t)charset2uni[*rawstring], uni);
+	if (get_unaligned(uni) == 0x0000)
 		return -EINVAL;
 	return 1;
 }

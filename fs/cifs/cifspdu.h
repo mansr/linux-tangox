@@ -414,8 +414,16 @@ struct smb_hdr {
 	__u8 WordCount;
 } __attribute__((packed));
 /* given a pointer to an smb_hdr retrieve the value of byte count */
+#ifdef CONFIG_MIPS
+#define BCC(smb_var) get_unaligned((__u16 *)((char *)smb_var + sizeof(struct smb_hdr) + (2 * smb_var->WordCount)))
+#define BCC_SET(smb_var,val) put_unaligned((__u16)val,(__u16 *)((char *)smb_var + sizeof(struct smb_hdr) + (2 * smb_var->WordCount)))
+#define BCC_LE(smb_var) get_unaligned((__le16 *)((char *)smb_var + sizeof(struct smb_hdr) + (2 * smb_var->WordCount)))
+#define BCC_LE_SET(smb_var,val) put_unaligned((__le16)val,(__le16 *)((char *)smb_var + sizeof(struct smb_hdr) + (2 * smb_var->WordCount)))
+#else
 #define BCC(smb_var) (*(__u16 *)((char *)smb_var + sizeof(struct smb_hdr) + (2 * smb_var->WordCount)))
 #define BCC_LE(smb_var) (*(__le16 *)((char *)smb_var + sizeof(struct smb_hdr) + (2 * smb_var->WordCount)))
+#endif
+
 /* given a pointer to an smb_hdr retrieve the pointer to the byte area */
 #define pByteArea(smb_var) ((unsigned char *)smb_var + sizeof(struct smb_hdr) + (2 * smb_var->WordCount) + 2)
 

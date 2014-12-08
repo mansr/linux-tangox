@@ -430,7 +430,13 @@ static int validate_t2(struct smb_t2_rsp *pSMB)
 				pBCC = (pSMB->hdr.WordCount * 2) +
 					sizeof(struct smb_hdr) +
 					(char *)pSMB;
-				if ((total_size <= (*(u16 *)pBCC)) &&
+				if ((total_size <= 
+#ifdef CONFIG_MIPS
+					(get_unaligned((u16 *)pBCC))
+#else
+					(*(u16 *)pBCC)
+#endif
+					) &&
 				   (total_size <
 					CIFSMaxBufSize+MAX_CIFS_HDR_SIZE)) {
 					return 0;

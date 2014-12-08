@@ -299,7 +299,11 @@ static int coalesce_t2(struct smb_hdr *psecond, struct smb_hdr *pTargetSMB)
 	pSMBt->t2_rsp.DataCount = cpu_to_le16(total_in_buf);
 	byte_count = le16_to_cpu(BCC_LE(pTargetSMB));
 	byte_count += total_in_buf2;
+#ifdef CONFIG_MIPS
+	BCC_LE_SET(pTargetSMB, cpu_to_le16(byte_count));
+#else
 	BCC_LE(pTargetSMB) = cpu_to_le16(byte_count);
+#endif
 
 	byte_count = pTargetSMB->smb_buf_length;
 	byte_count += total_in_buf2;

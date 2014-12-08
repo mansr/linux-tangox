@@ -77,14 +77,25 @@ cifs_strtoUCS(__le16 *to, const char *from, int len,
 			       ("strtoUCS: char2uni of %d returned %d",
 				(int)*from, charlen));
 			/* A question mark */
+#ifdef CONFIG_MIPS
+			put_unaligned((__le16)cpu_to_le16(0x003f), &to[i]);
+#else
 			to[i] = cpu_to_le16(0x003f);
+#endif
 			charlen = 1;
 		} else
+#ifdef CONFIG_MIPS
+			put_unaligned((__le16)cpu_to_le16(get_unaligned(&wchar_to[i])), &to[i]);
+#else
 			to[i] = cpu_to_le16(wchar_to[i]);
-
+#endif
 	}
 
+#ifdef CONFIG_MIPS
+	put_unaligned((__le16)0, &to[i]);
+#else
 	to[i] = 0;
+#endif
 	return i;
 }
 

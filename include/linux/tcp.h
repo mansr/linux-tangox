@@ -54,7 +54,7 @@ struct tcphdr {
 	__be16	window;
 	__sum16	check;
 	__be16	urg_ptr;
-};
+} __attribute__ ((packed));
 
 /*
  *	The union cast uses a gcc extension to avoid aliasing problems
@@ -64,7 +64,7 @@ struct tcphdr {
 union tcp_word_hdr { 
 	struct tcphdr hdr;
 	__be32 		  words[5];
-}; 
+} __attribute__ ((packed));
 
 #define tcp_flag_word(tp) ( ((union tcp_word_hdr *)(tp))->words [3]) 
 
@@ -197,12 +197,12 @@ static inline unsigned int tcp_optlen(const struct sk_buff *skb)
 struct tcp_sack_block_wire {
 	__be32	start_seq;
 	__be32	end_seq;
-};
+} __attribute__ ((packed));
 
 struct tcp_sack_block {
 	u32	start_seq;
 	u32	end_seq;
-};
+} __attribute__ ((packed));
 
 struct tcp_options_received {
 /*	PAWS/RTTM data	*/

@@ -657,7 +657,11 @@ CIFS_SessSetup(unsigned int xid, struct cifsSesInfo *ses, int first_time,
 	count = iov[1].iov_len + iov[2].iov_len;
 	smb_buf->smb_buf_length += count;
 
+#ifdef CONFIG_MIPS
+	BCC_LE_SET(smb_buf, cpu_to_le16(count));
+#else
 	BCC_LE(smb_buf) = cpu_to_le16(count);
+#endif
 
 	rc = SendReceive2(xid, ses, iov, 3 /* num_iovecs */, &resp_buf_type,
 			  CIFS_STD_OP /* not long */ | CIFS_LOG_ERROR);

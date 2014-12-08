@@ -15,6 +15,8 @@
 
 #include <asm/uaccess.h>
 
+#include <asm/unaligned.h>
+
 /*
  * computes the checksum of a memory block at buff, length len,
  * and adds in "sum" (32-bit)
@@ -102,26 +104,30 @@ static inline __sum16 ip_fast_csum(const void *iph, unsigned int ihl)
 {
 	const unsigned int *word = iph;
 	const unsigned int *stop = word + ihl;
-	unsigned int csum;
+	unsigned int csum, tmp;
 	int carry;
 
-	csum = word[0];
-	csum += word[1];
-	carry = (csum < word[1]);
+	csum = get_unaligned(word);
+	tmp = get_unaligned(word + 1);
+	csum += tmp;
+	carry = (csum < tmp);
 	csum += carry;
 
-	csum += word[2];
-	carry = (csum < word[2]);
+	tmp = get_unaligned(word + 2);
+	csum += tmp;
+	carry = (csum < tmp);
 	csum += carry;
 
-	csum += word[3];
-	carry = (csum < word[3]);
+	tmp = get_unaligned(word + 3);
+	csum += tmp;
+	carry = (csum < tmp);
 	csum += carry;
 
 	word += 4;
 	do {
-		csum += *word;
-		carry = (csum < *word);
+		tmp = get_unaligned(word);
+		csum += tmp;
+		carry = (csum < tmp);
 		csum += carry;
 		word++;
 	} while (word != stop);

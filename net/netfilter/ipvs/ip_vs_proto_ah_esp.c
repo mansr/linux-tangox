@@ -31,7 +31,7 @@ struct isakmp_hdr {
 	__u8		flags;
 	__u32		msgid;
 	__u32		length;
-};
+} __attribute__ ((packed));
 
 */
 
