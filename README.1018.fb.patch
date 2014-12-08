@@ -1,0 +1,18 @@
+Feature:
+--------
+To enable more support for frame buffer driver
+
+Prerequisite patch numbers:
+---------------------------
+none
+
+Primary author:
+---------------
+YH Lin
+
+Related to which chip version SMP86xx xx=?
+------------------------------------------
+all
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------
