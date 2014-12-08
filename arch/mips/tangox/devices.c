@@ -289,3 +289,20 @@ static int __init tangox_enet_register(void)
 	return 0;
 }
 device_initcall(tangox_enet_register);
+
+static struct resource tangox_watchdog_resources[] = {
+	DEFINE_RES_MEM(WATCHDOG_BASE, 8),
+};
+
+static struct platform_device tangox_watchdog_device = {
+	.name		= "tangox-wdt",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(tangox_watchdog_resources),
+	.resource	= tangox_watchdog_resources,
+};
+
+static int __init tangox_watchdog_register(void)
+{
+	return platform_device_register(&tangox_watchdog_device);
+}
+device_initcall(tangox_watchdog_register);

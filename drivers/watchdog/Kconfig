@@ -1248,6 +1248,13 @@ config RALINK_WDT
 	help
 	  Hardware driver for the Ralink SoC Watchdog Timer.
 
+config TANGOX_WDT
+	tristate "SMP86xx watchdog"
+	select WATCHDOG_CORE
+	depends on TANGOX
+	help
+	  Watchdog driver for Sigma Designs SMP86xx.
+
 # PARISC Architecture
 
 # POWERPC Architecture
