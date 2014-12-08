@@ -1,0 +1,21 @@
+Feature:
+--------
+Optimized memory copy/set operations for MIPS 24K/74K/1004K 
+(bug#10799)
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+1001
+
+Primary author:
+---------------
+Emmanuel Michon
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango3 ES3 or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------
