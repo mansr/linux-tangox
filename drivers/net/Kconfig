@@ -1282,6 +1282,16 @@ config IBMVETH
 
 source "drivers/net/ibm_newemac/Kconfig"
 
+config TANGO2_ENET
+	tristate "SMP863x Builtin Ethernet support"
+	depends on NET_ETHERNET && TANGO2 
+	select MII
+	select CRC32
+	help
+	 This option adds support for the SMP863x integrated Ethernet
+	 controller.  This driver uses NAPI and generic Linux MII
+	 support.
+
 config NET_PCI
 	bool "EISA, VLB, PCI and on board controllers"
 	depends on ISA || EISA || PCI
@@ -1917,6 +1927,78 @@ menuconfig NETDEV_1000
 	  If you say N, all options in this submenu will be skipped and disabled.
 
 if NETDEV_1000
+
+config TANGOX_ENET
+	tristate "SMP8xxx Builtin Gigabit Ethernet support (SMP864x/SMP865x/SMP867x/SMP868x)"
+	depends on NET_ETHERNET && TANGO3
+	select MII
+	select CRC32
+	help
+	 This option adds support for the SMP8xxx integrated Gigabit Ethernet
+	 controller.  This driver uses NAPI and generic Linux MII
+	 support.
+
+config TANGOX_ENET0_NOMDIO
+	bool "No MDIO access on ethernet 0"
+	depends on TANGOX_ENET
+	default n
+	help
+	 This option disable the MDIO access, which is needed for some PHY 
+	 emulation device (e.g. Ralink RT2880F wireless card).
+
+config TANGOX_ENET0_NOMDIO_SPEED
+	int "Hard wired communication speed"
+	depends on TANGOX_ENET0_NOMDIO
+	default 100
+	help
+	 Without MDIO access, the speed needs to be hardwired. Valid number
+	 is 10 or 100.
+
+config TANGOX_ENET0_NOMDIO_FULLDUPLEX
+	bool "Hard wired duplex mode"
+	depends on TANGOX_ENET0_NOMDIO
+	default y
+	help
+	 Without MDIO access, the duplex mode needs to be hardwired. 
+
+config TANGOX_ENET0_NOMDIO_PHY_ADDR
+	int "Hard wired PHY address"
+	depends on TANGOX_ENET0_NOMDIO
+	default 1
+	help
+	 Without MDIO access, the PHY address speed needs to be hardwired. 
+	 Valid number is 0~31.
+
+config TANGOX_ENET1_NOMDIO
+	bool "No MDIO access on ethernet 1"
+	depends on TANGOX_ENET
+	default n
+	help
+	 This option disable the MDIO access, which is needed for some PHY 
+	 emulation device (e.g. Ralink RT2880F wireless card).
+
+config TANGOX_ENET1_NOMDIO_SPEED
+	int "Hard wired communication speed"
+	depends on TANGOX_ENET1_NOMDIO
+	default 100
+	help
+	 Without MDIO access, the speed needs to be hardwired. Valid number
+	 is 10 or 100.
+
+config TANGOX_ENET1_NOMDIO_FULLDUPLEX
+	bool "Hard wired duplex mode"
+	depends on TANGOX_ENET1_NOMDIO
+	default y
+	help
+	 Without MDIO access, the duplex mode needs to be hardwired. 
+
+config TANGOX_ENET1_NOMDIO_PHY_ADDR
+	int "Hard wired PHY address"
+	depends on TANGOX_ENET1_NOMDIO
+	default 1
+	help
+	 Without MDIO access, the PHY address speed needs to be hardwired. 
+	 Valid number is 0~31.
 
 config ACENIC
 	tristate "Alteon AceNIC/3Com 3C985/NetGear GA620 Gigabit support"
