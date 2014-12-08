@@ -154,6 +154,19 @@ config USB_ATMEL_USBA
 	default USB_GADGET
 	select USB_GADGET_SELECTED
 
+config USB_GADGET_TANGOX
+	boolean "Tangox OTG gadget mode support"
+	depends on USB_GADGET && TANGOX
+        select USB_GADGET_DUALSPEED
+	help
+	   Support for SMP8710 USB OTG gadget. Temporarily PCI based.
+
+config USB_TANGOX_UDC
+        tristate
+        depends on USB_GADGET_TANGOX
+        default USB_GADGET
+        select USB_GADGET_SELECTED
+
 config USB_GADGET_FSL_USB2
 	boolean "Freescale Highspeed USB DR Peripheral Controller"
 	depends on FSL_SOC

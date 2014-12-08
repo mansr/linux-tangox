@@ -163,6 +163,13 @@
 #define gadget_is_ci13xxx(g)	0
 #endif
 
+#ifdef CONFIG_USB_GADGET_TANGOX
+#define gadget_is_tangox(g)	!strcmp("tangox_otg", (g)->name)
+#else
+#define gadget_is_tangox(g)	0
+#endif
+
+
 // CONFIG_USB_GADGET_SX2
 // CONFIG_USB_GADGET_AU1X00
 // ...
@@ -231,6 +238,9 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x22;
 	else if (gadget_is_ci13xxx(gadget))
 		return 0x23;
+		else if (gadget_is_tangox(gadget))
+		return 0x24;
+
 	return -ENOENT;
 }
 

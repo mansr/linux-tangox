@@ -1463,6 +1463,21 @@ get_config:
 		value = 1;
 		break;
 
+#ifdef CONFIG_USB_GADGET_TANGOX 
+	case USB_REQ_SET_ADDRESS:
+		if (ctrl->bRequestType != (USB_DIR_OUT | USB_TYPE_STANDARD |
+				USB_RECIP_DEVICE)){
+			break;
+		}
+		if (w_index != 0) {
+			value = -EDOM;
+			break;
+		}
+		VDBG(fsg, "set address\n");
+		*(u8 *) req->buf = 0;
+		value = 1;
+		break;
+#endif
 	default:
 		VDBG(fsg,
 			"unknown control req %02x.%02x v%04x i%04x l%u\n",
@@ -3855,12 +3870,20 @@ static void /* __init_or_exit */ fsg_unbind(struct usb_gadget *gadget)
 	}
 
 	/* Free the data buffers */
-	for (i = 0; i < NUM_BUFFERS; ++i)
+	for (i = 0; i < NUM_BUFFERS; ++i){
+#ifndef CONFIG_USB_GADGET_TANGOX  
 		kfree(fsg->buffhds[i].buf);
-
+#else
+		kfree((void *)KSEG0ADDR(fsg->buffhds[i].buf));
+#endif
+	}
 	/* Free the request and buffer for endpoint 0 */
 	if (req) {
+#ifndef CONFIG_USB_GADGET_TANGOX  
 		kfree(req->buf);
+#else
+		kfree((void *)KSEG0ADDR(req->buf));
+#endif
 		usb_ep_free_request(fsg->ep0, req);
 	}
 
@@ -4098,7 +4121,11 @@ static int __init fsg_bind(struct usb_gadget *gadget)
 	fsg->ep0req = req = usb_ep_alloc_request(fsg->ep0, GFP_KERNEL);
 	if (!req)
 		goto out;
+#ifndef CONFIG_USB_GADGET_TANGOX  
 	req->buf = kmalloc(EP0_BUFSIZE, GFP_KERNEL);
+#else
+	req->buf = (void *)KSEG1ADDR(kmalloc(EP0_BUFSIZE, GFP_KERNEL));
+#endif
 	if (!req->buf)
 		goto out;
 	req->complete = ep0_complete;
@@ -4110,7 +4137,11 @@ static int __init fsg_bind(struct usb_gadget *gadget)
 		/* Allocate for the bulk-in endpoint.  We assume that
 		 * the buffer will also work with the bulk-out (and
 		 * interrupt-in) endpoint. */
+#ifndef CONFIG_USB_GADGET_TANGOX  
 		bh->buf = kmalloc(mod_data.buflen, GFP_KERNEL);
+#else
+		bh->buf = (void *)KSEG1ADDR(kmalloc(mod_data.buflen, GFP_KERNEL));
+#endif
 		if (!bh->buf)
 			goto out;
 		bh->next = bh + 1;
