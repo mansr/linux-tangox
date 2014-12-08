@@ -1465,6 +1465,7 @@ static __sum16 tcp_v4_checksum_init(struct sk_buff *skb)
 int tcp_v4_do_rcv(struct sock *sk, struct sk_buff *skb)
 {
 	struct sock *rsk;
+	int ttl = ((struct iphdr *)skb_network_header(skb))->ttl;
 #ifdef CONFIG_TCP_MD5SIG
 	/*
 	 * We really want to reject the packet as early as possible
@@ -1483,6 +1484,7 @@ int tcp_v4_do_rcv(struct sock *sk, struct sk_buff *skb)
 			goto reset;
 		}
 		TCP_CHECK_TIMER(sk);
+		inet_sk(sk)->mc_ttl = ttl;
 		return 0;
 	}
 
@@ -1509,6 +1511,7 @@ int tcp_v4_do_rcv(struct sock *sk, struct sk_buff *skb)
 		goto reset;
 	}
 	TCP_CHECK_TIMER(sk);
+	inet_sk(sk)->mc_ttl = ttl;
 	return 0;
 
 reset:
