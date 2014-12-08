@@ -750,8 +750,9 @@ endif
 endif
 
 CLEAN_FILES += arch/mips/boot/vmlinux.gz \
-		arch/mips/boot/*.bin \
+		arch/mips/boot/*.bin arch/mips/boot/*.sig \
 		arch/mips/boot/*.xload \
+		arch/mips/boot/*.xload3 \
 		arch/mips/boot/*.zbf \
 		arch/mips/boot/zbimage-linux-* 
 
@@ -871,6 +872,24 @@ vmlinux.srec: $(vmlinux-32)
 
 CLEAN_FILES += vmlinux.ecoff \
 	       vmlinux.srec
+
+ifdef CONFIG_TANGO2
+zbimage-linux-xrpc: vmlinux.bin
+	+@$(call makeboot,$@,$(load-y),$(CERT_TYPE),$(CERT_ID))
+
+zbimage-linux-enc: vmlinux.bin
+	+@$(call makeboot,$@,$(load-y),$(CERT_TYPE),$(CERT_ID))
+
+zbimage-linux-encs: vmlinux.bin
+	+@$(call makeboot,$@,$(load-y),$(CERT_TYPE),$(CERT_ID))
+endif
+
+ifdef CONFIG_TANGO3
+zbimage-linux-xload: vmlinux.bin
+	+@$(call makeboot,$@,$(load-y),$(CERT_TYPE),$(CERT_ID))
+vmlinux.gz.sig: vmlinux.bin
+	+@$(call makeboot,$@,$(load-y),$(CERT_TYPE),$(CERT_ID))
+endif
 
 archprepare:
 ifdef CONFIG_MIPS32_N32
