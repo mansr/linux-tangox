@@ -1,0 +1,22 @@
+Feature:
+--------
+Bus Mastering IDE controller support for SMP863x chips.
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+1001
+1005
+1006
+
+Primary author:
+---------------
+Craig Qu
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango2 ES6/RevA or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------
