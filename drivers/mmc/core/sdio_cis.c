@@ -111,6 +111,10 @@ static int cistpl_funce_common(struct mmc_card *card,
 	card->cis.max_dtr = speed_val[(buf[3] >> 3) & 15] *
 			    speed_unit[buf[3] & 7];
 
+	/* workaround the high speed issue */
+	if (!(card->host->caps & MMC_CAP_SD_HIGHSPEED))
+		card->cis.max_dtr /= 2 ;
+
 	return 0;
 }
 
@@ -223,8 +227,16 @@ static int sdio_read_cis(struct mmc_card *card, struct sdio_func *func)
 		if (tpl_code == 0xff)
 			break;
 
+		/* null entries have no link field or data */
+		if (tpl_code == 0x00)
+			continue;
+
 		ret = mmc_io_rw_direct(card, 0, 0, ptr++, 0, &tpl_link);
 		if (ret)
+			break;
+
+		/* a size of 0xff also means we're done */
+		if (tpl_link == 0xff)
 			break;
 
 		this = kmalloc(sizeof(*this) + tpl_link, GFP_KERNEL);

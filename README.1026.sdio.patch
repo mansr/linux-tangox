@@ -1,0 +1,20 @@
+Feature:
+--------
+SDIO interface support for SMP864x/SMP865x/SMP867x/SMP868x.
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+1001
+
+Primary author:
+---------------
+Max Lo/YH Lin/Craig Qu
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango3 ES3 or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------
