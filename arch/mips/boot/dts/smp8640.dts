@@ -12,6 +12,13 @@
 		};
 	};
 
+	cpuintc: cpu-intc@0 {
+		compatible = "mti,cpu-interrupt-controller";
+		#address-cells = <0>;
+		interrupt-controller;
+		#interrupt-cells = <1>;
+	};
+
 	sysbus: bus@10000 {
 		compatible = "simple-bus";
 		reg = <0x10000 0x10000>;
@@ -37,5 +44,35 @@
 
 		#address-cells = <1>;
 		#size-cells = <1>;
+
+		irqintc: irq-intc@e000 {
+			compatible = "sigma,smp8640-intc";
+			reg = <0xe000 0x1000 0xe000 0x100>;
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			interrupt-parent = <&cpuintc>;
+			interrupts = <2>;
+			label = "IRQ";
+		};
+
+		fiqintc: fiq-intc@e100 {
+			compatible = "sigma,smp8640-intc";
+			reg = <0xe000 0x1000 0xe100 0x100>;
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			interrupt-parent = <&cpuintc>;
+			interrupts = <3>;
+			label = "FIQ";
+		};
+
+		iiqintc: iiq-intc@e300 {
+			compatible = "sigma,smp8640-intc";
+			reg = <0xe000 0x1000 0xe300 0x100>;
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			interrupt-parent = <&cpuintc>;
+			interrupts = <4>;
+			label = "IIQ";
+		};
 	};
 };

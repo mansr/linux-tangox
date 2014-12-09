@@ -1,36 +1,29 @@
 /*
- * Copyright 2001 MontaVista Software Inc.
- * Author: Jun Sun, jsun@mvista.com or jsun@junsun.net
- *
- * Copyright (C) 2009 Sigma Designs, Inc.
- *
- * arch_init_irq for tango2/tango3
+ * Copyright (C) 2014 Mans Rullgard <mans@mansr.com>
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the
  * Free Software Foundation;  either version 2 of the  License, or (at your
  * option) any later version.
- *
  */
 
 #include <linux/init.h>
 #include <linux/interrupt.h>
+#include <linux/ioport.h>
+#include <linux/of_address.h>
+#include <linux/of_irq.h>
+#include <linux/slab.h>
 #include <asm/irq.h>
 #include <asm/irq_cpu.h>
 #include <asm/io.h>
-
-#include "irq.h"
-#include "memmap.h"
 
 #define IRQ_CTL_BASE		0x0000
 #define FIQ_CTL_BASE		0x0100
 #define EDGE_CTL_BASE		0x0200
 #define IIQ_CTL_BASE		0x0300
 
-#define IRQ_CTL_HI		(IRQ_CTL_BASE + 0x18)
-#define FIQ_CTL_HI		(FIQ_CTL_BASE + 0x18)
-#define EDGE_CTL_HI		(EDGE_CTL_BASE + 0x20)
-#define IIQ_CTL_HI		(IIQ_CTL_BASE + 0x18)
+#define IRQ_CTL_HI		0x18
+#define EDGE_CTL_HI		0x20
 
 #define IRQ_STATUS		0x00
 #define IRQ_RAWSTAT		0x04
@@ -48,101 +41,76 @@
 #define EDGE_CFG_FALL_SET	0x18
 #define EDGE_CFG_FALL_CLR	0x1c
 
-static void __iomem *intc_base;
+struct tangox_irq_chip {
+	void __iomem *base;
+	unsigned long ctl;
+	unsigned int mask;
+};
 
-static inline u32 intc_readl(int reg)
+static inline u32 intc_readl(struct tangox_irq_chip *chip, int reg)
 {
-	return readl(intc_base + reg);
+	return readl(chip->base + reg);
 }
 
-static inline void intc_writel(int reg, u32 val)
+static inline void intc_writel(struct tangox_irq_chip *chip, int reg, u32 val)
 {
-	writel(val, intc_base + reg);
+	writel(val, chip->base + reg);
 }
 
-asmlinkage void plat_irq_dispatch(void)
+static void tangox_irq_handler(unsigned int irq, struct irq_desc *desc)
 {
-	u32 sr = read_c0_status();
-	u32 pending = read_c0_cause() & sr & ST0_IM;
-	u32 status, status_hi;
-	u32 mask = 0;
-	int base;
-	int irq;
+	struct irq_domain *dom = irq_desc_get_handler_data(desc);
+	struct tangox_irq_chip *chip = dom->host_data;
+	unsigned int status, status_hi;
+	unsigned int hwirq;
+	unsigned int virq;
 
-	if (!pending) {
-		pr_warn("Spurious hwirq: nothing pending\n");
-		goto spurious;
-	}
+	status = intc_readl(chip, chip->ctl + IRQ_STATUS);
+	status_hi = intc_readl(chip, chip->ctl + IRQ_CTL_HI + IRQ_STATUS);
 
-	irq = __ffs(pending) - CAUSEB_IP;
-
-	switch (irq) {
-	case 2:
-		status = intc_readl(IRQ_CTL_BASE + IRQ_STATUS);
-		status_hi = intc_readl(IRQ_CTL_HI + IRQ_STATUS);
-		base = IRQ_BASE;
-		break;
-
-	case 3:
-		status = intc_readl(FIQ_CTL_BASE + IRQ_STATUS);
-		status_hi = intc_readl(FIQ_CTL_HI + IRQ_STATUS);
-		base = FIQ_BASE;
-		mask = ~STATUSF_IP2;
-		break;
-
-	case 4:
-		status = intc_readl(IIQ_CTL_BASE + IRQ_STATUS);
-		status_hi = intc_readl(IIQ_CTL_HI + IRQ_STATUS);
-		base = IIQ_BASE;
-		mask = ~(STATUSF_IP2 | STATUSF_IP3);
-		break;
-
-	default:
-		do_IRQ(irq);
+	if (!(status | status_hi)) {
+		pr_warn("Spurious IRQ %d\n", irq);
+		spurious_interrupt();
 		return;
 	}
 
-	if (!(status | status_hi)) {
-		pr_warn("Spurious hwirq %d\n", irq);
-		goto spurious;
-	}
+	hwirq = status ? __ffs(status) : __ffs(status_hi) + 32;
+	virq = irq_find_mapping(dom, hwirq);
 
-	irq = status ? __ffs(status) : __ffs(status_hi) + 32;
-
-	if (mask) {
-		write_c0_status(sr & mask);
-		do_IRQ(base + irq);
+	if (chip->mask) {
+		unsigned int sr = read_c0_status();
+		write_c0_status(sr & ~chip->mask);
+		generic_handle_irq(virq);
 		write_c0_status(sr);
 		return;
 	}
 
-	do_IRQ(base + irq);
-
-	return;
-
-spurious:
-	spurious_interrupt();
+	generic_handle_irq(virq);
 }
 
-static struct irqaction irq_cascade = {
-	.handler = no_action,
-	.flags = IRQF_SHARED,
-	.name = "cascade",
-};
-
-static void __init tangox_irq_init(char *name, int irq, unsigned long ctl_base,
-				   unsigned long edge_base)
+asmlinkage void plat_irq_dispatch(void)
 {
-	struct irq_chip_generic *gc;
-	struct irq_chip_type *ct;
+	unsigned int pending;
 
-	gc = irq_alloc_generic_chip(name, 1, irq, intc_base, handle_level_irq);
-	if (!gc) {
-		pr_err("irq_alloc_generic_chip failed for IRQ %d\n", irq);
-		return;
-	}
+	pending = (read_c0_cause() & read_c0_status() & ST0_IM) >> CAUSEB_IP;
 
-	ct = gc->chip_types;
+	if (pending)
+		do_IRQ(__ffs(pending));
+	else
+		spurious_interrupt();
+}
+
+static void __init tangox_irq_init(struct irq_chip_generic *gc,
+				   unsigned long ctl_offs,
+				   unsigned long edge_offs)
+{
+	struct tangox_irq_chip *chip = gc->domain->host_data;
+	struct irq_chip_type *ct = gc->chip_types;
+	unsigned long ctl_base = chip->ctl + ctl_offs;
+	unsigned long edge_base = EDGE_CTL_BASE + edge_offs;
+
+	gc->reg_base = chip->base;
+	gc->unused = 0;
 
 	ct->chip.irq_ack = irq_gc_ack_set_bit;
 	ct->chip.irq_mask = irq_gc_mask_disable_reg;
@@ -154,26 +122,83 @@ static void __init tangox_irq_init(char *name, int irq, unsigned long ctl_base,
 	ct->regs.ack = edge_base + EDGE_RAWSTAT;
 	ct->regs.eoi = ctl_base + IRQ_EN_SET;
 
-	intc_writel(ct->regs.disable, 0xffffffff);
-	intc_writel(ct->regs.ack, 0xffffffff);
-
-	irq_setup_generic_chip(gc, IRQ_MSK(32), 0, 0, 0);
+	intc_writel(chip, ct->regs.disable, 0xffffffff);
+	intc_writel(chip, ct->regs.ack, 0xffffffff);
 }
+
+static void __init tangox_irq_domain_init(struct irq_domain *dom)
+{
+	struct irq_chip_generic *gc;
+	int i;
+
+	for (i = 0; i < 2; i++) {
+		gc = irq_get_domain_generic_chip(dom, i * 32);
+		tangox_irq_init(gc, i * IRQ_CTL_HI, i * EDGE_CTL_HI);
+	}
+}
+
+static int __init tangox_of_irq_init(struct device_node *node,
+				     struct device_node *parent)
+{
+	struct tangox_irq_chip *chip;
+	struct irq_domain *dom;
+	struct resource res, ctlres;
+	const char *name;
+	int irq;
+	int err;
+	int i;
+
+	irq = irq_of_parse_and_map(node, 0);
+	if (!irq)
+		panic("Failed to get IRQ");
+
+	if (of_address_to_resource(node, 0, &res))
+		panic("Failed to get intc memory resource");
+
+	if (of_address_to_resource(node, 1, &ctlres))
+		panic("Failed to get intc memory resource");
+
+	if (of_property_read_string(node, "label", &name))
+		name = node->name;
+
+	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
+	chip->ctl = ctlres.start - res.start;
+	chip->mask = ((1 << (irq - 2)) - 1) << STATUSB_IP2;
+	chip->base = ioremap(res.start, resource_size(&res));
+
+	dom = irq_domain_add_linear(node, 64, &irq_generic_chip_ops, chip);
+	if (!dom)
+		panic("Failed to create irqdomain");
+
+	err = irq_alloc_domain_generic_chips(dom, 32, 1, name, handle_level_irq,
+					     0, 0, 0);
+	if (err)
+		panic("Failed to allocate irqchip");
+
+	tangox_irq_domain_init(dom);
+
+	for (i = 0; i < 64; i++)
+		irq_create_mapping(dom, i);
+
+	irq_set_chained_handler(irq, tangox_irq_handler);
+	irq_set_handler_data(irq, dom);
+
+	return 0;
+}
+
+static struct of_device_id tangox_of_irq_ids[] __initdata = {
+	{
+		.compatible	= "mti,cpu-interrupt-controller",
+		.data		= mips_cpu_intc_init,
+	},
+	{
+		.compatible	= "sigma,smp8640-intc",
+		.data		= tangox_of_irq_init,
+	},
+	{ }
+};
 
 void __init arch_init_irq(void)
 {
-	intc_base = ioremap(INTC_BASE, 0x1000);
-
-	mips_cpu_irq_init();
-
-	tangox_irq_init("IRQ", IRQ_BASE,      IRQ_CTL_BASE, EDGE_CTL_BASE);
-	tangox_irq_init("IRQ", IRQ_BASE + 32, IRQ_CTL_HI,   EDGE_CTL_HI);
-	tangox_irq_init("FIQ", FIQ_BASE,      FIQ_CTL_BASE, EDGE_CTL_BASE);
-	tangox_irq_init("FIQ", FIQ_BASE + 32, FIQ_CTL_HI,   EDGE_CTL_HI);
-	tangox_irq_init("IIQ", IIQ_BASE,      IIQ_CTL_BASE, EDGE_CTL_BASE);
-	tangox_irq_init("IIQ", IIQ_BASE + 32, IIQ_CTL_HI,   EDGE_CTL_HI);
-
-	setup_irq(MIPS_CPU_IRQ_BASE + 2, &irq_cascade);
-	setup_irq(MIPS_CPU_IRQ_BASE + 3, &irq_cascade);
-	setup_irq(MIPS_CPU_IRQ_BASE + 4, &irq_cascade);
+	of_irq_init(tangox_of_irq_ids);
 }
