@@ -714,6 +714,8 @@ config TANGOX
 	select IRQ_CPU
 	select MIPS_CPU_SCACHE
 	select COMMON_CLK
+	select USE_OF
+	select BUILTIN_DTB
 	help
 	  Support for Sigma Designs SMP86xx chips.
 

@@ -1,0 +1,41 @@
+/dts-v1/;
+
+/ {
+	compatible = "sigma,smp8640-soc";
+
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	cpus {
+		cpu@0 {
+			compatible = "mips,mips74Kc";
+		};
+	};
+
+	sysbus: bus@10000 {
+		compatible = "simple-bus";
+		reg = <0x10000 0x10000>;
+		ranges = <0x0 0x10000 0x10000>;
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+	};
+
+	hostbus: bus@20000 {
+		compatible = "simple-bus";
+		reg = <0x20000 0x10000>;
+		ranges = <0x0 0x20000 0x10000>;
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+	};
+
+	cpubus: bus@60000 {
+		compatible = "simple-bus";
+		reg = <0x60000 0x10000>;
+		ranges = <0x0 0x60000 0x10000>;
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+	};
+};

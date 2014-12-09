@@ -15,6 +15,8 @@
 
 #include <linux/init.h>
 #include <linux/ioport.h>
+#include <linux/of_platform.h>
+#include <linux/of_fdt.h>
 #include <asm/bootinfo.h>
 #include <asm/reboot.h>
 #include <asm/io.h>
@@ -22,6 +24,7 @@
 #include <asm/traps.h>
 #include <asm/cpu-info.h>
 #include <asm/mipsregs.h>
+#include <asm/prom.h>
 
 #include "memmap.h"
 #include "setup.h"
@@ -103,7 +106,29 @@ void __init plat_mem_setup(void)
 
 	iomem_resource.start = 0;
 	iomem_resource.end = 0x7fffffff;
+
+	__dt_setup_arch(__dtb_start);
 }
+
+void __init device_tree_init(void)
+{
+	unflatten_and_copy_device_tree();
+}
+
+static struct of_device_id tangox_of_ids[] = {
+	{ .compatible = "sigma,smp8640"	},
+	{ .compatible = "simple-bus"	},
+	{ },
+};
+
+static int __init plat_of_setup(void)
+{
+	if (!of_have_populated_dt())
+		panic("device tree not present");
+
+	return of_platform_populate(NULL, tangox_of_ids, NULL, NULL);
+}
+arch_initcall(plat_of_setup);
 
 #ifdef CONFIG_PROC_FS
 static int tangox_proc_cpuinfo(struct notifier_block *np, unsigned long action,
