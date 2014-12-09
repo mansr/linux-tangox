@@ -131,6 +131,8 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, dev);
 
+	dev_info(&pdev->dev, "SMP86xx watchdog registered\n");
+
 	return 0;
 }
 
@@ -144,11 +146,17 @@ static int tangox_wdt_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id tangox_wdt_dt_ids[] = {
+	{ .compatible = "sigma,smp8640-wdt" },
+	{ }
+};
+
 static struct platform_driver tangox_wdt_driver = {
 	.probe	= tangox_wdt_probe,
 	.remove	= tangox_wdt_remove,
 	.driver	= {
-		.name	= "tangox-wdt",
+		.name		= "tangox-wdt",
+		.of_match_table	= tangox_wdt_dt_ids,
 	},
 };
 
