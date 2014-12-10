@@ -17,6 +17,8 @@
 #include <linux/ioport.h>
 #include <linux/of_platform.h>
 #include <linux/of_fdt.h>
+#include <linux/slab.h>
+#include <asm/byteorder.h>
 #include <asm/bootinfo.h>
 #include <asm/reboot.h>
 #include <asm/io.h>
@@ -115,6 +117,65 @@ void __init device_tree_init(void)
 	unflatten_and_copy_device_tree();
 }
 
+static int __init tangox_of_set_prop(struct device_node *node, char *name,
+				     void *val, int len)
+{
+	struct property *prop;
+
+	prop = kzalloc(sizeof(*prop) + len, GFP_KERNEL);
+	if (!prop)
+		return -ENOMEM;
+
+	prop->name = kstrdup(name, GFP_KERNEL);
+	if (!prop->name) {
+		kfree(prop);
+		return -ENOMEM;
+	}
+
+	prop->length = len;
+
+	if (len) {
+		prop->value = prop + 1;
+		memcpy(prop->value, val, len);
+	}
+
+	of_update_property(node, prop);
+
+	return 0;
+}
+
+static int __init tangox_of_eth_setup(const char *name, int num)
+{
+	struct device_node *node;
+	unsigned char *mac;
+	u32 speed;
+
+	node = of_find_node_by_path(name);
+	if (!node)
+		return -ENODEV;
+
+	mac = tangox_ethernet_getmac(num);
+	if (!mac)
+		return -ENODEV;
+
+	tangox_of_set_prop(node, "local-mac-address", mac, 6);
+
+	if (is_tangox_chip(0x8656, 0xfffe) && num == 0)
+		speed = 1000;
+	else if (is_tangox_chip_rev(0x8646, 0xfff3, 2) ||
+		 is_tangox_chip(0x8670, 0xfff0) ||
+		 is_tangox_chip(0x8680, 0xfff0))
+		speed = 1000;
+	else
+		speed = 100;
+
+	cpu_to_be32s(&speed);
+	tangox_of_set_prop(node, "max-speed", &speed, sizeof(speed));
+
+
+	return 0;
+}
+
 static struct of_device_id tangox_of_ids[] = {
 	{ .compatible = "sigma,smp8640"	},
 	{ .compatible = "simple-bus"	},
@@ -125,6 +186,9 @@ static int __init plat_of_setup(void)
 {
 	if (!of_have_populated_dt())
 		panic("device tree not present");
+
+	tangox_of_eth_setup("eth0", 0);
+	tangox_of_eth_setup("eth1", 1);
 
 	return of_platform_populate(NULL, tangox_of_ids, NULL, NULL);
 }

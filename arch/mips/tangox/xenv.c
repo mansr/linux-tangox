@@ -435,14 +435,12 @@ int tangox_ethernet_enabled(unsigned int i)
 	return 0;
 }
 
-int tangox_ethernet_getmac(unsigned int i, unsigned char *mac)
+unsigned char *tangox_ethernet_getmac(unsigned int i)
 {
 	if (i > 1)
-		return -1;
+		return NULL;
 
-	memcpy(mac, mac_address[i], 6);
-
-	return 0;
+	return mac_address[i];
 }
 
 int tangox_uart_baudrate(int uart)

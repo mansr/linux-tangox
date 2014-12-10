@@ -47,7 +47,7 @@ int tangox_sata_enabled(void);
 int tangox_sata_cfg(struct tangox_sata_phy_pdata *pd);
 int tangox_usb_enabled(void);
 int tangox_ethernet_enabled(unsigned int i);
-int tangox_ethernet_getmac(unsigned int i, unsigned char *addr);
+unsigned char *tangox_ethernet_getmac(unsigned int i);
 u32 tangox_dram_size(unsigned int idx);
 int tangox_uart_console_port(void);
 int tangox_uart_baudrate(int uart);

@@ -32,7 +32,7 @@
 #include <linux/ethtool.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
-#include <linux/platform_data/eth-tangox.h>
+#include <linux/of_net.h>
 #include <linux/dma-mapping.h>
 #include <linux/phy.h>
 #include <linux/cache.h>
@@ -924,14 +924,16 @@ static const struct net_device_ops tangox_netdev_ops = {
 
 static int tangox_enet_probe(struct platform_device *pdev)
 {
-	struct tangox_enet_pdata *pdata;
 	struct tangox_enet_priv *priv;
 	struct resource *res;
 	struct net_device *dev;
 	struct mii_bus *bus;
 	struct phy_device *phydev;
-	unsigned short clk_div;
+	const unsigned char *mac;
 	void __iomem *base;
+	int phy_mode;
+	int clk_div;
+	u32 speed;
 	int irq;
 	int ret;
 
@@ -951,8 +953,6 @@ static int tangox_enet_probe(struct platform_device *pdev)
 	if (IS_ERR(base))
 		return PTR_ERR(base);
 
-	pdata = dev_get_platdata(&pdev->dev);
-
 	dev_info(&pdev->dev, "SMP86xx internal Ethernet at 0x%x\n", res->start);
 
 	dev = alloc_etherdev(sizeof(*priv));
@@ -966,7 +966,13 @@ static int tangox_enet_probe(struct platform_device *pdev)
 	priv->base = base;
 	priv->rx_desc_count = DEF_RX_DESC_COUNT;
 	priv->tx_desc_count = DEF_TX_DESC_COUNT;
-	priv->gigabit = pdata->gigabit;
+
+	if (!of_property_read_u32(pdev->dev.of_node, "max-speed", &speed))
+		priv->gigabit = speed >= 1000;
+
+	phy_mode = of_get_phy_mode(pdev->dev.of_node);
+	if (phy_mode < 0)
+		phy_mode = PHY_INTERFACE_MODE_RGMII;
 
 	if (priv->gigabit) {
 		priv->rx_desc_count *= 2;
@@ -995,7 +1001,7 @@ static int tangox_enet_probe(struct platform_device *pdev)
 	bus->read = enet_mdio_read;
 	bus->write = enet_mdio_write;
 	bus->parent = &pdev->dev;
-	snprintf(bus->id, MII_BUS_ID_SIZE, "tangox-mii-%d", pdev->id);
+	snprintf(bus->id, MII_BUS_ID_SIZE, "%s-mii", pdev->name);
 	bus->priv = priv;
 
 	ret = mdiobus_register(bus);
@@ -1016,8 +1022,7 @@ static int tangox_enet_probe(struct platform_device *pdev)
 
 	phydev->irq = PHY_POLL;
 
-	ret = phy_connect_direct(dev, phydev, enet_link_reconfigure,
-				 PHY_INTERFACE_MODE_RGMII);
+	ret = phy_connect_direct(dev, phydev, enet_link_reconfigure, phy_mode);
 	if (ret)
 		goto err_free_bus;
 
@@ -1042,7 +1047,13 @@ static int tangox_enet_probe(struct platform_device *pdev)
 	dev->flags |= IFF_MULTICAST;
 	dev->irq = irq;
 
-	memcpy(dev->dev_addr, pdata->mac_addr, ETH_ALEN);
+	mac = of_get_mac_address(pdev->dev.of_node);
+	if (mac)
+		memcpy(dev->dev_addr, mac, ETH_ALEN);
+
+	if (!is_valid_ether_addr(dev->dev_addr))
+		eth_hw_addr_random(dev);
+
 	enet_update_mac_addr(dev);
 
 	tasklet_init(&priv->tx_reclaim_tasklet, enet_tx_reclaim,
@@ -1089,9 +1100,15 @@ static int tangox_enet_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static struct of_device_id tangox_enet_dt_ids[] = {
+	{ .compatible = "sigma,smp8640-emac" },
+	{ }
+};
+
 static struct platform_driver tangox_enet_driver = {
 	.driver = {
-		.name	= "tangox-enet",
+		.name		= "tangox-enet",
+		.of_match_table	= tangox_enet_dt_ids,
 	},
 	.probe	= tangox_enet_probe,
 	.remove	= tangox_enet_remove,

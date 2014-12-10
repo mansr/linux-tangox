@@ -6,6 +6,11 @@
 	#address-cells = <1>;
 	#size-cells = <1>;
 
+	aliases {
+		eth0 = &eth0;
+		eth1 = &eth1;
+	};
+
 	cpus {
 		cpu@0 {
 			compatible = "mips,mips74Kc";
@@ -63,6 +68,22 @@
 			interrupts = <39>;
 			phys = <&usb0_phy>;
 			phy-names = "usb";
+		};
+
+		eth0: emac@6000 {
+			compatible = "sigma,smp8640-emac";
+			reg = <0x6000 0x800>;
+			interrupt-parent = <&irqintc>;
+			interrupts = <38>;
+			phy-connection-type = "rgmii";
+		};
+
+		eth1: emac@6800 {
+			compatible = "sigma,smp8640-emac";
+			reg = <0x6800 0x800>;
+			interrupt-parent = <&irqintc>;
+			interrupts = <57>;
+			phy-connection-type = "rgmii";
 		};
 	};
 
