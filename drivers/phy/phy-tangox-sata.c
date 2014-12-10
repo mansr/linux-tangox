@@ -10,7 +10,6 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/platform_data/sata-tangox-phy.h>
 #include <linux/phy/phy.h>
 #include <asm/io.h>
 
@@ -21,30 +20,33 @@
 
 struct tangox_sata_phy {
 	void __iomem *base;
-	struct tangox_sata_phy_pdata *pdata;
+	int clk_sel;
+	int clk_ref;
+	int tx_erc;
+	int tx_ssc;
+	int rx_ssc[2];
 };
 
 static int tangox_sata_phy_init(struct phy *genphy)
 {
 	struct tangox_sata_phy *phy = phy_get_drvdata(genphy);
-	struct tangox_sata_phy_pdata *pd = phy->pdata;
 	unsigned int clkref;
 	unsigned int val;
 
 	val = readl(phy->base + PHY_CTL0);
 	val &= ~(0x1f << 20);
-	val |= pd->clk_sel << 24;
-	val |= pd->tx_erc << 20;
+	val |= phy->clk_sel << 24;
+	val |= phy->tx_erc << 20;
 	writel(val, phy->base + PHY_CTL0);
 
 	val = 0x28903;
-	val |= pd->rx_ssc0 << 9;
-	val |= pd->rx_ssc1 << 12;
+	val |= phy->rx_ssc[0] << 9;
+	val |= phy->rx_ssc[1] << 12;
 	writel(val, phy->base + PHY_CTL1);
 
-	switch (pd->clk_ref) {
+	switch (phy->clk_ref) {
 	default:
-		dev_warn(&genphy->dev, "Invalid ref clock %d\n", pd->clk_ref);
+		dev_warn(&genphy->dev, "Invalid ref clock %d\n", phy->clk_ref);
 	case 120:
 		clkref = 0x12c;
 		break;
@@ -67,7 +69,7 @@ static int tangox_sata_phy_init(struct phy *genphy)
 
 	val = readl(phy->base + PHY_CTL2);
 	val &= ~0x7fe;
-	val |= pd->tx_ssc << 10;
+	val |= phy->tx_ssc << 10;
 	val |= clkref;
 	writel(val, phy->base + PHY_CTL2);
 
@@ -83,21 +85,13 @@ static struct phy_ops tangox_sata_phy_ops = {
 	.init = tangox_sata_phy_init,
 };
 
-static struct phy_consumer tangox_sata_phy_consumers[] = {
-	{ "tangox-sata.0", "sata" },
-	{ "tangox-sata.1", "sata" },
-};
-
-struct phy_init_data tangox_sata_phy_idata = {
-	.num_consumers	= ARRAY_SIZE(tangox_sata_phy_consumers),
-	.consumers	= tangox_sata_phy_consumers,
-};
-
 static int tangox_sata_phy_probe(struct platform_device *pdev)
 {
+	struct device_node *node = pdev->dev.of_node;
 	struct tangox_sata_phy *phy;
 	struct resource *res;
 	struct phy *genphy;
+	struct phy_provider *phy_prov;
 
 	phy = devm_kzalloc(&pdev->dev, sizeof(*phy), GFP_KERNEL);
 	if (!phy)
@@ -111,22 +105,34 @@ static int tangox_sata_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(phy->base))
 		return PTR_ERR(phy->base);
 
-	phy->pdata = dev_get_platdata(&pdev->dev);
+	phy->clk_sel = of_property_read_bool(node, "sigma,internal-clock");
+	of_property_read_u32(node, "clock-frequency", &phy->clk_ref);
+	of_property_read_u32(node, "sigma,tx-erc", &phy->tx_erc);
+	of_property_read_u32(node, "sigma,tx-ssc", &phy->tx_ssc);
+	of_property_read_u32_array(node, "sigma,rx-ssc", phy->rx_ssc, 2);
 
-	genphy = devm_phy_create(&pdev->dev, NULL, &tangox_sata_phy_ops,
-				 &tangox_sata_phy_idata);
+	genphy = devm_phy_create(&pdev->dev, NULL, &tangox_sata_phy_ops, NULL);
 	if (IS_ERR(genphy))
 		return PTR_ERR(genphy);
 
 	phy_set_drvdata(genphy, phy);
 
-	return 0;
+	phy_prov = devm_of_phy_provider_register(&pdev->dev,
+						 of_phy_simple_xlate);
+
+	return PTR_ERR_OR_ZERO(phy_prov);
 }
+
+static struct of_device_id tangox_sata_phy_dt_ids[] = {
+	{ .compatible = "sigma,smp8640-sata-phy" },
+	{ }
+};
 
 static struct platform_driver tangox_sata_phy_driver = {
 	.probe		= tangox_sata_phy_probe,
 	.driver		= {
-		.name	= "tangox-sata-phy",
+		.name		= "tangox-sata-phy",
+		.of_match_table	= tangox_sata_phy_dt_ids,
 	},
 };
 module_platform_driver(tangox_sata_phy_driver);

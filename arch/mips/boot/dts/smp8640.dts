@@ -9,6 +9,7 @@
 	aliases {
 		eth0 = &eth0;
 		eth1 = &eth1;
+		sata_phy = &sata_phy;
 	};
 
 	cpus {
@@ -45,6 +46,34 @@
 
 		#address-cells = <1>;
 		#size-cells = <1>;
+
+		sata_phy: phy@400c {
+			compatible = "sigma,smp8640-sata-phy";
+			reg = <0x400c 0x10>;
+			#phy-cells = <0>;
+		};
+
+		sata0: sata@3000 {
+			compatible = "sigma,smp8640-sata";
+			reg = <0x3000 0x800 0x4000 0xc>;
+			interrupt-parent = <&irqintc>;
+			interrupts = <41 42>;
+			dmas = <&dma0 0>;
+			dma-names = "sata";
+			phys = <&sata_phy>;
+			phy-names = "sata";
+		};
+
+		sata1: sata@3800 {
+			compatible = "sigma,smp8640-sata";
+			reg = <0x3800 0x800 0x4040 0xc>;
+			interrupt-parent = <&irqintc>;
+			interrupts = <54 55>;
+			dmas = <&dma0 1>;
+			dma-names = "sata";
+			phys = <&sata_phy>;
+			phy-names = "sata";
+		};
 
 		usb0_phy: phy@1700 {
 			compatible = "sigma,smp8640-usb-phy";

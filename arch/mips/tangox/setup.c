@@ -172,6 +172,39 @@ static int __init tangox_of_eth_setup(const char *name, int num)
 	cpu_to_be32s(&speed);
 	tangox_of_set_prop(node, "max-speed", &speed, sizeof(speed));
 
+	return 0;
+}
+
+static int __init tangox_of_sata_phy_setup(void)
+{
+	static const int clk_tab[16] __initconst = {
+		120, 100, 60, 50, 30, 25,
+	};
+	struct device_node *node;
+	unsigned int cfg = tangox_sata_cfg();
+	int clk_sel;
+	__be32 clk_ref;
+	__be32 rx_ssc[2];
+	__be32 tx_ssc;
+	__be32 tx_erc;
+
+	node = of_find_node_by_path("sata_phy");
+	if (!node)
+		return -ENODEV;
+
+	rx_ssc[0] = cpu_to_be32(cfg & 1);
+	rx_ssc[1] = cpu_to_be32(cfg >> 1 & 1);
+	tx_ssc = cpu_to_be32(cfg >> 2 & 1);
+	clk_ref = cpu_to_be32(clk_tab[cfg >> 4 & 15]);
+	tx_erc = cpu_to_be32(cfg >> 8 & 15);
+	clk_sel = cfg >> 15 & 1;
+
+	tangox_of_set_prop(node, "sigma,rx-ssc", rx_ssc, 8);
+	tangox_of_set_prop(node, "sigma,tx-ssc", &tx_ssc, 4);
+	tangox_of_set_prop(node, "clock-frequency", &clk_ref, 4);
+	tangox_of_set_prop(node, "sigma,tx-erc", &tx_erc, 4);
+	if (clk_sel)
+		tangox_of_set_prop(node, "sigma,internal-clock", NULL, 0);
 
 	return 0;
 }
@@ -189,6 +222,8 @@ static int __init plat_of_setup(void)
 
 	tangox_of_eth_setup("eth0", 0);
 	tangox_of_eth_setup("eth1", 1);
+
+	tangox_of_sata_phy_setup();
 
 	return of_platform_populate(NULL, tangox_of_ids, NULL, NULL);
 }

@@ -397,25 +397,13 @@ static struct ata_port_info hsata_port_info =
 	.port_ops	= &hsata_ops,
 };
 
-static bool hsata_dma_filter(struct dma_chan *chan, void *param)
-{
-	struct resource *res = param;
-
-	if (chan->chan_id == res->start &&
-	    !strcmp(dev_name(chan->device->dev), "tangox-dma"))
-		return true;
-
-	return false;
-}
-
 static int hsata_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct ata_host *host;
 	struct hsata_device *hsdev;
 	const struct ata_port_info *pi = &hsata_port_info;
-	struct resource *memres, *ctlres, *dmares;
-	dma_cap_mask_t dma_mask;
+	struct resource *memres, *ctlres;
 	int sata_irq, dma_irq;
 	int err;
 
@@ -429,9 +417,8 @@ static int hsata_probe(struct platform_device *pdev)
 
 	memres = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	ctlres = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	dmares = platform_get_resource(pdev, IORESOURCE_DMA, 0);
 
-	if (!memres || !ctlres || !dmares)
+	if (!memres || !ctlres)
 		return -EINVAL;
 
 	sata_irq = platform_get_irq(pdev, 0);
@@ -443,11 +430,7 @@ static int hsata_probe(struct platform_device *pdev)
 	hsdev->membase = devm_ioremap_resource(dev, memres);
 	hsdev->ctl_base = devm_ioremap_resource(dev, ctlres);
 
-	dma_cap_zero(dma_mask);
-	dma_cap_set(DMA_SLAVE, dma_mask);
-
-	hsdev->dma_chan = dma_request_channel(dma_mask, hsata_dma_filter,
-					      dmares);
+	hsdev->dma_chan = dma_request_slave_channel(dev, "sata");
 	if (!hsdev->dma_chan) {
 		dev_err(dev, "unable to allocate dma channel\n");
 		return -ENXIO;
@@ -493,11 +476,17 @@ static int hsata_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static struct of_device_id hsata_dt_ids[] = {
+	{ .compatible = "sigma,smp8640-sata" },
+	{ }
+};
+
 static struct platform_driver hsata_driver = {
 	.probe	= hsata_probe,
 	.remove	= hsata_remove,
 	.driver = {
-		.name	= "tangox-sata",
+		.name		= "tangox-sata",
+		.of_match_table	= hsata_dt_ids,
 	},
 };
 module_platform_driver(hsata_driver);

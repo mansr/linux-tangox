@@ -8,7 +8,6 @@
  published by the Free Software Foundation.
  *********************************************************************/
 
-#include <linux/platform_data/sata-tangox-phy.h>
 #include <asm/bootinfo.h>
 #include <asm/unaligned.h>
 #include <asm/io.h>
@@ -463,18 +462,7 @@ const char *tangox_xenv_cmdline(void)
 	return xenv_cmdline;
 }
 
-static const int sata_clk_tab[16] = {
-	120, 100, 60, 50, 30, 25,
-};
-
-int tangox_sata_cfg(struct tangox_sata_phy_pdata *pd)
+unsigned int tangox_sata_cfg(void)
 {
-	pd->rx_ssc0 = sata_channel_cfg & 1;
-	pd->rx_ssc1 = sata_channel_cfg >> 1 & 1;
-	pd->tx_ssc = sata_channel_cfg >> 2 & 1;
-	pd->clk_ref = sata_clk_tab[sata_channel_cfg >> 4 & 15];
-	pd->tx_erc = sata_channel_cfg >> 8 & 15;
-	pd->clk_sel = sata_channel_cfg >> 15 & 1;
-
-	return 0;
+	return sata_channel_cfg;
 }
