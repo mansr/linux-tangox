@@ -40,6 +40,30 @@
 
 		#address-cells = <1>;
 		#size-cells = <1>;
+
+		usb0_phy: phy@1700 {
+			compatible = "sigma,smp8640-usb-phy";
+			reg = <0x1700 0x100>;
+			#phy-cells = <0>;
+		};
+
+		usb0_ehci: usb@1400 {
+			compatible = "sigma,smp8640-ehci", "generic-ehci";
+			reg = <0x1400 0x100>;
+			interrupt-parent = <&irqintc>;
+			interrupts = <40>;
+			phys = <&usb0_phy>;
+			phy-names = "usb";
+		};
+
+		usb0_ohci: usb@1500 {
+			compatible = "sigma,smp8640-ohci", "generic-ohci";
+			reg = <0x1500 0x100>;
+			interrupt-parent = <&irqintc>;
+			interrupts = <39>;
+			phys = <&usb0_phy>;
+			phy-names = "usb";
+		};
 	};
 
 	cpubus: bus@60000 {

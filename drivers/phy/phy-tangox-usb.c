@@ -19,10 +19,6 @@
 
 struct tangox_usb_phy {
 	void __iomem *base;
-	char ehci_name[32];
-	char ohci_name[32];
-	struct phy_consumer consumers[2];
-	struct phy_init_data idata;
 };
 
 static int tangox_usb_phy_init(struct phy *genphy)
@@ -101,6 +97,7 @@ static int tangox_usb_phy_probe(struct platform_device *pdev)
 	struct tangox_usb_phy *phy;
 	struct resource *res;
 	struct phy *genphy;
+	struct phy_provider *phy_prov;
 
 	phy = devm_kzalloc(&pdev->dev, sizeof(*phy), GFP_KERNEL);
 	if (!phy)
@@ -114,34 +111,28 @@ static int tangox_usb_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(phy->base))
 		return PTR_ERR(phy->base);
 
-	snprintf(phy->ehci_name, sizeof(phy->ehci_name),
-		 "ehci-platform.%d", pdev->id);
-	snprintf(phy->ohci_name, sizeof(phy->ohci_name),
-		 "ohci-platform.%d", pdev->id);
-
-	phy->consumers[0].dev_name = phy->ehci_name;
-	phy->consumers[0].port = "usb";
-
-	phy->consumers[1].dev_name = phy->ohci_name;
-	phy->consumers[1].port = "usb";
-
-	phy->idata.num_consumers = ARRAY_SIZE(phy->consumers);
-	phy->idata.consumers = phy->consumers;
-
-	genphy = devm_phy_create(&pdev->dev, NULL, &tangox_usb_phy_ops,
-				 &phy->idata);
+	genphy = devm_phy_create(&pdev->dev, NULL, &tangox_usb_phy_ops, NULL);
 	if (IS_ERR(genphy))
 		return PTR_ERR(genphy);
 
 	phy_set_drvdata(genphy, phy);
 
-	return 0;
+	phy_prov = devm_of_phy_provider_register(&pdev->dev,
+						 of_phy_simple_xlate);
+
+	return PTR_ERR_OR_ZERO(phy_prov);
 }
+
+static const struct of_device_id tangox_usb_phy_dt_ids[] = {
+	{ .compatible = "sigma,smp8640-usb-phy" },
+	{ }
+};
 
 static struct platform_driver tangox_usb_phy_driver = {
 	.probe		= tangox_usb_phy_probe,
 	.driver		= {
-		.name	= "tangox-usb-phy",
+		.name		= "tangox-usb-phy",
+		.of_match_table	= tangox_usb_phy_dt_ids,
 	},
 };
 module_platform_driver(tangox_usb_phy_driver);
