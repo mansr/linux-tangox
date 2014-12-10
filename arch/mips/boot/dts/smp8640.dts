@@ -85,6 +85,45 @@
 			interrupts = <57>;
 			phy-connection-type = "rgmii";
 		};
+
+		dma0: dma@b000 {
+			compatible = "sigma,smp8640-dma";
+			reg = <0x90a0 0x10>;
+			ranges = <0x0 0xb000 0x200>;
+			#dma-cells = <1>;
+			sigma,slave-ids = <5 8>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			interrupt-parent = <&irqintc>;
+
+			chan@000 {
+				reg = <0x000 0x10>;
+				interrupts = <9>;
+				sigma,sbox-id = <1>;
+				sigma,dev-to-mem;
+			};
+
+			chan@080 {
+				reg = <0x080 0x10>;
+				interrupts = <11>;
+				sigma,sbox-id = <1>;
+				sigma,mem-to-dev;
+			};
+
+			chan@100 {
+				reg = <0x100 0x10>;
+				interrupts = <58>;
+				sigma,sbox-id = <9>;
+				sigma,dev-to-mem;
+			};
+
+			chan@140 {
+				reg = <0x140 0x10>;
+				interrupts = <59>;
+				sigma,sbox-id = <9>;
+				sigma,mem-to-dev;
+			};
+		};
 	};
 
 	cpubus: bus@60000 {

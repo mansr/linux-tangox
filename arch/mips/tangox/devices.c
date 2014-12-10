@@ -1,7 +1,6 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
-#include <linux/platform_data/dma-tangox.h>
 #include <linux/platform_data/sata-tangox-phy.h>
 #include <linux/phy.h>
 #include <asm/io.h>
@@ -9,59 +8,6 @@
 #include "irq.h"
 #include "memmap.h"
 #include "setup.h"
-
-#define SBOX_DMA0		1
-#define SBOX_DMA1		2
-#define SBOX_PCI_MASTER		3
-#define SBOX_PCI_SLAVE		4
-#define SBOX_SATA0		5
-#define SBOX_IDE_ISA		6
-#define SBOX_IDE_DVD		7
-#define SBOX_SATA1		8
-#define SBOX_DMA2		9
-
-static u64 dma_dmamask = DMA_BIT_MASK(32);
-
-static struct tangox_dma_chan_data tangox_dma_chans[] = {
-	DEFINE_DMA_CHAN(DMA_MEM_TO_DEV, DMA_R0_BASE, DMA_R0_IRQ, SBOX_DMA0),
-	DEFINE_DMA_CHAN(DMA_DEV_TO_MEM, DMA_W0_BASE, DMA_W0_IRQ, SBOX_DMA0),
-	DEFINE_DMA_CHAN(DMA_MEM_TO_DEV, DMA_R2_BASE, DMA_R2_IRQ, SBOX_DMA2),
-	DEFINE_DMA_CHAN(DMA_DEV_TO_MEM, DMA_W2_BASE, DMA_W2_IRQ, SBOX_DMA2),
-};
-
-static int tangox_dma_slaves[] = {
-	SBOX_SATA0,
-	SBOX_SATA1,
-};
-
-static struct tangox_dma_pdata tangox_dma_pdata = {
-	.num_chans	= ARRAY_SIZE(tangox_dma_chans),
-	.chan		= tangox_dma_chans,
-	.num_slaves	= ARRAY_SIZE(tangox_dma_slaves),
-	.slave_id	= tangox_dma_slaves,
-};
-
-static struct resource tangox_dma_resources[] = {
-	DEFINE_RES_MEM(SBOX_BASE, 0x10),
-};
-
-static struct platform_device tangox_dma_device = {
-	.name		= "tangox-dma",
-	.id		= -1,
-	.dev		= {
-		.dma_mask		= &dma_dmamask,
-		.coherent_dma_mask	= DMA_BIT_MASK(32),
-		.platform_data		= &tangox_dma_pdata,
-	},
-	.num_resources	= ARRAY_SIZE(tangox_dma_resources),
-	.resource	= tangox_dma_resources,
-};
-
-static int __init tangox_dma_register(void)
-{
-	return platform_device_register(&tangox_dma_device);
-}
-device_initcall(tangox_dma_register);
 
 static struct resource tangox_sata0_resources[] = {
 	DEFINE_RES_MEM(SATA0_BASE, 0x800),

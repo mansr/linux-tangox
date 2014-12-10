@@ -13,7 +13,9 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/platform_data/dma-tangox.h>
+#include <linux/of_address.h>
+#include <linux/of_dma.h>
+#include <linux/of_irq.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/irq.h>
@@ -50,13 +52,13 @@ struct tangox_dma_desc {
 
 struct tangox_dma_chan {
 	struct virt_dma_chan vc;
-	int id;
+	u32 id;
 };
 
 struct tangox_dma_pchan {
 	struct tangox_dma_device *dev;
 	enum dma_transfer_direction direction;
-	int sbox_id;
+	u32 sbox_id;
 	int slave_id;
 	void __iomem *base;
 	spinlock_t lock;
@@ -429,16 +431,17 @@ static void tangox_dma_reset(struct tangox_dma_device *dev)
 
 static int tangox_dma_probe(struct platform_device *pdev)
 {
+	struct device_node *node = pdev->dev.of_node;
+	struct device_node *cnode;
 	struct tangox_dma_device *dmadev;
 	struct tangox_dma_pchan *pchan;
 	struct tangox_dma_chan *chan;
-	struct tangox_dma_pdata *pdata;
 	struct dma_device *dd;
 	struct resource *res;
+	struct resource cres;
+	int irq;
 	int err;
 	int i;
-
-	pdata = dev_get_platdata(&pdev->dev);
 
 	dmadev = devm_kzalloc(&pdev->dev, sizeof(*dmadev), GFP_KERNEL);
 	if (!dmadev)
@@ -459,38 +462,54 @@ static int tangox_dma_probe(struct platform_device *pdev)
 
 	INIT_LIST_HEAD(&dd->channels);
 
-	dd->chancnt = min(pdata->num_slaves, TANGOX_DMA_MAX_CHANS);
-
-	for (i = 0; i < dd->chancnt; i++) {
+	for (i = 0; i < TANGOX_DMA_MAX_CHANS; i++) {
 		chan = &dmadev->chan[i];
-		chan->id = pdata->slave_id[i];
+
+		if (of_property_read_u32_index(node, "sigma,slave-ids", i,
+					       &chan->id))
+			break;
+
 		chan->vc.desc_free = tangox_dma_desc_free;
 		vchan_init(&chan->vc, dd);
 	}
+
+	dd->chancnt = i;
 
 	spin_lock_init(&dmadev->lock);
 	INIT_LIST_HEAD(&dmadev->desc_memtodev);
 	INIT_LIST_HEAD(&dmadev->desc_devtomem);
 
-	dmadev->nr_pchans = min(pdata->num_chans, TANGOX_DMA_MAX_PCHANS);
-
-	for (i = 0; i < dmadev->nr_pchans; i++) {
-		struct tangox_dma_chan_data *cdata = &pdata->chan[i];
-
-		pchan = &dmadev->pchan[i];
+	for_each_child_of_node(node, cnode) {
+		pchan = &dmadev->pchan[dmadev->nr_pchans];
 		pchan->dev = dmadev;
-		pchan->direction = cdata->direction;
-		pchan->sbox_id = cdata->sbox_id;
 		spin_lock_init(&pchan->lock);
 
-		pchan->base = devm_ioremap_resource(&pdev->dev, &cdata->regs);
+		if (of_property_read_bool(cnode, "sigma,mem-to-dev"))
+			pchan->direction = DMA_MEM_TO_DEV;
+		else
+			pchan->direction = DMA_DEV_TO_MEM;
+
+		of_property_read_u32(cnode, "sigma,sbox-id", &pchan->sbox_id);
+
+		err = of_address_to_resource(cnode, 0, &cres);
+		if (err)
+			return err;
+
+		pchan->base = devm_ioremap_resource(&pdev->dev, &cres);
 		if (IS_ERR(pchan->base))
 			return PTR_ERR(pchan->base);
 
-		err = devm_request_irq(&pdev->dev, cdata->irq, tangox_dma_irq,
-				       0, dev_name(&pdev->dev), pchan);
+		irq = irq_of_parse_and_map(cnode, 0);
+		if (!irq)
+			return -EINVAL;
+
+		err = devm_request_irq(&pdev->dev, irq, tangox_dma_irq, 0,
+				       dev_name(&pdev->dev), pchan);
 		if (err)
 			return err;
+
+		if (++dmadev->nr_pchans == TANGOX_DMA_MAX_PCHANS)
+			break;
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -507,6 +526,12 @@ static int tangox_dma_probe(struct platform_device *pdev)
 	if (err)
 		return err;
 
+	err = of_dma_controller_register(node, of_dma_xlate_by_chan_id, dd);
+	if (err) {
+		dma_async_device_unregister(dd);
+		return err;
+	}
+
 	platform_set_drvdata(pdev, dmadev);
 
 	dev_info(&pdev->dev, "SMP86xx DMA with %d channels, %d slaves\n",
@@ -519,16 +544,23 @@ static int tangox_dma_remove(struct platform_device *pdev)
 {
 	struct tangox_dma_device *dmadev = platform_get_drvdata(pdev);
 
+	of_dma_controller_free(pdev->dev.of_node);
 	dma_async_device_unregister(&dmadev->ddev);
 
 	return 0;
 }
 
+static struct of_device_id tangox_dma_dt_ids[] = {
+	{ .compatible = "sigma,smp8640-dma" },
+	{ }
+};
+
 static struct platform_driver tangox_dma_driver = {
 	.probe	= tangox_dma_probe,
 	.remove	= tangox_dma_remove,
 	.driver	= {
-		.name = "tangox-dma",
+		.name		= "tangox-dma",
+		.of_match_table	= tangox_dma_dt_ids,
 	},
 };
 module_platform_driver(tangox_dma_driver);
