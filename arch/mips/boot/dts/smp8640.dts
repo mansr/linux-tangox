@@ -58,7 +58,7 @@
 			compatible = "sigma,smp8640-sata";
 			reg = <0x3000 0x800 0x4000 0xc>;
 			interrupts = <41 42>;
-			dmas = <&dma0 0>;
+			dmas = <&dma0 5>;
 			dma-names = "sata";
 			phys = <&sata_phy>;
 			phy-names = "sata";
@@ -68,7 +68,7 @@
 			compatible = "sigma,smp8640-sata";
 			reg = <0x3800 0x800 0x4040 0xc>;
 			interrupts = <54 55>;
-			dmas = <&dma0 1>;
+			dmas = <&dma0 8>;
 			dma-names = "sata";
 			phys = <&sata_phy>;
 			phy-names = "sata";

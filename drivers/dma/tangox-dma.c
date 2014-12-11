@@ -429,6 +429,25 @@ static void tangox_dma_reset(struct tangox_dma_device *dev)
 	writel(0xffffffff, dev->sbox_base + 12);
 }
 
+static struct dma_chan *tangox_dma_xlate(struct of_phandle_args *dma_spec,
+					 struct of_dma *ofdma)
+{
+	struct dma_device *dev = ofdma->of_dma_data;
+	struct tangox_dma_chan *chan;
+	struct dma_chan *c;
+
+	if (!dev || dma_spec->args_count != 1)
+		return NULL;
+
+	list_for_each_entry(c, &dev->channels, device_node) {
+		chan = to_tangox_dma_chan(c);
+		if (chan->id == dma_spec->args[0])
+			return dma_get_slave_channel(c);
+	}
+
+	return NULL;
+}
+
 static int tangox_dma_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -526,7 +545,7 @@ static int tangox_dma_probe(struct platform_device *pdev)
 	if (err)
 		return err;
 
-	err = of_dma_controller_register(node, of_dma_xlate_by_chan_id, dd);
+	err = of_dma_controller_register(node, tangox_dma_xlate, dd);
 	if (err) {
 		dma_async_device_unregister(dd);
 		return err;
