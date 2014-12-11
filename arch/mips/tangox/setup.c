@@ -209,12 +209,6 @@ static int __init tangox_of_sata_phy_setup(void)
 	return 0;
 }
 
-static struct of_device_id tangox_of_ids[] = {
-	{ .compatible = "sigma,smp8640"	},
-	{ .compatible = "simple-bus"	},
-	{ },
-};
-
 static int __init plat_of_setup(void)
 {
 	if (!of_have_populated_dt())
@@ -225,7 +219,8 @@ static int __init plat_of_setup(void)
 
 	tangox_of_sata_phy_setup();
 
-	return of_platform_populate(NULL, tangox_of_ids, NULL, NULL);
+	return of_platform_populate(NULL, of_default_bus_match_table,
+				    NULL, NULL);
 }
 arch_initcall(plat_of_setup);
 
