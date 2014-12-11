@@ -152,11 +152,11 @@ static int __init tangox_of_irq_init(struct device_node *node,
 	if (!irq)
 		panic("Failed to get IRQ");
 
-	if (of_address_to_resource(node, 0, &res))
-		panic("Failed to get intc memory resource");
+	if (of_address_to_resource(node->parent, 0, &res))
+		panic("%s: failed to get memory resource", node->parent->name);
 
-	if (of_address_to_resource(node, 1, &ctlres))
-		panic("Failed to get intc memory resource");
+	if (of_address_to_resource(node, 0, &ctlres))
+		panic("%s: failed to get memory resource", node->name);
 
 	if (of_property_read_string(node, "label", &name))
 		name = node->name;
