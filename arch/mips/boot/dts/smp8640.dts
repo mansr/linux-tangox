@@ -43,6 +43,7 @@
 		compatible = "simple-bus";
 		reg = <0x20000 0x10000>;
 		ranges = <0x0 0x20000 0x10000>;
+		interrupt-parent = <&irqintc>;
 
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -56,7 +57,6 @@
 		sata0: sata@3000 {
 			compatible = "sigma,smp8640-sata";
 			reg = <0x3000 0x800 0x4000 0xc>;
-			interrupt-parent = <&irqintc>;
 			interrupts = <41 42>;
 			dmas = <&dma0 0>;
 			dma-names = "sata";
@@ -67,7 +67,6 @@
 		sata1: sata@3800 {
 			compatible = "sigma,smp8640-sata";
 			reg = <0x3800 0x800 0x4040 0xc>;
-			interrupt-parent = <&irqintc>;
 			interrupts = <54 55>;
 			dmas = <&dma0 1>;
 			dma-names = "sata";
@@ -84,7 +83,6 @@
 		usb0_ehci: usb@1400 {
 			compatible = "sigma,smp8640-ehci", "generic-ehci";
 			reg = <0x1400 0x100>;
-			interrupt-parent = <&irqintc>;
 			interrupts = <40>;
 			phys = <&usb0_phy>;
 			phy-names = "usb";
@@ -93,7 +91,6 @@
 		usb0_ohci: usb@1500 {
 			compatible = "sigma,smp8640-ohci", "generic-ohci";
 			reg = <0x1500 0x100>;
-			interrupt-parent = <&irqintc>;
 			interrupts = <39>;
 			phys = <&usb0_phy>;
 			phy-names = "usb";
@@ -102,7 +99,6 @@
 		eth0: emac@6000 {
 			compatible = "sigma,smp8640-emac";
 			reg = <0x6000 0x800>;
-			interrupt-parent = <&irqintc>;
 			interrupts = <38>;
 			phy-connection-type = "rgmii";
 		};
@@ -110,7 +106,6 @@
 		eth1: emac@6800 {
 			compatible = "sigma,smp8640-emac";
 			reg = <0x6800 0x800>;
-			interrupt-parent = <&irqintc>;
 			interrupts = <57>;
 			phy-connection-type = "rgmii";
 		};
@@ -123,7 +118,6 @@
 			sigma,slave-ids = <5 8>;
 			#address-cells = <1>;
 			#size-cells = <1>;
-			interrupt-parent = <&irqintc>;
 
 			chan@000 {
 				reg = <0x000 0x10>;
