@@ -16,6 +16,7 @@
 #define UART_CLKDIV	0x28
 #define UART_CLKSEL	0x2c
 
-int tangox_uart_init(unsigned int port, unsigned int baud, void __iomem **mmio);
+int tangox_uart_init(unsigned long addr, unsigned int baud,
+		     void __iomem **mmio);
 
 #endif /* __MIPS_TANGOX_UART_H */

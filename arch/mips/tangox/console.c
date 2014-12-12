@@ -1,8 +1,15 @@
 #include <linux/init.h>
 #include <asm/io.h>
 
+#include "memmap.h"
 #include "setup.h"
 #include "uart.h"
+
+static const unsigned long uart_addr[] __initconst = {
+	UART0_BASE,
+	UART1_BASE,
+	UART2_BASE,
+};
 
 static void __iomem *uart_base;
 
@@ -21,7 +28,7 @@ void __init prom_console_init(void)
 	int port = tangox_uart_console_port();
 	int baud = tangox_uart_baudrate(port);
 
-	tangox_uart_init(port, baud, &uart_base);
+	tangox_uart_init(uart_addr[port], baud, &uart_base);
 
 	serial_out(UART_IER, 0x0);
 	serial_out(UART_FCR, 0);

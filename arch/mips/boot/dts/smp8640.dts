@@ -153,9 +153,28 @@
 		compatible = "simple-bus";
 		reg = <0x60000 0x10000>;
 		ranges = <0x0 0x60000 0x10000>;
+		interrupt-parent = <&irqintc>;
 
 		#address-cells = <1>;
 		#size-cells = <1>;
+
+		uart0: uart@c100 {
+			compatible = "sigma,smp8640-uart", "ns16550a";
+			reg = <0xc100 0x100>;
+			interrupts = <1>;
+			clock-frequency = <7372800>;
+			reg-shift = <2>;
+			reg-io-width = <3>;
+		};
+
+		uart1: uart@c200 {
+			compatible = "sigma,smp8640-uart", "ns16550a";
+			reg = <0xc200 0x100>;
+			interrupts = <2>;
+			clock-frequency = <7372800>;
+			reg-shift = <2>;
+			reg-io-width = <3>;
+		};
 
 		intc@e000 {
 			reg = <0xe000 0x1000>;
