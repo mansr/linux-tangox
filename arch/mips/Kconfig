@@ -710,7 +710,7 @@ config TANGOX
 	select SYS_HAS_CPU_MIPS32_R1
 	select SYS_HAS_CPU_MIPS32_R2
 	select SYS_HAS_EARLY_PRINTK
-	select GENERIC_IRQ_CHIP
+	select TANGOX_IRQ
 	select IRQ_CPU
 	select MIPS_CPU_SCACHE
 	select COMMON_CLK
