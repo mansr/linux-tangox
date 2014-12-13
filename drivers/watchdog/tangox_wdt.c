@@ -16,6 +16,9 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/notifier.h>
+#include <linux/delay.h>
+#include <linux/reboot.h>
 #include <linux/platform_device.h>
 #include <linux/watchdog.h>
 #include <linux/clk.h>
@@ -42,6 +45,7 @@ struct tangox_wdt_device {
 	void __iomem *base;
 	unsigned int timeout;
 	struct clk *clk;
+	struct notifier_block restart;
 };
 
 static int tangox_wdt_ping(struct watchdog_device *wdt)
@@ -92,6 +96,23 @@ static const struct watchdog_ops tangox_wdt_ops = {
 	.set_timeout	= tangox_wdt_set_timeout,
 };
 
+static int tangox_wdt_restart(struct notifier_block *nb, unsigned long action,
+			      void *data)
+{
+	struct tangox_wdt_device *dev;
+	unsigned int timeout;
+
+	dev = container_of(nb, struct tangox_wdt_device, restart);
+	timeout = clk_get_rate(dev->clk) / 10;
+
+	writel(timeout, dev->base + WD_COUNTER);
+	writeb(1, dev->base + WD_CONFIG);
+
+	mdelay(150);
+
+	return NOTIFY_DONE;
+}
+
 static int tangox_wdt_probe(struct platform_device *pdev)
 {
 	struct tangox_wdt_device *dev;
@@ -131,6 +152,12 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, dev);
 
+	dev->restart.notifier_call = tangox_wdt_restart;
+	dev->restart.priority = 128;
+	err = register_restart_handler(&dev->restart);
+	if (err)
+		dev_err(&pdev->dev, "failed to register restart handler\n");
+
 	dev_info(&pdev->dev, "SMP86xx watchdog registered\n");
 
 	return 0;
@@ -141,6 +168,7 @@ static int tangox_wdt_remove(struct platform_device *pdev)
 	struct tangox_wdt_device *dev = platform_get_drvdata(pdev);
 
 	tangox_wdt_stop(&dev->wdt);
+	unregister_restart_handler(&dev->restart);
 	watchdog_unregister_device(&dev->wdt);
 
 	return 0;
