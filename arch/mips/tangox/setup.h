@@ -30,7 +30,6 @@ static inline int is_tangox_chip_rev(int type, int mask, int rev)
 	return is_tangox_chip(type, mask) && tangox_chip_rev == rev;
 }
 
-int tangox_clk_init(void);
 unsigned long tangox_get_cpuclock(void);
 unsigned long tangox_get_sysclock(void);
 unsigned long tangox_get_dspclock(void);
