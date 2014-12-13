@@ -183,6 +183,7 @@
 			reg = <0x6000 0x800>;
 			interrupts = <38>;
 			phy-connection-type = "rgmii";
+			clocks = <&sys_clk 0>;
 		};
 
 		eth1: emac@6800 {
@@ -190,6 +191,7 @@
 			reg = <0x6800 0x800>;
 			interrupts = <57>;
 			phy-connection-type = "rgmii";
+			clocks = <&sys_clk 0>;
 		};
 
 		dma0: dma@b000 {

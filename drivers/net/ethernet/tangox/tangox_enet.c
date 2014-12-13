@@ -979,7 +979,7 @@ static int tangox_enet_probe(struct platform_device *pdev)
 		priv->tx_desc_count *= 2;
 	}
 
-	priv->sys_clk = devm_clk_get(&pdev->dev, "sys_clk");
+	priv->sys_clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(priv->sys_clk)) {
 		dev_err(&pdev->dev, "failed to get sys_clk\n");
 		ret = PTR_ERR(priv->sys_clk);
