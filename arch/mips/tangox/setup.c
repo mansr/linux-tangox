@@ -32,23 +32,6 @@
 #include "setup.h"
 #include "uart.h"
 
-void tangox_machine_restart(char *command)
-{
-	void __iomem *wdog;
-
-        local_irq_disable();
-
-	wdog = ioremap(WATCHDOG_BASE, 8);
-
-	writeb(0x80, wdog + 7);
-	writeb(1, wdog + 4);
-	writel(2700, wdog);
-	writeb(0, wdog + 7);
-
-	while (1)
-		cpu_relax();
-}
-
 void tangox_machine_halt(void)
 {
 	while (1)
@@ -99,7 +82,6 @@ void __init plat_mem_setup(void)
 
 	board_ebase_setup = tangox_ebase_setup;
 
-	_machine_restart = tangox_machine_restart;
 	_machine_halt = tangox_machine_halt;
 	pm_power_off = tangox_machine_power_off;
 
