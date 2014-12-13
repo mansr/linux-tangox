@@ -117,6 +117,7 @@
 		watchdog@fd00 {
 			compatible = "sigma,smp8640-wdt";
 			reg = <0xfd00 8>;
+			clocks = <&xtal_in_clk>;
 		};
 	};
 

@@ -131,7 +131,7 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 	watchdog_set_nowayout(&dev->wdt, nowayout);
 	watchdog_set_drvdata(&dev->wdt, dev);
 
-	dev->clk = clk_get(&pdev->dev, "xtal_in_clk");
+	dev->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(dev->clk))
 		return PTR_ERR(dev->clk);
 
