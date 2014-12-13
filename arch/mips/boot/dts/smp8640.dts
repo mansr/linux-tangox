@@ -114,6 +114,13 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+		csrc@0048 {
+			compatible = "sigma,smp8640-csrc";
+			reg = <0x48 4>;
+			clocks = <&xtal_in_clk>;
+			label = "TANGOX";
+		};
+
 		watchdog@fd00 {
 			compatible = "sigma,smp8640-wdt";
 			reg = <0xfd00 8>;

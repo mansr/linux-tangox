@@ -1,0 +1,27 @@
+#include <linux/init.h>
+#include <linux/clk.h>
+#include <linux/clocksource.h>
+#include <linux/of_address.h>
+#include <linux/io.h>
+
+static void __init tangox_csrc_setup(struct device_node *node)
+{
+	void __iomem *base;
+	struct clk *clk;
+	const char *name;
+
+	clk = of_clk_get(node, 0);
+	if (IS_ERR(clk))
+		return;
+
+	base = of_iomap(node, 0);
+	if (!base)
+		return;
+
+	if (of_property_read_string(node, "label", &name))
+		name = node->name;
+
+	clocksource_mmio_init(base, name, clk_get_rate(clk), 300, 32,
+			      clocksource_mmio_readl_up);
+}
+CLOCKSOURCE_OF_DECLARE(tangox_csrc, "sigma,smp8640-csrc", tangox_csrc_setup);

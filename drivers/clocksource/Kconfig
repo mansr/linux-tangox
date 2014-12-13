@@ -223,4 +223,9 @@ config CLKSRC_VERSATILE
 	  ARM Versatile, RealView and Versatile Express reference
 	  platforms.
 
+config CLKSRC_TANGOX
+       bool
+       select CLKSRC_OF
+       select CLKSRC_MMIO
+
 endmenu

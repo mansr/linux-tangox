@@ -18,19 +18,17 @@
 #include <linux/of_platform.h>
 #include <linux/of_fdt.h>
 #include <linux/slab.h>
+#include <linux/clocksource.h>
 #include <asm/byteorder.h>
 #include <asm/bootinfo.h>
 #include <asm/reboot.h>
-#include <asm/io.h>
 #include <asm/time.h>
 #include <asm/traps.h>
 #include <asm/cpu-info.h>
 #include <asm/mipsregs.h>
 #include <asm/prom.h>
 
-#include "memmap.h"
 #include "setup.h"
-#include "uart.h"
 
 void tangox_machine_halt(void)
 {
@@ -44,21 +42,6 @@ void tangox_machine_power_off(void)
 		cpu_relax();
 }
 
-static void __iomem *xtal_in_cnt;
-
-static cycle_t tangox_read_cycles(struct clocksource *cs)
-{
-	return readl(xtal_in_cnt);
-}
-
-struct clocksource clocksource_tangox = {
-	.name		= "TANGOX",
-	.rating		= 300,
-	.mask		= CLOCKSOURCE_MASK(32),
-	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
-	.read		= tangox_read_cycles,
-};
-
 void __init plat_time_init(void)
 {
 	int ccres = read_c0_hwrena() >> 3 & 1;
@@ -67,8 +50,7 @@ void __init plat_time_init(void)
 
 	mips_hpt_frequency = tangox_get_cpuclock() >> ccres;
 
-	xtal_in_cnt = ioremap(CLOCK_BASE + 0x48, 4);
-	clocksource_register_hz(&clocksource_tangox, CONFIG_TANGOX_EXT_CLOCK);
+	clocksource_of_init();
 }
 
 static void __init tangox_ebase_setup(void)
