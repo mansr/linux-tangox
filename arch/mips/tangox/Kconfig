@@ -8,12 +8,6 @@ config DTB_SMP8640
 
 endchoice
 
-config TANGOX_EXT_CLOCK
-	int "External clock frequency"
-	default 27000000
-	help
-	 External crystal frequency in Hz.
-
 config TANGOX_XENV_READ
 	bool "Read XENV parameters"
 
