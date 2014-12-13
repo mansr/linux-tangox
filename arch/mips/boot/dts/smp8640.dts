@@ -25,6 +25,87 @@
 		#interrupt-cells = <1>;
 	};
 
+	clocks {
+		ranges;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		xtal_in_clk: xtal {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <27000000>;
+			clock-output-names = "xtal_in_clk";
+		};
+
+		pll0_clk: pll@10000 {
+			compatible = "sigma,smp8640-pll-clk";
+			reg = <0x10000 0x8>;
+			#clock-cells = <0>;
+			clocks = <&xtal_in_clk>;
+			clock-output-names = "pll0_clk";
+			sigma,pll-n-bits = <10>;
+			sigma,pll-m-bits = <5>;
+			sigma,pll-k-bits = <2 14>;
+			sigma,pll-mn-bias = <2>;
+		};
+
+		pll1_clk: pll@10008 {
+			compatible = "sigma,smp8640-pll-clk";
+			reg = <0x10008 0x8>;
+			#clock-cells = <0>;
+			clocks = <&xtal_in_clk>;
+			clock-output-names = "pll1_clk";
+			sigma,pll-n-bits = <7>;
+			sigma,pll-m-bits = <1>;
+			sigma,pll-k-bits = <3 13>;
+			sigma,pll-mn-bias = <1>;
+		};
+
+		pll2_clk: pll@10010 {
+			compatible = "sigma,smp8640-pll-clk";
+			reg = <0x10010 0x8>;
+			#clock-cells = <0>;
+			clocks = <&xtal_in_clk>;
+			clock-output-names = "pll2_clk";
+			sigma,pll-n-bits = <7>;
+			sigma,pll-m-bits = <1>;
+			sigma,pll-k-bits = <3 13>;
+			sigma,pll-mn-bias = <1>;
+		};
+
+		pll3_clk: pll@10018 {
+			compatible = "sigma,smp8640-pll-clk";
+			reg = <0x10018 0x8>;
+			#clock-cells = <0>;
+			clocks = <&xtal_in_clk>;
+			clock-output-names = "pll3_clk";
+			sigma,pll-n-bits = <7>;
+			sigma,pll-m-bits = <1>;
+			sigma,pll-k-bits = <3 13>;
+			sigma,pll-mn-bias = <1>;
+		};
+
+		sysmux_clk: mux@10034 {
+			compatible = "sigma,smp8640-mux-clk";
+			reg = <0x10034 0x4>;
+			#clock-cells = <0>;
+			clocks = <&pll0_clk>, <&pll1_clk>,
+				 <&pll2_clk>, <&pll3_clk>;
+			clock-output-names = "sysmux_clk";
+		};
+
+		sys_clk: div@1003c {
+			compatible = "sigma,smp8640-div-clk";
+			reg = <0x1003c 0x4>;
+			#clock-cells = <1>;
+			clocks = <&xtal_in_clk>, <&sysmux_clk>;
+			clock-output-names = "sys_clk", "cpu_clk", "dsp_clk";
+			sigma,divisors = <2 4 3 3 3 3 3 3 4 4 4 4
+					  2 2 2 3 3 2 3 2 4 2 4 2
+					  2 4 3 3 3 3 3 3 4 4 4 4>;
+		};
+	};
+
 	sysbus: bus@10000 {
 		compatible = "simple-bus";
 		reg = <0x10000 0x10000>;
