@@ -16,6 +16,8 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/err.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
 
 /*
  * DOC: basic adjustable multiplexer clock that cannot gate
@@ -177,3 +179,84 @@ struct clk *clk_register_mux(struct device *dev, const char *name,
 				      NULL, lock);
 }
 EXPORT_SYMBOL_GPL(clk_register_mux);
+
+#ifdef CONFIG_OF
+static void __init of_mux_clk_setup(struct device_node *node)
+{
+	struct clk *clk;
+	const char *clk_name = node->name;
+	int nparents;
+	const char **pnames;
+	void __iomem *reg;
+	int mux_flags = 0;
+	u32 *table = NULL;
+	int table_len;
+	u32 shift;
+	u32 width;
+	u32 mask;
+	int i;
+
+	if (of_property_read_u32(node, "clock-mux-shift", &shift))
+		return;
+
+	if (of_property_read_u32(node, "clock-mux-width", &width))
+		return;
+
+	if (of_property_read_bool(node, "clock-mux-index-one"))
+		mux_flags |= CLK_MUX_INDEX_ONE;
+
+	if (of_property_read_bool(node, "clock-mux-index-bit"))
+		mux_flags |= CLK_MUX_INDEX_BIT;
+
+	if (of_property_read_bool(node, "clock-mux-hiword-mask"))
+		mux_flags |= CLK_MUX_HIWORD_MASK;
+
+	of_property_read_string(node, "clock-output-names", &clk_name);
+
+	nparents = of_clk_get_parent_count(node);
+	if (nparents <= 0)
+		return;
+
+	table_len = of_property_count_u32_elems(node, "clock-mux-table");
+	if (table_len > 0 && table_len != nparents)
+		return;
+
+	pnames = kzalloc(nparents * sizeof(*pnames), GFP_KERNEL);
+	if (!pnames)
+		return;
+
+	for (i = 0; i < nparents; i++)
+		pnames[i] = of_clk_get_parent_name(node, i);
+
+	if (table_len > 0) {
+		table = kzalloc(table_len * sizeof(*table), GFP_KERNEL);
+		if (!table)
+			goto err;
+
+		of_property_read_u32_array(node, "clock-mux-table",
+					   table, table_len);
+	}
+
+	reg = of_iomap(node, 0);
+	if (!reg)
+		goto err;
+
+	mask = BIT(width) - 1;
+
+	clk = clk_register_mux_table(NULL, clk_name, pnames, nparents, 0,
+				     reg, shift, mask, mux_flags, table,
+				     NULL);
+	if (IS_ERR(clk))
+		goto err;
+
+	of_clk_add_provider(node, of_clk_src_simple_get, clk);
+
+	kfree(pnames);
+	return;
+
+err:
+	kfree(pnames);
+	kfree(table);
+}
+CLK_OF_DECLARE(mux_clk, "mux-clock", of_mux_clk_setup);
+#endif
