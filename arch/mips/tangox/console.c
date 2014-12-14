@@ -27,8 +27,16 @@ void __init prom_console_init(void)
 {
 	int port = tangox_uart_console_port();
 	int baud = tangox_uart_baudrate(port);
+	unsigned int div;
 
-	tangox_uart_init(uart_addr[port], baud, &uart_base);
+	uart_base = ioremap(uart_addr[port], 0x30);
+	if (!uart_base)
+		return;
+
+	div = DIV_ROUND_CLOSEST(UART_CLOCK, 16 * baud);
+
+	serial_out(UART_CLKSEL, 1);
+	serial_out(UART_CLKDIV, div);
 
 	serial_out(UART_IER, 0x0);
 	serial_out(UART_FCR, 0);
