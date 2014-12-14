@@ -96,39 +96,6 @@ static void __init tangox_clk_pll_setup(struct device_node *node)
 }
 CLK_OF_DECLARE(tangox_pll, "sigma,smp8640-pll-clk", tangox_clk_pll_setup);
 
-static void __init tangox_clk_mux_setup(struct device_node *node)
-{
-	const char *name = node->name;
-	int nparents;
-	const char **pnames;
-	void __iomem *reg;
-	struct clk *c;
-	int i;
-
-	of_property_read_string(node, "clock-output-names", &name);
-
-	nparents = of_clk_get_parent_count(node);
-	if (nparents <= 0)
-		return;
-
-	pnames = kzalloc(nparents * sizeof(*pnames), GFP_KERNEL);
-	if (!pnames)
-		return;
-
-	for (i = 0; i < nparents; i++)
-		pnames[i] = of_clk_get_parent_name(node, i);
-
-	reg = of_iomap(node, 0);
-
-	c = clk_register_mux(NULL, name, pnames, nparents,
-			     0, reg, 0, 2, 0, NULL);
-	if (!IS_ERR(c))
-		of_clk_add_provider(node, of_clk_src_simple_get, c);
-
-	kfree(pnames);
-}
-CLK_OF_DECLARE(tangox_mux, "sigma,smp8640-mux-clk", tangox_clk_mux_setup);
-
 static void __init tangox_clk_div_setup(struct device_node *node)
 {
 	struct clk_onecell_data *clk_data;

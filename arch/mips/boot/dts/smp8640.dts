@@ -86,12 +86,14 @@
 		};
 
 		sysmux_clk: mux@10034 {
-			compatible = "sigma,smp8640-mux-clk";
+			compatible = "mux-clock";
 			reg = <0x10034 0x4>;
 			#clock-cells = <0>;
 			clocks = <&pll0_clk>, <&pll1_clk>,
 				 <&pll2_clk>, <&pll3_clk>;
 			clock-output-names = "sysmux_clk";
+			clock-mux-shift = <0>;
+			clock-mux-width = <2>;
 		};
 
 		sys_clk: div@1003c {
