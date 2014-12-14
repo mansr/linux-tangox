@@ -106,6 +106,13 @@
 					  2 2 2 3 3 2 3 2 4 2 4 2
 					  2 4 3 3 3 3 3 3 4 4 4 4>;
 		};
+
+		uart_clk: uart_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <7372800>;
+			clock-output-names = "uart_clk";
+		};
 	};
 
 	sysbus: bus@10000 {
@@ -254,19 +261,47 @@
 		uart0: uart@c100 {
 			compatible = "sigma,smp8640-uart", "ns16550a";
 			reg = <0xc100 0x100>;
+			ranges = <0x0 0xc100 0x100>;
 			interrupts = <1>;
-			clock-frequency = <7372800>;
+			clocks = <&uart0_clk>;
 			reg-shift = <2>;
 			reg-io-width = <3>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			uart0_clk: mux@2c {
+				compatible = "mux-clock";
+				reg = <0x2c 0x4>;
+				#clock-cells = <0>;
+				clocks = <&sys_clk 0>, <&uart_clk>;
+				clock-output-names = "uart0_clk";
+				clock-mux-shift = <0>;
+				clock-mux-width = <1>;
+			};
 		};
 
 		uart1: uart@c200 {
 			compatible = "sigma,smp8640-uart", "ns16550a";
 			reg = <0xc200 0x100>;
+			ranges = <0x0 0xc200 0x100>;
 			interrupts = <2>;
-			clock-frequency = <7372800>;
+			clocks = <&uart1_clk>;
 			reg-shift = <2>;
 			reg-io-width = <3>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			uart1_clk: mux@2c {
+				compatible = "mux-clock";
+				reg = <0x2c 0x4>;
+				#clock-cells = <0>;
+				clocks = <&sys_clk 0>, <&uart_clk>;
+				clock-output-names = "uart1_clk";
+				clock-mux-shift = <0>;
+				clock-mux-width = <1>;
+			};
 		};
 
 		intc@e000 {

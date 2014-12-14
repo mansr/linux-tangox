@@ -30,17 +30,3 @@ int __init tangox_uart_init(unsigned long addr, unsigned int baud,
 
 	return 0;
 }
-
-static int __init tangox_uart_setup(void)
-{
-	struct device_node *node;
-	struct resource res;
-
-	for_each_compatible_node(node, NULL, "sigma,smp8640-uart") {
-		of_address_to_resource(node, 0, &res);
-		tangox_uart_init(res.start, 0, NULL);
-	}
-
-	return 0;
-}
-device_initcall(tangox_uart_setup);
