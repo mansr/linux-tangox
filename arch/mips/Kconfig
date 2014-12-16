@@ -717,6 +717,7 @@ config TANGOX
 	select COMMON_CLK
 	select USE_OF
 	select BUILTIN_DTB
+	select ARCH_WANT_OPTIONAL_GPIOLIB
 	help
 	  Support for Sigma Designs SMP86xx chips.
 

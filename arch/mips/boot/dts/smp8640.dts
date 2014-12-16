@@ -130,6 +130,13 @@
 			label = "TANGOX";
 		};
 
+		sys_gpio: gpio@0500 {
+			compatible = "sigma,smp8640-gpio";
+			reg = <0x500 0x18>;
+			gpio-controller;
+			#gpio-cells = <2>;
+		};
+
 		watchdog@fd00 {
 			compatible = "sigma,smp8640-wdt";
 			reg = <0xfd00 8>;
