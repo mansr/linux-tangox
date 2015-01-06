@@ -111,7 +111,7 @@ static int tangox_usb_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(phy->base))
 		return PTR_ERR(phy->base);
 
-	genphy = devm_phy_create(&pdev->dev, NULL, &tangox_usb_phy_ops, NULL);
+	genphy = devm_phy_create(&pdev->dev, NULL, &tangox_usb_phy_ops);
 	if (IS_ERR(genphy))
 		return PTR_ERR(genphy);
 
