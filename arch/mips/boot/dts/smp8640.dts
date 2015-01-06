@@ -266,13 +266,12 @@
 		#size-cells = <1>;
 
 		uart0: uart@c100 {
-			compatible = "sigma,smp8640-uart", "ns16550a";
+			compatible = "sigma,smp8640-uart", "ralink,rt2880-uart";
 			reg = <0xc100 0x100>;
 			ranges = <0x0 0xc100 0x100>;
 			interrupts = <1>;
 			clocks = <&uart0_clk>;
 			reg-shift = <2>;
-			reg-io-width = <3>;
 
 			#address-cells = <1>;
 			#size-cells = <1>;
@@ -289,13 +288,12 @@
 		};
 
 		uart1: uart@c200 {
-			compatible = "sigma,smp8640-uart", "ns16550a";
+			compatible = "sigma,smp8640-uart", "ralink,rt2880-uart";
 			reg = <0xc200 0x100>;
 			ranges = <0x0 0xc200 0x100>;
 			interrupts = <2>;
 			clocks = <&uart1_clk>;
 			reg-shift = <2>;
-			reg-io-width = <3>;
 
 			#address-cells = <1>;
 			#size-cells = <1>;
