@@ -111,7 +111,7 @@ static int tangox_sata_phy_probe(struct platform_device *pdev)
 	of_property_read_u32(node, "sigma,tx-ssc", &phy->tx_ssc);
 	of_property_read_u32_array(node, "sigma,rx-ssc", phy->rx_ssc, 2);
 
-	genphy = devm_phy_create(&pdev->dev, NULL, &tangox_sata_phy_ops, NULL);
+	genphy = devm_phy_create(&pdev->dev, NULL, &tangox_sata_phy_ops);
 	if (IS_ERR(genphy))
 		return PTR_ERR(genphy);
 
