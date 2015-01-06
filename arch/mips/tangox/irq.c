@@ -31,4 +31,4 @@ void __init arch_init_irq(void)
 }
 
 OF_DECLARE_2(irqchip, mips_cpu, "mti,cpu-interrupt-controller",
-	     mips_cpu_intc_init);
+	     mips_cpu_irq_of_init);
