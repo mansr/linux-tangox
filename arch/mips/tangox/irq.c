@@ -13,18 +13,6 @@
 #include <asm/irq.h>
 #include <asm/irq_cpu.h>
 
-asmlinkage void plat_irq_dispatch(void)
-{
-	unsigned int pending;
-
-	pending = (read_c0_cause() & read_c0_status() & ST0_IM) >> CAUSEB_IP;
-
-	if (pending)
-		do_IRQ(__ffs(pending));
-	else
-		spurious_interrupt();
-}
-
 void __init arch_init_irq(void)
 {
 	irqchip_init();
