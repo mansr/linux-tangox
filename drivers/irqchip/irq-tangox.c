@@ -57,35 +57,45 @@ static inline void intc_writel(struct tangox_irq_chip *chip, int reg, u32 val)
 	writel(val, chip->base + reg);
 }
 
+static void tangox_dispatch_irqs(struct irq_domain *dom, unsigned int status,
+				 int base)
+{
+	unsigned int hwirq;
+	unsigned int virq;
+
+	while (status) {
+		hwirq = __ffs(status);
+		virq = irq_find_mapping(dom, base + hwirq);
+		generic_handle_irq(virq);
+		status &= ~BIT(hwirq);
+	}
+}
+
 static void tangox_irq_handler(unsigned int irq, struct irq_desc *desc)
 {
 	struct irq_domain *dom = irq_desc_get_handler_data(desc);
 	struct tangox_irq_chip *chip = dom->host_data;
 	unsigned int status, status_hi;
-	unsigned int hwirq;
-	unsigned int virq;
+	unsigned int sr = 0;
 
 	status = intc_readl(chip, chip->ctl + IRQ_STATUS);
 	status_hi = intc_readl(chip, chip->ctl + IRQ_CTL_HI + IRQ_STATUS);
 
 	if (!(status | status_hi)) {
-		pr_warn("Spurious IRQ %d\n", irq);
 		spurious_interrupt();
 		return;
 	}
 
-	hwirq = status ? __ffs(status) : __ffs(status_hi) + 32;
-	virq = irq_find_mapping(dom, hwirq);
-
 	if (chip->mask) {
-		unsigned int sr = read_c0_status();
+		sr = read_c0_status();
 		write_c0_status(sr & ~chip->mask);
-		generic_handle_irq(virq);
-		write_c0_status(sr);
-		return;
 	}
 
-	generic_handle_irq(virq);
+	tangox_dispatch_irqs(dom, status, 0);
+	tangox_dispatch_irqs(dom, status_hi, 32);
+
+	if (sr)
+		write_c0_status(sr);
 }
 
 static void __init tangox_irq_init(struct irq_chip_generic *gc,
