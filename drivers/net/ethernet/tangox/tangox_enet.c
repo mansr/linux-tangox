@@ -413,6 +413,7 @@ static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	tx_buf->skb = skb;
 	tx_buf->frags = frags;
+	priv->tx_more = skb->xmit_more;
 
 	enet_tx_dma_start(dev, next);
 
@@ -465,12 +466,17 @@ static void enet_tx_reclaim(unsigned long data)
 static void enet_tx_done(struct net_device *dev)
 {
 	struct tangox_enet_priv *priv = netdev_priv(dev);
+	int next = priv->tx_pending;
+	int nr_dirty;
 
 	priv->tx_reclaim_limit = priv->tx_reclaim_next;
 
 	enet_tx_dma_start(dev, -1);
 
-	if (atomic_read(&priv->tx_free) <= ENET_DESC_RECLAIM)
+	nr_dirty = (priv->tx_reclaim_limit - priv->tx_dirty) &
+		(priv->tx_desc_count - 1);
+
+	if (nr_dirty >= ENET_DESC_RECLAIM || (next < 0 && !priv->tx_more))
 		tasklet_schedule(&priv->tx_reclaim_tasklet);
 }
 

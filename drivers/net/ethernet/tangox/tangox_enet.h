@@ -19,7 +19,7 @@
 #define DEF_TX_DESC_COUNT		128
 
 #define ENET_DESC_LOW			16
-#define ENET_DESC_RECLAIM		(4 * ENET_DESC_LOW)
+#define ENET_DESC_RECLAIM		64
 
 #define RX_BUF_SIZE			1552
 #define TX_BUF_SIZE			1552
@@ -228,6 +228,7 @@ struct tangox_enet_priv {
 	u16				tx_reclaim_next;
 	u16 				tx_reclaim_limit;
 	u16				tx_dirty;
+	u16				tx_more;
 
 	struct tasklet_struct		tx_reclaim_tasklet;
 
