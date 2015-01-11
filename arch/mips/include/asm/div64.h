@@ -172,43 +172,34 @@ extern uint32_t __div64_32(uint64_t *dividend, uint32_t divisor);
 			__res >>= 32;					\
 		} else {						\
 			__t = __m;					\
-			asm (	".set	push		\n"		\
-				".set	dsp		\n"		\
-				"maddu	%q2, %L3, %L4	\n"             \
-                                "mflo	%L0, %q2	\n"             \
-                                "mfhi	%M0, %q2	\n"             \
+			asm (	"maddu	%L3, %L4	\n"             \
+				"mflo	%L0		\n"             \
+				"mfhi	%M0		\n"             \
 				"sltu	%1,  %L0, %L3	\n"		\
 				"addu	%L0, %M0, %1	\n"		\
 				"sltu	%M0, %L0, %M3	\n"		\
-				".set	pop		\n"		\
-				: "=&r"(__res), "=&r"(__c), "+&ka"(__t) \
+				: "=&r"(__res), "=&r"(__c), "+&x"(__t)	\
 				: "r"(__m), "r"(__n));			\
 		}							\
 		if (!(__m & ((1ULL << 63) | (1ULL << 31)))) {		\
-			asm (	".set	push		\n"		\
-				".set	dsp		\n"		\
-				"maddu	%q0, %M2, %L3	\n"		\
-				"maddu	%q0, %L2, %M3	\n"		\
-				"mfhi	%1,  %q0	\n"		\
-				"mthi	$0,  %q0	\n"		\
-				"mtlo	%1,  %q0	\n"		\
-				"maddu	%q0, %M2, %M3	\n"		\
-				".set	pop		\n"		\
-				: "+&ka"(__res), "=&r"(__c)		\
+			asm (	"maddu	%M2, %L3	\n"		\
+				"maddu	%L2, %M3	\n"		\
+				"mfhi	%1		\n"		\
+				"mthi	$0		\n"		\
+				"mtlo	%1		\n"		\
+				"maddu	%M2, %M3	\n"		\
+				: "+&x"(__res), "=&r"(__c)		\
 				: "r"(__m), "r"(__n));			\
 		} else {						\
-			asm (	".set	push		\n"		\
-				".set	dsp		\n"		\
-				"maddu	%q0, %M3, %L4	\n"		\
-				"mfhi	%2,  %q0	\n"		\
-				"maddu	%q0, %L3, %M4	\n"		\
-				"mfhi	%1,  %q0	\n"		\
+			asm (	"maddu	%M3, %L4	\n"		\
+				"mfhi	%2		\n"		\
+				"maddu	%L3, %M4	\n"		\
+				"mfhi	%1		\n"		\
 				"sltu	%2,  %1,  %2	\n"		\
-				"mtlo	%1,  %q0	\n"		\
-				"mthi	%2,  %q0	\n"		\
-				"maddu	%q0, %M3, %M4	\n"		\
-				".set	pop		\n"		\
-				: "+&ka"(__res), "=&r"(__z), "=&r"(__c) \
+				"mtlo	%1		\n"		\
+				"mthi	%2		\n"		\
+				"maddu	%M3, %M4	\n"		\
+				: "+&x"(__res), "=&r"(__z), "=&r"(__c)	\
 				: "r"(__m), "r"(__n));			\
 		}							\
 		__res /= __p;						\
