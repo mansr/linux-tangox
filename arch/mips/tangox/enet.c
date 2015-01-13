@@ -5,6 +5,7 @@
 #include "memmap.h"
 #include "setup.h"
 
+#ifdef CONFIG_TANGOX_ENET_PCH_C200_FIXUP
 static int tangox_phy_init(struct phy_device *phydev)
 {
 	int err;
@@ -17,6 +18,15 @@ static int tangox_phy_init(struct phy_device *phydev)
 	return err;
 }
 
+static int __init tangox_phy_setup(void)
+{
+	phy_register_fixup_for_uid(0x00070420, 0xfffffff0, tangox_phy_init);
+
+	return 0;
+}
+device_initcall(tangox_phy_setup);
+#endif
+
 static void __init tangox_enet_set_bw(void __iomem *reg)
 {
 	u32 val = readl(reg);
@@ -28,8 +38,6 @@ static int __init tangox_enet_register(void)
 {
 	void __iomem *ctl = ioremap(SYS_BASE + 0x130, 8);
 	int i;
-
-	phy_register_fixup_for_uid(0x00070420, 0xfffffff0, tangox_phy_init);
 
 	for (i = 0; i < 2; i++)
 		if (tangox_ethernet_enabled(i))
