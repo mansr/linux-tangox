@@ -230,8 +230,9 @@ config CLKSRC_MIPS_GIC
 	select CLKSRC_OF
 
 config CLKSRC_TANGOX
-       bool
-       select CLKSRC_OF
-       select CLKSRC_MMIO
+	bool
+	select CLKSRC_OF
+	select CLKSRC_MMIO
+	select GENERIC_SCHED_CLOCK
 
 endmenu
