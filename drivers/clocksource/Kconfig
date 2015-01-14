@@ -235,4 +235,8 @@ config CLKSRC_TANGOX
 	select CLKSRC_MMIO
 	select GENERIC_SCHED_CLOCK
 
+config TIMER_TANGOX
+	bool "SMP86xx timer support"
+	select CLKSRC_OF
+
 endmenu

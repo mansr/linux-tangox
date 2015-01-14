@@ -307,6 +307,22 @@
 			};
 		};
 
+		timer0: timer@c500 {
+			compatible = "sigma,smp8640-timer";
+			reg = <0xc500 0x10>;
+			interrupts = <5>;
+			clocks = <&sys_clk 0>;
+			label = "tangox_timer0";
+		};
+
+		timer1: timer@c600 {
+			compatible = "sigma,smp8640-timer";
+			reg = <0xc600 0x10>;
+			interrupts = <6>;
+			clocks = <&xtal_in_clk>;
+			label = "tangox_timer1";
+		};
+
 		intc@e000 {
 			reg = <0xe000 0x1000>;
 			ranges = <0x0 0xe000 0x1000>;
