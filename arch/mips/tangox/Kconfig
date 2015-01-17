@@ -3,8 +3,8 @@ if TANGOX
 choice
 	prompt	"Devicetree"
 
-config DTB_SMP8640
-	bool "SMP8640"
+config DTB_PCH_C200
+	bool "Popcorn Hour C-200"
 
 endchoice
 

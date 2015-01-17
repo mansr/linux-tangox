@@ -1,5 +1,3 @@
-/dts-v1/;
-
 / {
 	compatible = "sigma,smp8640-soc";
 

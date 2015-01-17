@@ -1,0 +1,16 @@
+/dts-v1/;
+
+/include/ "smp8640.dtsi"
+
+/ {
+	compatible = "syabas,pch_c200", "sigma,smp8640-soc";
+	model = "Popcorn Hour C-200";
+
+	leds {
+		compatible = "gpio-leds";
+		power {
+			label = "Power";
+			gpios = <&sys_gpio 9 0>;
+		};
+	};
+};
