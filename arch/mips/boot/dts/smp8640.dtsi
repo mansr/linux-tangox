@@ -128,6 +128,16 @@
 			label = "TANGOX";
 		};
 
+		i2c0: i2c@0480 {
+			compatible = "sigma,smp8640-i2c";
+			reg = <0x480 0x2c>;
+			interrupts = <22>;
+			clocks = <&sys_clk 0>;
+			clock-frequency = <100000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+
 		sys_gpio: gpio@0500 {
 			compatible = "sigma,smp8640-gpio";
 			reg = <0x500 0x18>;

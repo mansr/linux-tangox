@@ -888,6 +888,10 @@ config I2C_RCAR
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-rcar.
 
+config I2C_TANGOX
+	tristate "SMP86xx I2C bus support"
+	depends on TANGOX
+
 comment "External I2C/SMBus adapter drivers"
 
 config I2C_DIOLAN_U2C
