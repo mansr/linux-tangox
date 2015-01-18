@@ -14,3 +14,10 @@
 		};
 	};
 };
+
+&i2c0 {
+	backlight@36 {
+		compatible = "ti,lm27966";
+		reg = <0x36>;
+	};
+};
