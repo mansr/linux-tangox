@@ -117,6 +117,7 @@
 		compatible = "simple-bus";
 		reg = <0x10000 0x10000>;
 		ranges = <0x0 0x10000 0x10000>;
+		interrupt-parent = <&irqintc>;
 
 		#address-cells = <1>;
 		#size-cells = <1>;
