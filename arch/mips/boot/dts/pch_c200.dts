@@ -22,4 +22,14 @@
 		compatible = "ti,lm27966";
 		reg = <0x36>;
 	};
+
+	lcd@5d {
+		compatible = "orient,amg19264c-max732x";
+		reg = <0x5d>;
+		pin-e = <10>;
+		pin-rs = <12>;
+		pin-cs1 = <13>;
+		pin-cs2 = <14>;
+		pin-cs3 = <15>;
+	};
 };
