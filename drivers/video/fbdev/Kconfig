@@ -2484,3 +2484,32 @@ config FB_SSD1307
 	help
 	  This driver implements support for the Solomon SSD1307
 	  OLED controller over I2C.
+
+config FB_AMG19264C
+	tristate "Orient Display AMG19264C framebuffer support"
+	depends on FB
+	depends on I2C || GPIOLIB
+	select FB_SYS_FOPS
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_DEFERRED_IO
+	help
+	  This driver supports the Orient Display AMG19264C and similar
+	  LCD modules. At least one access method must be enabled below.
+
+config FB_AMG19264C_GPIO
+	bool "Support access using GPIO"
+	depends on FB_AMG19264C
+	depends on GPIOLIB
+	help
+	  Support controlling an AMG19264C connected to GPIO pins.
+
+config FB_AMG19264C_MAX732X
+	bool "Support access over MAX732x I2C I/O expander"
+	depends on FB_AMG19264C
+	depends on I2C
+	help
+	  Support controlling an AMG19264C connected to a MAX732x I2C I/O
+	  expander. This is much faster than using the GPIO driver for this
+	  chip.
