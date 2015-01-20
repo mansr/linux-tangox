@@ -268,7 +268,7 @@ static int tangox_i2c_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, ti2c);
 	i2c_set_adapdata(&ti2c->adap, ti2c);
 
-	clkdiv = rate / busfreq / 2;
+	clkdiv = DIV_ROUND_UP(rate, 2 * busfreq);
 
 	writel(0, ti2c->base + TANGOX_I2C_CONFIG);
 	writel(clkdiv, ti2c->base + TANGOX_I2C_CLKDIV);
