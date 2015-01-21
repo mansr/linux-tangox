@@ -130,6 +130,49 @@ static int amg19264c_update(struct fb_info *fb)
 	return 0;
 }
 
+static void amg19264c_update_row(struct amg19264c *lcd, int row, int x, int w)
+{
+	int csx, sx, ex;
+	int cs, data;
+	int i, j;
+
+	amg19264c_write_cmd(lcd, 7, 0xb8 | row);
+
+	for (i = 0; i < 3; i++) {
+		csx = 64 * i;
+
+		if (x >= csx + 64 || x + w < csx)
+			continue;
+
+		sx = max(x, csx);
+		ex = min(x + w, csx + 64);
+		cs = 1 << (2 - i);
+
+		amg19264c_write_cmd(lcd, cs, 0x40 | (sx & 63));
+
+		for (j = sx; j < ex; j++) {
+			data = amg19264c_get_data(lcd, j, 8 * row);
+			amg19264c_write_data(lcd, cs, data);
+		}
+	}
+}
+
+static void amg19264c_update_rect(struct fb_info *fb, int x, int y,
+				  int width, int height)
+{
+	struct amg19264c *lcd = fb->par;
+	int i;
+
+	mutex_lock(&lcd->lock);
+
+	for (i = y >> 3; i < (y + height + 7) >> 3; i++)
+		amg19264c_update_row(lcd, i, x, width);
+
+	amg19264c_flush(lcd);
+
+	mutex_unlock(&lcd->lock);
+}
+
 static ssize_t amg19264c_fb_write(struct fb_info *fb, const char __user *buf,
 				  size_t count, loff_t *ppos)
 {
@@ -147,19 +190,19 @@ static ssize_t amg19264c_fb_write(struct fb_info *fb, const char __user *buf,
 static void amg19264c_fillrect(struct fb_info *fb, const struct fb_fillrect *r)
 {
 	sys_fillrect(fb, r);
-	amg19264c_update(fb);
+	amg19264c_update_rect(fb, r->dx, r->dy, r->width, r->height);
 }
 
 static void amg19264c_copyarea(struct fb_info *fb, const struct fb_copyarea *a)
 {
 	sys_copyarea(fb, a);
-	amg19264c_update(fb);
+	amg19264c_update_rect(fb, a->dx, a->dy, a->width, a->height);
 }
 
 static void amg19264c_imageblit(struct fb_info *fb, const struct fb_image *img)
 {
 	sys_imageblit(fb, img);
-	amg19264c_update(fb);
+	amg19264c_update_rect(fb, img->dx, img->dy, img->width, img->height);
 }
 
 static struct fb_ops amg19264c_ops = {
@@ -291,7 +334,7 @@ static void amg19264c_max732x_queue(struct amg19264c *lcd, int cs, int rs)
 	int pins = rs ? io->pinmap[PIN_RS] : 0;
 	int i;
 
-	for (i = 0; i < 2; i++)
+	for (i = 0; i < 3; i++)
 		if (~cs & (1 << i))
 			pins |= io->pinmap[PIN_CS1 + i];
 
