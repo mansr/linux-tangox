@@ -243,7 +243,8 @@ static int amg19264c_setup(struct amg19264c *lcd, struct device *dev)
 		goto err_fb;
 	}
 
-	fb->flags = FBINFO_DEFAULT | FBINFO_VIRTFB | FBINFO_HWACCEL_YWRAP;
+	fb->flags = FBINFO_DEFAULT | FBINFO_VIRTFB | FBINFO_READS_FAST |
+		FBINFO_HWACCEL_YWRAP;
 	fb->fix = amg19264c_fix;
 	fb->var = amg19264c_var;
 	fb->par = lcd;
