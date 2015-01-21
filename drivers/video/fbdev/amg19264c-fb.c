@@ -43,6 +43,7 @@ static const struct fb_var_screeninfo amg19264c_var = {
 	.red		= { .length = 1 },
 	.green		= { .length = 1 },
 	.blue		= { .length = 1 },
+	.vmode		= FB_VMODE_YWRAP,
 };
 
 static void amg19264c_write_cmd(struct amg19264c *lcd, int cs, int cmd)
@@ -67,6 +68,16 @@ static int amg19264c_blank(int blank, struct fb_info *info)
 	int on = blank == FB_BLANK_UNBLANK;
 
 	amg19264c_write_cmd(lcd, 7, 0x3e | on);
+
+	return 0;
+}
+
+static int amg19264c_pan(struct fb_var_screeninfo *var, struct fb_info *fb)
+{
+	struct amg19264c *lcd = fb->par;
+
+	amg19264c_write_cmd(lcd, 7, 0xc0 | var->yoffset);
+	amg19264c_flush(lcd);
 
 	return 0;
 }
@@ -145,6 +156,7 @@ static struct fb_ops amg19264c_ops = {
 	.fb_read	= fb_sys_read,
 	.fb_write	= amg19264c_fb_write,
 	.fb_blank	= amg19264c_blank,
+	.fb_pan_display	= amg19264c_pan,
 	.fb_fillrect	= amg19264c_fillrect,
 	.fb_copyarea	= amg19264c_copyarea,
 	.fb_imageblit	= amg19264c_imageblit,
