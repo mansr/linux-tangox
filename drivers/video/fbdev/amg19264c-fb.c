@@ -91,7 +91,7 @@ static int amg19264c_pan(struct fb_var_screeninfo *var, struct fb_info *fb)
 static int amg19264c_get_data(struct amg19264c *lcd, int x, int y)
 {
 	u8 *p = &lcd->mem[y * LCD_WIDTH / 8 + x / 8];
-	int sh = 7 - (x & 7);
+	int sh = x & 7;
 	int val = 0;
 	int i;
 
