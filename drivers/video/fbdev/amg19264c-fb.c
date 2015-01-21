@@ -10,6 +10,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/fb.h>
+#include <linux/mutex.h>
 
 #define LCD_WIDTH	192
 #define LCD_HEIGHT	64
@@ -19,6 +20,7 @@ struct amg19264c {
 	struct fb_info *fb;
 	u8 *mem;
 	const struct amg19264c_ops *ops;
+	struct mutex lock;
 };
 
 struct amg19264c_ops {
@@ -76,8 +78,12 @@ static int amg19264c_pan(struct fb_var_screeninfo *var, struct fb_info *fb)
 {
 	struct amg19264c *lcd = fb->par;
 
+	mutex_lock(&lcd->lock);
+
 	amg19264c_write_cmd(lcd, 7, 0xc0 | var->yoffset);
 	amg19264c_flush(lcd);
+
+	mutex_unlock(&lcd->lock);
 
 	return 0;
 }
@@ -104,6 +110,8 @@ static int amg19264c_update(struct fb_info *fb)
 	int data;
 	int cs;
 
+	mutex_lock(&lcd->lock);
+
 	amg19264c_write_cmd(lcd, 7, 0x40);
 
 	for (i = 0; i < 8; i++) {
@@ -116,6 +124,8 @@ static int amg19264c_update(struct fb_info *fb)
 	}
 
 	amg19264c_flush(lcd);
+
+	mutex_unlock(&lcd->lock);
 
 	return 0;
 }
@@ -182,6 +192,7 @@ static int amg19264c_setup(struct amg19264c *lcd, struct device *dev)
 		return -ENOMEM;
 
 	lcd->fb = fb;
+	mutex_init(&lcd->lock);
 
 	lcd->mem = devm_kzalloc(dev, LCD_MEM_SIZE, GFP_KERNEL);
 	if (!lcd->mem) {
@@ -227,6 +238,8 @@ static void amg19264c_remove(struct amg19264c *lcd)
 	unregister_framebuffer(fb);
 	fb_deferred_io_cleanup(fb);
 	framebuffer_release(fb);
+
+	mutex_destroy(&lcd->lock);
 }
 
 #define PIN_E	0
