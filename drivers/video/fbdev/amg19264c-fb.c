@@ -70,6 +70,7 @@ static int amg19264c_blank(int blank, struct fb_info *info)
 	int on = blank == FB_BLANK_UNBLANK;
 
 	amg19264c_write_cmd(lcd, 7, 0x3e | on);
+	amg19264c_flush(lcd);
 
 	return 0;
 }
