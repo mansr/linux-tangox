@@ -146,6 +146,13 @@
 			#gpio-cells = <2>;
 		};
 
+		ir_rc5: ir@0518 {
+			compatible = "sigma,smp8640-ir-rc5";
+			reg = <0x518 0x18>;
+			interrupts = <21>;
+			clocks = <&xtal_in_clk>;
+		};
+
 		watchdog@fd00 {
 			compatible = "sigma,smp8640-wdt";
 			reg = <0xfd00 8>;
