@@ -153,6 +153,13 @@
 			clocks = <&xtal_in_clk>;
 		};
 
+		ir_rc6: ir@05e0 {
+			compatible = "sigma,smp8640-ir-rc6";
+			reg = <0x5e0 0x1c>;
+			interrupts = <21>;
+			clocks = <&xtal_in_clk>;
+		};
+
 		watchdog@fd00 {
 			compatible = "sigma,smp8640-wdt";
 			reg = <0xfd00 8>;
