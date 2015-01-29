@@ -200,7 +200,7 @@ static void enet_start_rx(struct net_device *dev)
 	enet_set_bits(l, priv, ENET_RXC_CR, RCR_EN);
 }
 
-static int enet_alloc_rx(struct net_device *dev, int i)
+static int enet_alloc_rx(struct net_device *dev, int i, int napi)
 {
 	struct tangox_enet_priv *priv = netdev_priv(dev);
 	struct enet_desc *rx = &priv->rx_descs[i];
@@ -208,7 +208,7 @@ static int enet_alloc_rx(struct net_device *dev, int i)
 	int size = L1_CACHE_ALIGN(RX_BUF_SIZE);
 	void *data;
 
-	data = netdev_alloc_frag(size);
+	data = napi ? napi_alloc_frag(size) : netdev_alloc_frag(size);
 	if (!data) {
 		buf->page = NULL;
 		rx->config = DESC_BTS(2) | DESC_EOF;
@@ -235,7 +235,7 @@ static void enet_receive(struct net_device *dev, int i, int len)
 	dma_addr_t dma = rx->s_addr;
 	struct sk_buff *skb;
 
-	skb = netdev_alloc_skb_ip_align(dev, RX_COPYBREAK);
+	skb = napi_alloc_skb(&priv->napi, RX_COPYBREAK);
 	if (!skb) {
 		netdev_err(dev, "rx skb allocation failed\n");
 		return;
@@ -308,7 +308,7 @@ static int enet_poll(struct napi_struct *napi, int budget)
 
 		rx->report = 0;
 		if (!rx_buf->page)
-			enet_alloc_rx(dev, next);
+			enet_alloc_rx(dev, next, 1);
 
 		last = next;
 		work++;
@@ -794,7 +794,7 @@ static int enet_dma_init(struct net_device *dev)
 		rx->n_addr = rx_dma + sizeof(struct enet_desc);
 		rx->r_addr = rx_dma + offsetof(struct enet_desc, report);
 
-		err = enet_alloc_rx(dev, i);
+		err = enet_alloc_rx(dev, i, 0);
 		if (err)
 			return err;
 	}
