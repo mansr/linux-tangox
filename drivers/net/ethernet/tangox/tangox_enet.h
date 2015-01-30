@@ -229,6 +229,7 @@ struct tangox_enet_priv {
 	u16 				tx_reclaim_limit;
 	u16				tx_dirty;
 	u16				tx_more;
+	u16				tx_done;
 
 	struct tasklet_struct		tx_reclaim_tasklet;
 

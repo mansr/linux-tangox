@@ -410,6 +410,7 @@ static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
 	}
 
 	enet_tx_dma_queue(dev, dma_addr, skb->len - cpsz, DESC_EOF | DESC_EOC);
+	netdev_sent_queue(dev, skb->len);
 
 	tx_buf->skb = skb;
 	tx_buf->frags = frags;
@@ -466,8 +467,15 @@ static void enet_tx_reclaim(unsigned long data)
 static void enet_tx_done(struct net_device *dev)
 {
 	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct tx_buf *tx_buf;
+	int tx_mask = (priv->tx_desc_count - 1);
 	int next = priv->tx_pending;
 	int nr_dirty;
+
+	tx_buf = &priv->tx_bufs[priv->tx_done];
+	priv->tx_done = (priv->tx_done + tx_buf->frags) & tx_mask;
+
+	netdev_completed_queue(dev, 1, tx_buf->skb->len);
 
 	priv->tx_reclaim_limit = priv->tx_reclaim_next;
 
@@ -654,6 +662,7 @@ static void enet_dma_reinit(struct net_device *dev)
 	priv->tx_reclaim_limit = -1;
 	priv->tx_dirty = 0;
 	priv->tx_next = 0;
+	priv->tx_done = 0;
 	atomic_set(&priv->tx_free, priv->tx_desc_count);
 
 	priv->rx_eoc = priv->rx_desc_count - 1;
