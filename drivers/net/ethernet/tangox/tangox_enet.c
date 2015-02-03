@@ -36,10 +36,13 @@
 #include <linux/dma-mapping.h>
 #include <linux/phy.h>
 #include <linux/cache.h>
+#include <linux/jiffies.h>
 #include <asm/barrier.h>
 #include <asm/io.h>
 
 #include "tangox_enet.h"
+
+static void enet_tx_reclaim(unsigned long data);
 
 static inline u8 enet_readb(struct tangox_enet_priv *priv, int reg)
 {
@@ -326,6 +329,8 @@ static int enet_poll(struct napi_struct *napi, int budget)
 	if (work < budget)
 		napi_complete(napi);
 
+	enet_tx_reclaim((unsigned long)dev);
+
 	return work;
 }
 
@@ -414,9 +419,11 @@ static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	tx_buf->skb = skb;
 	tx_buf->frags = frags;
-	priv->tx_more = skb->xmit_more;
 
 	enet_tx_dma_start(dev, next);
+
+	if (!skb->xmit_more && !timer_pending(&priv->tx_reclaim_timer))
+		mod_timer(&priv->tx_reclaim_timer, jiffies + HZ / 20);
 
 	return NETDEV_TX_OK;
 }
@@ -425,26 +432,26 @@ static void enet_tx_reclaim(unsigned long data)
 {
 	struct net_device *dev = (struct net_device *)data;
 	struct tangox_enet_priv *priv = netdev_priv(dev);
+	int packets = 0, bytes = 0;
 	int reclaimed = 0;
 	int dirty, limit;
 
-	dirty = priv->tx_dirty;
+	dirty = xchg(&priv->tx_dirty, -1);
+	if (dirty < 0)
+		return;
+
 	limit = priv->tx_reclaim_limit;
+	if (dirty == limit)
+		goto end;
 
 	while (dirty != limit) {
 		struct enet_desc *tx = &priv->tx_descs[dirty];
 		struct tx_buf *tx_buf = &priv->tx_bufs[dirty];
 		int frags = tx_buf->frags;
-		u32 report = tx->report;
 
 		if (tx_buf->skb) {
-			priv->stats.tx_packets++;
-
-			if (IS_TX_ERROR(report))
-				priv->stats.tx_errors++;
-			else
-				priv->stats.tx_bytes += tx_buf->skb->len;
-
+			packets++;
+			bytes += tx_buf->skb->len;
 			dev_kfree_skb(tx_buf->skb);
 		}
 
@@ -456,12 +463,16 @@ static void enet_tx_reclaim(unsigned long data)
 		reclaimed += frags;
 	}
 
-	priv->tx_dirty = dirty;
+	priv->stats.tx_packets += packets;
+	priv->stats.tx_bytes += bytes;
 
 	smp_mb__before_atomic();
 	atomic_add(reclaimed, &priv->tx_free);
 
 	netif_wake_queue(dev);
+
+end:
+	priv->tx_dirty = dirty;
 }
 
 static void enet_tx_done(struct net_device *dev)
@@ -469,7 +480,6 @@ static void enet_tx_done(struct net_device *dev)
 	struct tangox_enet_priv *priv = netdev_priv(dev);
 	struct tx_buf *tx_buf;
 	int tx_mask = (priv->tx_desc_count - 1);
-	int next = priv->tx_pending;
 	int nr_dirty;
 
 	tx_buf = &priv->tx_bufs[priv->tx_done];
@@ -481,10 +491,8 @@ static void enet_tx_done(struct net_device *dev)
 
 	enet_tx_dma_start(dev, -1);
 
-	nr_dirty = (priv->tx_reclaim_limit - priv->tx_dirty) &
-		(priv->tx_desc_count - 1);
-
-	if (nr_dirty >= ENET_DESC_RECLAIM || (next < 0 && !priv->tx_more))
+	nr_dirty = (priv->tx_reclaim_limit - priv->tx_dirty) & tx_mask;
+	if (nr_dirty >= ENET_DESC_RECLAIM)
 		tasklet_schedule(&priv->tx_reclaim_tasklet);
 }
 
@@ -659,7 +667,7 @@ static void enet_dma_reinit(struct net_device *dev)
 	int i;
 
 	priv->tx_pending = -1;
-	priv->tx_reclaim_limit = -1;
+	priv->tx_reclaim_limit = 0;
 	priv->tx_dirty = 0;
 	priv->tx_next = 0;
 	priv->tx_done = 0;
@@ -1073,6 +1081,8 @@ static int tangox_enet_probe(struct platform_device *pdev)
 
 	tasklet_init(&priv->tx_reclaim_tasklet, enet_tx_reclaim,
 		     (unsigned long)dev);
+	setup_timer(&priv->tx_reclaim_timer, enet_tx_reclaim,
+		    (unsigned long)dev);
 
 	ret = register_netdev(dev);
 	if (ret) {

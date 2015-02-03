@@ -14,6 +14,7 @@
 #include <linux/skbuff.h>
 #include <linux/phy.h>
 #include <linux/clk.h>
+#include <linux/timer.h>
 
 #define DEF_RX_DESC_COUNT		512
 #define DEF_TX_DESC_COUNT		128
@@ -227,11 +228,11 @@ struct tangox_enet_priv {
 	u32 				tx_pending;
 	u16				tx_reclaim_next;
 	u16 				tx_reclaim_limit;
-	u16				tx_dirty;
-	u16				tx_more;
+	u32				tx_dirty;
 	u16				tx_done;
 
 	struct tasklet_struct		tx_reclaim_tasklet;
+	struct timer_list		tx_reclaim_timer;
 
 	struct net_device_stats		stats;
 
