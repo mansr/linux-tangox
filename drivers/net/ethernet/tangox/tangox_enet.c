@@ -386,8 +386,10 @@ end:
 static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct tx_skb_data *skb_data;
 	struct tx_buf *tx_buf;
 	dma_addr_t dma_addr;
+	unsigned int dma_len;
 	int cpsz, next;
 	int frags;
 
@@ -401,8 +403,9 @@ static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
 	frags = cpsz ? 2 : 1;
 	atomic_sub(frags, &priv->tx_free);
 
+	dma_len = skb->len - cpsz;
 	dma_addr = dma_map_single(&dev->dev, skb->data + cpsz,
-				  skb->len - cpsz, DMA_TO_DEVICE);
+				  dma_len, DMA_TO_DEVICE);
 
 	next = priv->tx_next;
 	tx_buf = &priv->tx_bufs[next];
@@ -414,11 +417,15 @@ static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
 		enet_tx_dma_queue(dev, dma, cpsz, 0);
 	}
 
-	enet_tx_dma_queue(dev, dma_addr, skb->len - cpsz, DESC_EOF | DESC_EOC);
+	enet_tx_dma_queue(dev, dma_addr, dma_len, DESC_EOF | DESC_EOC);
 	netdev_sent_queue(dev, skb->len);
 
 	tx_buf->skb = skb;
 	tx_buf->frags = frags;
+
+	skb_data = (struct tx_skb_data *)skb->cb;
+	skb_data->dma_addr = dma_addr;
+	skb_data->dma_len = dma_len;
 
 	enet_tx_dma_start(dev, next);
 
@@ -447,13 +454,16 @@ static void enet_tx_reclaim(unsigned long data)
 	while (dirty != limit) {
 		struct enet_desc *tx = &priv->tx_descs[dirty];
 		struct tx_buf *tx_buf = &priv->tx_bufs[dirty];
+		struct sk_buff *skb = tx_buf->skb;
+		struct tx_skb_data *skb_data = (struct tx_skb_data *)skb->cb;
 		int frags = tx_buf->frags;
 
-		if (tx_buf->skb) {
-			packets++;
-			bytes += tx_buf->skb->len;
-			dev_kfree_skb(tx_buf->skb);
-		}
+		packets++;
+		bytes += skb->len;
+
+		dma_unmap_single(&dev->dev, skb_data->dma_addr,
+				 skb_data->dma_len, DMA_TO_DEVICE);
+		dev_kfree_skb(skb);
 
 		tx->report = 0;
 		tx_buf->skb = NULL;

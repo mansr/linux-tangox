@@ -210,6 +210,11 @@ struct tx_buf {
 	int frags;
 };
 
+struct tx_skb_data {
+	dma_addr_t dma_addr;
+	unsigned int dma_len;
+};
+
 struct tangox_enet_priv {
 	struct napi_struct		napi;
 
