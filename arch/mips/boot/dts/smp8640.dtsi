@@ -113,25 +113,23 @@
 		};
 	};
 
-	sysbus: bus@10000 {
+	soc {
 		compatible = "simple-bus";
-		reg = <0x10000 0x10000>;
-		ranges = <0x0 0x10000 0x10000>;
 		interrupt-parent = <&irqintc>;
-
 		#address-cells = <1>;
 		#size-cells = <1>;
+		ranges;
 
-		csrc@0048 {
+		csrc@10048 {
 			compatible = "sigma,smp8640-csrc";
-			reg = <0x48 4>;
+			reg = <0x10048 4>;
 			clocks = <&xtal_in_clk>;
 			label = "TANGOX";
 		};
 
-		i2c0: i2c@0480 {
+		i2c0: i2c@10480 {
 			compatible = "sigma,smp8640-i2c";
-			reg = <0x480 0x2c>;
+			reg = <0x10480 0x2c>;
 			interrupts = <22>;
 			clocks = <&sys_clk 0>;
 			clock-frequency = <100000>;
@@ -139,52 +137,58 @@
 			#size-cells = <0>;
 		};
 
-		sys_gpio: gpio@0500 {
+		sys_gpio: gpio@10500 {
 			compatible = "sigma,smp8640-gpio";
-			reg = <0x500 0x18>;
+			reg = <0x10500 0x18>;
 			gpio-controller;
 			#gpio-cells = <2>;
 		};
 
-		ir_rc5: ir@0518 {
+		ir_rc5: ir@10518 {
 			compatible = "sigma,smp8640-ir-rc5";
-			reg = <0x518 0x18>;
+			reg = <0x10518 0x18>;
 			interrupts = <21>;
 			clocks = <&xtal_in_clk>;
 		};
 
-		ir_rc6: ir@05e0 {
+		ir_rc6: ir@105e0 {
 			compatible = "sigma,smp8640-ir-rc6";
-			reg = <0x5e0 0x1c>;
+			reg = <0x105e0 0x1c>;
 			interrupts = <21>;
 			clocks = <&xtal_in_clk>;
 		};
 
-		watchdog@fd00 {
+		watchdog@1fd00 {
 			compatible = "sigma,smp8640-wdt";
-			reg = <0xfd00 8>;
+			reg = <0x1fd00 8>;
 			clocks = <&xtal_in_clk>;
 		};
-	};
 
-	hostbus: bus@20000 {
-		compatible = "simple-bus";
-		reg = <0x20000 0x10000>;
-		ranges = <0x0 0x20000 0x10000>;
-		interrupt-parent = <&irqintc>;
+		usb0_ehci: usb@21400 {
+			compatible = "sigma,smp8640-ehci", "generic-ehci";
+			reg = <0x21400 0x100>;
+			interrupts = <40>;
+			phys = <&usb0_phy>;
+			phy-names = "usb";
+		};
 
-		#address-cells = <1>;
-		#size-cells = <1>;
+		usb0_ohci: usb@21500 {
+			compatible = "sigma,smp8640-ohci", "generic-ohci";
+			reg = <0x21500 0x100>;
+			interrupts = <39>;
+			phys = <&usb0_phy>;
+			phy-names = "usb";
+		};
 
-		sata_phy: phy@400c {
-			compatible = "sigma,smp8640-sata-phy";
-			reg = <0x400c 0x10>;
+		usb0_phy: phy@21700 {
+			compatible = "sigma,smp8640-usb-phy";
+			reg = <0x21700 0x100>;
 			#phy-cells = <0>;
 		};
 
-		sata0: sata@3000 {
+		sata0: sata@23000 {
 			compatible = "sigma,smp8640-sata";
-			reg = <0x3000 0x800 0x4000 0xc>;
+			reg = <0x23000 0x800 0x24000 0xc>;
 			interrupts = <41 42>;
 			dmas = <&dma0 5>;
 			dma-names = "sata";
@@ -192,9 +196,9 @@
 			phy-names = "sata";
 		};
 
-		sata1: sata@3800 {
+		sata1: sata@23800 {
 			compatible = "sigma,smp8640-sata";
-			reg = <0x3800 0x800 0x4040 0xc>;
+			reg = <0x23800 0x800 0x24040 0xc>;
 			interrupts = <54 55>;
 			dmas = <&dma0 8>;
 			dma-names = "sata";
@@ -202,48 +206,32 @@
 			phy-names = "sata";
 		};
 
-		usb0_phy: phy@1700 {
-			compatible = "sigma,smp8640-usb-phy";
-			reg = <0x1700 0x100>;
+		sata_phy: phy@2400c {
+			compatible = "sigma,smp8640-sata-phy";
+			reg = <0x2400c 0x10>;
 			#phy-cells = <0>;
 		};
 
-		usb0_ehci: usb@1400 {
-			compatible = "sigma,smp8640-ehci", "generic-ehci";
-			reg = <0x1400 0x100>;
-			interrupts = <40>;
-			phys = <&usb0_phy>;
-			phy-names = "usb";
-		};
-
-		usb0_ohci: usb@1500 {
-			compatible = "sigma,smp8640-ohci", "generic-ohci";
-			reg = <0x1500 0x100>;
-			interrupts = <39>;
-			phys = <&usb0_phy>;
-			phy-names = "usb";
-		};
-
-		eth0: emac@6000 {
+		eth0: emac@26000 {
 			compatible = "sigma,smp8640-emac";
-			reg = <0x6000 0x800>;
+			reg = <0x26000 0x800>;
 			interrupts = <38>;
 			phy-connection-type = "rgmii";
 			clocks = <&sys_clk 0>;
 		};
 
-		eth1: emac@6800 {
+		eth1: emac@26800 {
 			compatible = "sigma,smp8640-emac";
-			reg = <0x6800 0x800>;
+			reg = <0x26800 0x800>;
 			interrupts = <57>;
 			phy-connection-type = "rgmii";
 			clocks = <&sys_clk 0>;
 		};
 
-		dma0: dma@b000 {
+		dma0: dma@290a0 {
 			compatible = "sigma,smp8640-dma";
-			reg = <0x90a0 0x10>;
-			ranges = <0x0 0xb000 0x200>;
+			reg = <0x290a0 0x10>;
+			ranges = <0x0 0x2b000 0x200>;
 			#dma-cells = <1>;
 			sigma,slave-ids = <5 8>;
 			#address-cells = <1>;
@@ -277,21 +265,11 @@
 				sigma,mem-to-dev;
 			};
 		};
-	};
 
-	cpubus: bus@60000 {
-		compatible = "simple-bus";
-		reg = <0x60000 0x10000>;
-		ranges = <0x0 0x60000 0x10000>;
-		interrupt-parent = <&irqintc>;
-
-		#address-cells = <1>;
-		#size-cells = <1>;
-
-		uart0: uart@c100 {
+		uart0: uart@6c100 {
 			compatible = "sigma,smp8640-uart", "ralink,rt2880-uart";
-			reg = <0xc100 0x100>;
-			ranges = <0x0 0xc100 0x100>;
+			reg = <0x6c100 0x100>;
+			ranges = <0x0 0x6c100 0x100>;
 			interrupts = <1>;
 			clocks = <&uart0_clk>;
 			reg-shift = <2>;
@@ -310,10 +288,10 @@
 			};
 		};
 
-		uart1: uart@c200 {
+		uart1: uart@6c200 {
 			compatible = "sigma,smp8640-uart", "ralink,rt2880-uart";
-			reg = <0xc200 0x100>;
-			ranges = <0x0 0xc200 0x100>;
+			reg = <0x6c200 0x100>;
+			ranges = <0x0 0x6c200 0x100>;
 			interrupts = <2>;
 			clocks = <&uart1_clk>;
 			reg-shift = <2>;
@@ -332,25 +310,25 @@
 			};
 		};
 
-		timer0: timer@c500 {
+		timer0: timer@6c500 {
 			compatible = "sigma,smp8640-timer";
-			reg = <0xc500 0x10>;
+			reg = <0x6c500 0x10>;
 			interrupts = <5>;
 			clocks = <&sys_clk 0>;
 			label = "tangox_timer0";
 		};
 
-		timer1: timer@c600 {
+		timer1: timer@6c600 {
 			compatible = "sigma,smp8640-timer";
-			reg = <0xc600 0x10>;
+			reg = <0x6c600 0x10>;
 			interrupts = <6>;
 			clocks = <&xtal_in_clk>;
 			label = "tangox_timer1";
 		};
 
-		intc@e000 {
-			reg = <0xe000 0x1000>;
-			ranges = <0x0 0xe000 0x1000>;
+		intc@6e000 {
+			reg = <0x6e000 0x1000>;
+			ranges = <0x0 0x6e000 0x1000>;
 			interrupt-parent = <&cpuintc>;
 
 			#address-cells = <1>;
