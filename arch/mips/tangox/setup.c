@@ -28,13 +28,13 @@
 
 #include "setup.h"
 
-void tangox_machine_halt(void)
+static void tangox_machine_halt(void)
 {
 	while (1)
 		cpu_relax();
 }
 
-void tangox_machine_power_off(void)
+static void tangox_machine_power_off(void)
 {
 	while (1)
 		cpu_relax();
