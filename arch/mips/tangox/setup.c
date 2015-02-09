@@ -18,7 +18,6 @@
 #include <linux/of_platform.h>
 #include <linux/of_fdt.h>
 #include <linux/slab.h>
-#include <linux/clocksource.h>
 #include <linux/seq_file.h>
 #include <asm/byteorder.h>
 #include <asm/bootinfo.h>
