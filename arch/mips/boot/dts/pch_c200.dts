@@ -6,6 +6,11 @@
 	compatible = "syabas,pch_c200", "sigma,smp8640-soc";
 	model = "Popcorn Hour C-200";
 
+	memory@10000000 {
+		device_type = "memory";
+		reg = <0x10000000 0xc000000>;
+	};
+
 	leds {
 		compatible = "gpio-leds";
 		power {
