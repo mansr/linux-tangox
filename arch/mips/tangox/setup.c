@@ -42,8 +42,6 @@ static void tangox_machine_power_off(void)
 
 void __init plat_mem_setup(void)
 {
-	tangox_mem_setup();
-
 	_machine_halt = tangox_machine_halt;
 	pm_power_off = tangox_machine_power_off;
 

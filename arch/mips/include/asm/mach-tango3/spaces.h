@@ -10,8 +10,8 @@
 #ifndef _ASM_MACH_TANGO3_SPACES_H
 #define _ASM_MACH_TANGO3_SPACES_H
 
-#define PHYS_OFFSET	_AC(0x04000000, UL)
-#define UNCAC_BASE	_AC(0xa4000000, UL)
+#define PHYS_OFFSET	_AC(0x10000000, UL)
+#define UNCAC_BASE	_AC(0xb0000000, UL)
 #define IO_BASE		UNCAC_BASE
 
 #include <asm/mach-generic/spaces.h>
