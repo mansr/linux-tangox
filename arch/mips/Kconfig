@@ -749,6 +749,7 @@ config TANGOX
 	select BOOT_RAW
 	select CEVT_R4K
 	select CSRC_R4K
+	select CPU_MIPSR2_IRQ_VI
 	select CLKSRC_TANGOX
 	select DMA_NONCOHERENT
 	select SYS_SUPPORTS_32BIT_KERNEL
