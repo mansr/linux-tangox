@@ -343,6 +343,7 @@
 			compatible = "sigma,smp8640-usb-phy";
 			reg = <0x21700 0x100>;
 			#phy-cells = <0>;
+			clocks = <&usb_clk>;
 		};
 
 		sata0: sata@23000 {

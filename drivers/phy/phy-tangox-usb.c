@@ -12,6 +12,7 @@
 #include <linux/platform_device.h>
 #include <linux/phy/phy.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 #include <asm/io.h>
 
 #define PHY_RESET 0x0
@@ -19,12 +20,18 @@
 
 struct tangox_usb_phy {
 	void __iomem *base;
+	struct clk *clk;
 };
 
 static int tangox_usb_phy_init(struct phy *genphy)
 {
 	struct tangox_usb_phy *phy = phy_get_drvdata(genphy);
 	unsigned int val;
+	int err;
+
+	err = clk_prepare_enable(phy->clk);
+	if (err)
+		return err;
 
 	val = readl(phy->base + PHY_RESET);
 	writel(val | 1, phy->base + PHY_RESET);
@@ -59,6 +66,8 @@ static int tangox_usb_phy_exit(struct phy *genphy)
 
 	val = readl(phy->base + PHY_RESET);
 	writel(val | 1, phy->base + PHY_RESET);
+
+	clk_disable_unprepare(phy->clk);
 
 	return 0;
 }
@@ -110,6 +119,10 @@ static int tangox_usb_phy_probe(struct platform_device *pdev)
 	phy->base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(phy->base))
 		return PTR_ERR(phy->base);
+
+	phy->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(phy->clk))
+		return PTR_ERR(phy->clk);
 
 	genphy = devm_phy_create(&pdev->dev, NULL, &tangox_usb_phy_ops);
 	if (IS_ERR(genphy))
