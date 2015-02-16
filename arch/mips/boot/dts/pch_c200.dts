@@ -33,6 +33,8 @@
 	backlight@36 {
 		compatible = "ti,lm27966";
 		reg = <0x36>;
+		default-power = <1>;
+		default-brightness = <7>;
 	};
 
 	lcd@5d {
