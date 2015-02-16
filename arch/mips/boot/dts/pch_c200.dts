@@ -13,6 +13,13 @@
 
 	leds {
 		compatible = "gpio-leds";
+
+		standby {
+			label = "Standby";
+			gpios = <&sys_gpio 8 0>;
+			default-state = "on";
+		};
+
 		power {
 			label = "Power";
 			gpios = <&sys_gpio 9 0>;
