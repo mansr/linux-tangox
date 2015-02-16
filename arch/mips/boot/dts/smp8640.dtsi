@@ -28,19 +28,29 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		xtal_in_clk: xtal {
+		xtal_in_clk: xtal_in_clk {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 			clock-frequency = <27000000>;
 			clock-output-names = "xtal_in_clk";
 		};
 
+		rclk0_in_clk: rclk0_in_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <25000000>;
+			clock-output-names = "rclk0_in_clk";
+		};
+
 		pll0_clk: pll@10000 {
 			compatible = "sigma,smp8640-pll-clk";
 			reg = <0x10000 0x8>;
-			#clock-cells = <0>;
-			clocks = <&xtal_in_clk>;
-			clock-output-names = "pll0_clk";
+			#clock-cells = <1>;
+			clocks = <&xtal_in_clk>, <&rclk0_in_clk>;
+			clock-output-names = "pll0_clk",
+					     "pll0_d1_clk",
+					     "pll0_d2_clk";
+			sigma,mux-table = <1 4>;
 			sigma,pll-n-bits = <10>;
 			sigma,pll-m-bits = <5>;
 			sigma,pll-k-bits = <2 14>;
@@ -50,9 +60,12 @@
 		pll1_clk: pll@10008 {
 			compatible = "sigma,smp8640-pll-clk";
 			reg = <0x10008 0x8>;
-			#clock-cells = <0>;
-			clocks = <&xtal_in_clk>;
-			clock-output-names = "pll1_clk";
+			#clock-cells = <1>;
+			clocks = <&xtal_in_clk>, <&rclk0_in_clk>;
+			clock-output-names = "pll1_clk",
+					     "pll1_d1_clk",
+					     "pll1_d2_clk";
+			sigma,mux-table = <1 4>;
 			sigma,pll-n-bits = <7>;
 			sigma,pll-m-bits = <1>;
 			sigma,pll-k-bits = <3 13>;
@@ -62,47 +75,193 @@
 		pll2_clk: pll@10010 {
 			compatible = "sigma,smp8640-pll-clk";
 			reg = <0x10010 0x8>;
-			#clock-cells = <0>;
-			clocks = <&xtal_in_clk>;
-			clock-output-names = "pll2_clk";
+			#clock-cells = <1>;
+			clocks = <&xtal_in_clk>, <&rclk0_in_clk>;
+			clock-output-names = "pll2_clk",
+					     "pll2_d1_clk",
+					     "pll2_d2_clk";
+			sigma,mux-table = <1 4>;
 			sigma,pll-n-bits = <7>;
 			sigma,pll-m-bits = <1>;
 			sigma,pll-k-bits = <3 13>;
 			sigma,pll-mn-bias = <1>;
 		};
 
-		pll3_clk: pll@10018 {
-			compatible = "sigma,smp8640-pll-clk";
-			reg = <0x10018 0x8>;
-			#clock-cells = <0>;
-			clocks = <&xtal_in_clk>;
-			clock-output-names = "pll3_clk";
-			sigma,pll-n-bits = <7>;
-			sigma,pll-m-bits = <1>;
-			sigma,pll-k-bits = <3 13>;
-			sigma,pll-mn-bias = <1>;
-		};
-
-		sysmux_clk: mux@10034 {
-			compatible = "mux-clock";
+		premux_clk: mux@10034 {
+			compatible = "sigma,smp8640-premux-clk";
 			reg = <0x10034 0x4>;
-			#clock-cells = <0>;
-			clocks = <&pll0_clk>, <&pll1_clk>,
-				 <&pll2_clk>, <&pll3_clk>;
-			clock-output-names = "sysmux_clk";
-			clock-mux-shift = <0>;
-			clock-mux-width = <2>;
+			#clock-cells = <1>;
+			clocks = <&pll0_clk 0>, <&pll0_clk 1>,
+				 <&pll1_clk 0>, <&pll1_clk 1>,
+				 <&pll2_clk 0>, <&pll2_clk 1>;
+			clock-output-names = "pll_sys_clk", "cd_clk";
 		};
 
 		sys_clk: div@1003c {
 			compatible = "sigma,smp8640-div-clk";
 			reg = <0x1003c 0x4>;
 			#clock-cells = <1>;
-			clocks = <&xtal_in_clk>, <&sysmux_clk>;
+			clocks = <&xtal_in_clk>, <&premux_clk 0>;
 			clock-output-names = "sys_clk", "cpu_clk", "dsp_clk";
 			sigma,divisors = <2 4 3 3 3 3 3 3 4 4 4 4
 					  2 2 2 3 3 2 3 2 4 2 4 2
 					  2 4 3 3 3 3 3 3 4 4 4 4>;
+		};
+
+		cd0_clk: clk@10080 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x10080 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd0_clk",
+					     "cd0_2_clk",
+					     "cd0_4_clk";
+		};
+
+		cd1_clk: clk@10088 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x10088 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd1_clk",
+					     "cd1_2_clk",
+					     "cd1_4_clk";
+		};
+
+		cd2_clk: clk@10090 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x10090 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd2_clk",
+					     "cd2_2_clk",
+					     "cd2_4_clk";
+		};
+
+		cd3_clk: clk@10098 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x10098 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd3_clk",
+					     "cd3_2_clk",
+					     "cd3_4_clk";
+		};
+
+		cd4_clk: clk@100a0 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x100a0 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd4_clk",
+					     "cd4_2_clk",
+					     "cd4_4_clk";
+		};
+
+		cd5_clk: clk@100a8 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x100a8 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd5_clk",
+					     "cd5_2_clk",
+					     "cd5_4_clk";
+		};
+
+		cd6_clk: clk@100b0 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x100b0 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd6_clk",
+					     "cd6_2_clk",
+					     "cd6_4_clk";
+		};
+
+		cd7_clk: clk@100b8 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x100b8 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd7_clk",
+					     "cd7_2_clk",
+					     "cd7_4_clk";
+		};
+
+		cd8_clk: clk@100c0 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x100c0 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd8_clk",
+					     "cd8_2_clk",
+					     "cd8_4_clk";
+		};
+
+		cd9_clk: clk@100c8 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x100c8 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd9_clk",
+					     "cd9_2_clk",
+					     "cd9_4_clk";
+		};
+
+		cd10_clk: clk@100d0 {
+			compatible = "sigma,smp8640-cd-clk";
+			reg = <0x100d0 0x8>;
+			#clock-cells = <1>;
+			clocks = <&premux_clk 1>;
+			clock-output-names = "cd10_clk",
+					     "cd10_2_clk",
+					     "cd10_4_clk";
+		};
+
+		sata_clk: sata_clk {
+			compatible = "sigma,smp8640-mux-clk";
+			reg = <0x10030 0x4>;
+			#clock-cells = <0>;
+			clocks = <&xtal_in_clk>, <&cd3_clk 0>,
+				 <&pll2_clk 2>, <&rclk0_in_clk>;
+			clock-output-names = "sata_clk";
+			sigma,shift = <4>;
+		};
+
+		usb_clk: usb_clk {
+			compatible = "sigma,smp8640-mux-clk";
+			reg = <0x10030 0x4>;
+			#clock-cells = <0>;
+			clocks = <&xtal_in_clk>, <&cd2_clk 1>,
+				 <&pll2_clk 1>, <&rclk0_in_clk>;
+			clock-output-names = "usb_clk";
+			sigma,shift = <8>;
+		};
+
+		vo0_clk: vo0_clk {
+			compatible = "sigma,smp8640-mux-clk";
+			reg = <0x10038 0x4>;
+			#clock-cells = <0>;
+			clocks = <&xtal_in_clk>, <&cd8_clk 0>, <&cd8_clk 1>,
+				 <&cd8_clk 2>, <&cd8_clk 1>, <&cd8_clk 2>,
+				 <&pll1_clk 1>, <&pll1_clk 2>, <&pll2_clk 1>;
+			clock-output-names = "vo0_clk";
+			sigma,shift = <0>;
+			sigma,mux-table = <0 1 2 3 4 5 10 11 12>;
+		};
+
+		vo1_clk: vo1_clk {
+			compatible = "sigma,smp8640-mux-clk";
+			reg = <0x10038 0x4>;
+			#clock-cells = <0>;
+			clocks = <&xtal_in_clk>,
+				 <&cd8_clk 0>, <&cd8_clk 1>, <&cd8_clk 2>,
+				 <&cd9_clk 0>, <&cd9_clk 1>, <&cd9_clk 2>,
+				 <&cd10_clk 0>, <&cd10_clk 1>, <&cd10_clk 2>,
+				 <&pll1_clk 1>, <&pll1_clk 2>, <&pll2_clk 1>,
+				 <&pll1_clk 0>, <&rclk0_in_clk>;
+			clock-output-names = "vo1_clk";
+			sigma,shift = <4>;
 		};
 
 		uart_clk: uart_clk {
