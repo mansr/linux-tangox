@@ -79,11 +79,13 @@ static struct backlight_ops lm27966_bl_ops = {
 static int lm27966_bl_probe(struct i2c_client *i2c,
 			     const struct i2c_device_id *id)
 {
+	struct device_node *of_node = i2c->dev.of_node;
 	struct lm27966_bl *lmbl;
 	struct backlight_device *bl;
 	struct backlight_properties props;
 	char name[32];
-	int power;
+	u32 power;
+	u32 brt;
 
 	lmbl = devm_kzalloc(&i2c->dev, sizeof(&lmbl), GFP_KERNEL);
 	if (!lmbl)
@@ -104,8 +106,18 @@ static int lm27966_bl_probe(struct i2c_client *i2c,
 	lmbl->bl = bl;
 
 	power = lm27966_bl_read(lmbl, LM27966_GPR) & 1;
+	brt = lm27966_bl_get_brightness(bl) & 31;
+
+	if (!of_property_read_u32(of_node, "default-brightness", &brt))
+		brt = min(brt, 31u);
+
+	if (!of_property_read_u32(of_node, "default-power", &power))
+		power = !!power;
+
 	bl->props.power = power ? FB_BLANK_UNBLANK : FB_BLANK_POWERDOWN;
-	bl->props.brightness = lm27966_bl_get_brightness(bl);
+	bl->props.brightness = brt;
+
+	lm27966_bl_update(bl);
 
 	dev_info(&bl->dev, "LM27966 backlight at I2C 0x%02x\n", i2c->addr);
 
