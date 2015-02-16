@@ -626,11 +626,11 @@ static int enet_set_mac_address(struct net_device *dev, void *addr)
 	return 0;
 }
 
-static void enet_mc_clear(struct net_device *dev)
+static void enet_mc_init(struct net_device *dev, int val)
 {
 	struct tangox_enet_priv *priv = netdev_priv(dev);
 
-	enet_writeb(priv, ENET_MC_INIT, 0x0);
+	enet_writeb(priv, ENET_MC_INIT, val);
 	while (enet_readb(priv, ENET_MC_INIT))
 		cpu_relax();
 }
@@ -652,7 +652,7 @@ static void enet_set_rx_mode(struct net_device *dev)
 	if (!af_en)
 		return;
 
-	enet_mc_clear(dev);
+	enet_mc_init(dev, 0);
 
 	netdev_for_each_mc_addr(ha, dev) {
 		char *addr = ha->addr;
@@ -664,9 +664,7 @@ static void enet_set_rx_mode(struct net_device *dev)
 		enet_writeb(priv, ENET_MC_ADDR5, addr[4]);
 		enet_writeb(priv, ENET_MC_ADDR6, addr[5]);
 
-		enet_writeb(priv, ENET_MC_INIT, 0xff);
-		while (enet_readb(priv, ENET_MC_INIT))
-			cpu_relax();
+		enet_mc_init(dev, 0xff);
 	}
 }
 
@@ -936,7 +934,7 @@ static int enet_hw_init(struct net_device *dev)
 	val = RX_PAD_STRIP | RX_PAUSE_EN | RX_AF_EN | RX_RUNT;
 	enet_writeb(priv, ENET_RX_CTL, val);
 
-	enet_mc_clear(dev);
+	enet_mc_init(dev, 0);
 
 	enet_writeb(priv, ENET_TX_BUFSIZE, 0xff);
 
