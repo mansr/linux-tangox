@@ -261,6 +261,7 @@ static int amg19264c_setup(struct amg19264c *lcd, struct device *dev)
 	fb_deferred_io_init(fb);
 
 	amg19264c_update(fb);
+	amg19264c_blank(FB_BLANK_UNBLANK, fb);
 
 	err = register_framebuffer(fb);
 	if (err)
