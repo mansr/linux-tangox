@@ -764,6 +764,7 @@ config TANGOX
 	select USE_OF
 	select BUILTIN_DTB
 	select ARCH_WANT_OPTIONAL_GPIOLIB
+	select SYS_SUPPORTS_ZBOOT
 	help
 	  Support for Sigma Designs SMP86xx chips.
 
