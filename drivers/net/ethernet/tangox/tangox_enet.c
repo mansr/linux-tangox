@@ -1042,7 +1042,7 @@ static int tangox_enet_probe(struct platform_device *pdev)
 	}
 
 	phydev = phy_find_first(bus);
-	if (!phydev) {
+	if (!phydev || phy_read(phydev, MII_BMSR) <= 0) {
 		dev_err(&pdev->dev, "no PHY detected\n");
 		ret = -ENODEV;
 		goto err_free_bus;
