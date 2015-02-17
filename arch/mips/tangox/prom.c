@@ -42,11 +42,8 @@ static void __init tangox_systype_init(void)
 
 static void __init tangox_cmdline_setup(void)
 {
-	const char *xenv_cmdline = tangox_xenv_cmdline();
 	int argc = fw_arg0, i;
 	char **argv = (char **)fw_arg1;
-
-	strlcpy(arcs_cmdline, xenv_cmdline, COMMAND_LINE_SIZE);
 
 	for (i = 1; i < argc; i++) {
 		if (arcs_cmdline[0])
@@ -59,7 +56,6 @@ void __init prom_init(void)
 {
 	tangox_systype_init();
 	tangox_remap_init();
-	xenv_config();
 	tangox_cmdline_setup();
 	prom_console_init();
 

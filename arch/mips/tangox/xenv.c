@@ -23,10 +23,6 @@
 #define MAX_LR_XENV2_RO 628
 #define MAX_LR_XENV2_RW 628
 
-#define TMP_REMAP	1
-#define TMP_REMAP_BASE	0
-#define TMP_REMAP_SIZE	0x10000
-
 #define ENABLED_BIT(cfg, sh) \
 	(IS_ENABLED(CONFIG_TANGOX_XENV_DEF_##cfg) << sh##_SHIFT)
 
@@ -247,47 +243,32 @@ static unsigned char xenv_buf[MAX_XENV_SIZE] __initdata;
 
 static void * __init xenv_get(unsigned long addr)
 {
-	unsigned long remap_save;
 	unsigned long xenv_addr;
 	unsigned long xenv_size;
-	unsigned long base;
-	unsigned long offset;
-	unsigned long size1;
-	void *xenv_base;
-	void *xenv_loc;
-	void *xenv;
+	void __iomem *xenv_base;
+	void __iomem *xenv_loc;
+	void *xenv = NULL;
 
 	xenv_loc = ioremap(addr, 4);
 	xenv_addr = readl(xenv_loc);
+	iounmap(xenv_loc);
 
 	if (!xenv_addr)
 		return NULL;
 
-	base = xenv_addr & ~(TMP_REMAP_SIZE - 1);
-	offset = xenv_addr & (TMP_REMAP_SIZE - 1);
+	xenv_base = ioremap(xenv_addr, MAX_XENV_SIZE);
+	if (!xenv_base)
+		return NULL;
 
-	remap_save = tangox_remap_set(TMP_REMAP, base);
-
-	xenv_base = ioremap(TMP_REMAP_BASE, TMP_REMAP_SIZE);
-	xenv_size = readl(xenv_base + offset);
-
-	if (xenv_size > MAX_XENV_SIZE) {
-		xenv = NULL;
+	xenv_size = readl(xenv_base);
+	if (xenv_size > MAX_XENV_SIZE)
 		goto end;
-	}
 
-	size1 = min(xenv_size, TMP_REMAP_SIZE - offset);
-	memcpy(xenv_buf, xenv_base + offset, size1);
-
-	if (size1 != xenv_size) {
-		tangox_remap_set(TMP_REMAP, base + TMP_REMAP_SIZE);
-		memcpy(xenv_buf + size1, xenv_base, xenv_size - size1);
-	}
-
+	memcpy_fromio(xenv_buf, xenv_base, xenv_size);
 	xenv = xenv_buf;
 
 end:
-	tangox_remap_set(TMP_REMAP, remap_save);
+	iounmap(xenv_base);
 
 	return xenv;
 }

@@ -156,6 +156,8 @@ static int __init plat_of_setup(void)
 	if (!of_have_populated_dt())
 		panic("device tree not present");
 
+	xenv_config();
+
 	tangox_of_eth_setup("eth0", 0);
 	tangox_of_eth_setup("eth1", 1);
 
