@@ -197,7 +197,7 @@ static int tangox_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg *msg,
 			err = tangox_i2c_tx(ti2c, msg);
 
 		if (err)
-			break;
+			return err;
 
 		completed++;
 		msg++;
