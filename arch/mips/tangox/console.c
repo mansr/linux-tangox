@@ -25,8 +25,8 @@ static inline void serial_out(int reg, unsigned value)
 
 void __init prom_console_init(void)
 {
-	int port = tangox_uart_console_port();
-	int baud = tangox_uart_baudrate(port);
+	int port = CONFIG_TANGOX_EARLY_CONSOLE_PORT;
+	int baud = CONFIG_TANGOX_EARLY_CONSOLE_RATE;
 	unsigned int div;
 
 	uart_base = ioremap(uart_addr[port], 0x30);

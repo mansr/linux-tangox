@@ -8,6 +8,16 @@ config DTB_PCH_C200
 
 endchoice
 
+config TANGOX_EARLY_CONSOLE_PORT
+	int "Early console port"
+	depends on EARLY_PRINTK
+	default 0
+
+config TANGOX_EARLY_CONSOLE_RATE
+	int "Early console rate"
+	depends on EARLY_PRINTK
+	default 115200
+
 config TANGOX_XENV_READ
 	bool "Read XENV parameters"
 
@@ -24,10 +34,6 @@ config TANGOX_XENV_DEF_UART1
 config TANGOX_XENV_DEF_BAUDRATE
 	int "Default baudrate"
 	default 115200
-
-config TANGOX_XENV_DEF_CONSOLE_UART_PORT
-	int "Console UART port"
-	default 0
 
 config TANGOX_XENV_DEF_ENET
 	bool "Ethernet enabled"

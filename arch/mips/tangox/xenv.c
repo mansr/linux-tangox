@@ -51,7 +51,6 @@ static u32 uart_used_ports =
 	IS_ENABLED(CONFIG_TANGOX_XENV_DEF_UART0) +
 	IS_ENABLED(CONFIG_TANGOX_XENV_DEF_UART1);
 
-static u32 uart_console_port = CONFIG_TANGOX_XENV_DEF_CONSOLE_UART_PORT;
 static u32 sata_channel_cfg;
 
 static u8 mac_address[2][6];
@@ -86,7 +85,6 @@ static const struct xenv_key xenv_keys[] __initconst = {
 	XENV_KEY(XENV_KEY_DEF_BAUDRATE, uart_baudrate),
 	XENV_KEY_ARR(XENV_KEYS_UART_BAUDRATE, uart_baudrates),
 	XENV_KEY(XENV_KEY_UART_USED_PORTS, uart_used_ports),
-	XENV_KEY(XENV_KEY_CONSOLE_UART_PORT, uart_console_port),
 
 	XENV_KEY(XENV_KEY_SATA_CHANNEL_CFG, sata_channel_cfg),
 
@@ -292,9 +290,6 @@ static int __init xenv_read_content(void)
 	if (ruamm1)
 		dram_size[1] = ruamm1 - DRAM1_MEM_BASE;
 
-	if (uart_console_port == 0) /* for backward compatibility */
-		uart_used_ports |= 1;
-
 	if (uart_baudrate == 0)
 		uart_baudrate = 115200;
 	if (uart_baudrates[0] == 0)
@@ -426,11 +421,6 @@ unsigned char *tangox_ethernet_getmac(unsigned int i)
 int tangox_uart_baudrate(int uart)
 {
 	return uart_baudrates[uart];
-}
-
-int tangox_uart_console_port(void)
-{
-	return uart_console_port;
 }
 
 int tangox_uart_enabled(int uart)
