@@ -60,16 +60,17 @@ struct tangox_i2c {
 	struct clk *clk;
 };
 
+static int tangox_i2c_idle(struct tangox_i2c *ti2c)
+{
+	return readl(ti2c->base + TANGOX_I2C_STATUS) & TANGOX_I2C_STATUS_IDLE;
+}
+
 static int tangox_i2c_wait(struct tangox_i2c *ti2c, unsigned long timeout)
 {
-	int bits = TANGOX_I2C_STATUS_IDLE | TANGOX_I2C_STATUS_ACKERR;
 	int status;
 	int t;
 
-	t = wait_event_timeout(ti2c->wait,
-			       readl(ti2c->base + TANGOX_I2C_STATUS) & bits,
-			       timeout);
-
+	t = wait_event_timeout(ti2c->wait, tangox_i2c_idle(ti2c), timeout);
 	if (!t)
 		return -ETIMEDOUT;
 
@@ -115,7 +116,7 @@ static irqreturn_t tangox_i2c_irq(int irq, void *dev_id)
 			tangox_i2c_tx_irq(ti2c, status);
 	}
 
-	if (status & (TANGOX_I2C_STATUS_IDLE | TANGOX_I2C_STATUS_ACKERR))
+	if (status & TANGOX_I2C_STATUS_IDLE)
 		wake_up(&ti2c->wait);
 
 	return IRQ_HANDLED;
