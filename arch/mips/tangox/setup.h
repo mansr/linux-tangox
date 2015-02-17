@@ -34,10 +34,6 @@ unsigned long tangox_get_cpuclock(void);
 unsigned long tangox_get_sysclock(void);
 unsigned long tangox_get_dspclock(void);
 
-unsigned long tangox_remap_set(int reg, unsigned long addr);
-void tangox_remap_init(void);
-void tangox_mem_setup(void);
-
 int xenv_config(void);
 const char *tangox_xenv_cmdline(void);
 int tangox_sata_enabled(void);

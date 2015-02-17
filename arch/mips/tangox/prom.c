@@ -40,6 +40,24 @@ static void __init tangox_systype_init(void)
 	pr_info("%s\n", tangox_system_type);
 }
 
+#define REMAP_SIZE 0x04000000
+
+static void __init tangox_remap_init(void)
+{
+	void __iomem *base;
+	int i;
+
+	base = ioremap(REMAP_CTL_BASE, 32);
+
+	writel(0x1fc00000, base);
+	writel(0, base + 4);
+
+	for (i = 0; i < 6; i++)
+		writel(REMAP2_BASE + i * REMAP_SIZE, base + 8 + 4 * i);
+
+	mb();
+}
+
 static void __init tangox_cmdline_setup(void)
 {
 	int argc = fw_arg0, i;
