@@ -286,6 +286,16 @@
 			label = "TANGOX";
 		};
 
+		i2c1: i2c@10400 {
+			compatible = "sigma,smp8640-i2c";
+			reg = <0x10400 0x2c>;
+			interrupts = <22>;
+			clocks = <&sys_clk 0>;
+			clock-frequency = <100000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+
 		i2c0: i2c@10480 {
 			compatible = "sigma,smp8640-i2c";
 			reg = <0x10480 0x2c>;
