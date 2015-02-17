@@ -104,6 +104,9 @@ static irqreturn_t tangox_i2c_irq(int irq, void *dev_id)
 	int_stat = readl(ti2c->base + TANGOX_I2C_INT_STAT);
 	writel(int_stat, ti2c->base + TANGOX_I2C_INT_STAT);
 
+	if (!int_stat)
+		return IRQ_NONE;
+
 	status = readl(ti2c->base + TANGOX_I2C_STATUS);
 
 	if (!msg)
@@ -261,7 +264,8 @@ static int tangox_i2c_probe(struct platform_device *pdev)
 	ti2c->adap.dev.of_node = pdev->dev.of_node;
 	ti2c->adap.algo = &tangox_i2c_algo;
 	ti2c->adap.algo_data = ti2c;
-	strlcpy(ti2c->adap.name, "tangox-i2c", sizeof(ti2c->adap.name));
+	snprintf(ti2c->adap.name, sizeof(ti2c->adap.name), "tangox-i2c-%x",
+		 res->start);
 
 	init_waitqueue_head(&ti2c->wait);
 	ti2c->clk = clk;
@@ -274,18 +278,19 @@ static int tangox_i2c_probe(struct platform_device *pdev)
 	writel(0, ti2c->base + TANGOX_I2C_CONFIG);
 	writel(clkdiv, ti2c->base + TANGOX_I2C_CLKDIV);
 	writel(0xf, ti2c->base + TANGOX_I2C_INT_STAT);
-	writel(0xf, ti2c->base + TANGOX_I2C_INT_EN);
 
-	err = devm_request_irq(&pdev->dev, irq, tangox_i2c_irq, 0,
+	err = devm_request_irq(&pdev->dev, irq, tangox_i2c_irq, IRQF_SHARED,
 			       dev_name(&pdev->dev), ti2c);
 	if (err)
 		goto err_out;
+
+	writel(0xf, ti2c->base + TANGOX_I2C_INT_EN);
 
 	err = i2c_add_adapter(&ti2c->adap);
 	if (err)
 		goto err_out;
 
-	dev_info(&ti2c->adap.dev, "SMP86xx I2C bus registered\n");
+	dev_info(&ti2c->adap.dev, "SMP86xx I2C master at %x\n", res->start);
 
 	return 0;
 
