@@ -313,16 +313,10 @@
 			#gpio-cells = <2>;
 		};
 
-		ir_rc5: ir@10518 {
-			compatible = "sigma,smp8640-ir-rc5";
-			reg = <0x10518 0x18>;
-			interrupts = <21>;
-			clocks = <&xtal_in_clk>;
-		};
-
-		ir_rc6: ir@105e0 {
-			compatible = "sigma,smp8640-ir-rc6";
-			reg = <0x105e0 0x1c>;
+		ir: ir@10518 {
+			compatible = "sigma,smp8640-ir";
+			reg = <0x10518 0x18
+			       0x105e0 0x1c>;
 			interrupts = <21>;
 			clocks = <&xtal_in_clk>;
 		};

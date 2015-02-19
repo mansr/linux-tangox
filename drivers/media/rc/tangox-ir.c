@@ -26,18 +26,33 @@
 #define NEC_TIME_BASE	560
 #define RC5_TIME_BASE	1778
 
+#define RC6_CTRL	0x00
+#define RC6_CLKDIV	0x04
+#define RC6_DATA0	0x08
+#define RC6_DATA1	0x0c
+#define RC6_DATA2	0x10
+#define RC6_DATA3	0x14
+#define RC6_DATA4	0x18
+
+#define RC6_CARRIER	36000
+#define RC6_TIME_BASE	16
+
 struct tangox_ir {
-	void __iomem *base;
+	void __iomem *rc5_base;
+	void __iomem *rc6_base;
 	struct rc_dev *rc;
 	struct clk *clk;
 };
 
-static void tangox_ir_handle_nec(struct tangox_ir *ir, unsigned int data)
+static void tangox_ir_handle_nec(struct tangox_ir *ir)
 {
+	unsigned int data;
 	unsigned int addr;
 	unsigned int naddr;
 	unsigned int key;
 	unsigned int nkey;
+
+	data = readl(ir->rc5_base + IR_NEC_DATA);
 
 	if (!data) {
 		rc_repeat(ir->rc);
@@ -58,12 +73,15 @@ static void tangox_ir_handle_nec(struct tangox_ir *ir, unsigned int data)
 	rc_keydown(ir->rc, RC_TYPE_NEC, RC_SCANCODE_NEC(addr, key), 0);
 }
 
-static void tangox_ir_handle_rc5(struct tangox_ir *ir, unsigned int data)
+static void tangox_ir_handle_rc5(struct tangox_ir *ir)
 {
+	unsigned int data;
 	unsigned int field;
 	unsigned int toggle;
 	unsigned int addr;
 	unsigned int cmd;
+
+	data = readl(ir->rc5_base + IR_RC5_DATA);
 
 	if (data & BIT(31))
 		return;
@@ -76,28 +94,53 @@ static void tangox_ir_handle_rc5(struct tangox_ir *ir, unsigned int data)
 	rc_keydown(ir->rc, RC_TYPE_RC5, RC_SCANCODE_RC5(addr, cmd), toggle);
 }
 
+static void tangox_ir_handle_rc6(struct tangox_ir *ir)
+{
+	unsigned int data0, data1;
+	unsigned int toggle;
+	unsigned int mode;
+	unsigned int addr;
+	unsigned int cmd;
+
+	data0 = readl(ir->rc6_base + RC6_DATA0);
+	data1 = readl(ir->rc6_base + RC6_DATA1);
+
+	mode = data0 >> 1 & 7;
+
+	if (mode != 0)
+		return;
+
+	toggle = data0 & 1;
+	addr = data0 >> 16;
+	cmd = data1;
+
+	rc_keydown(ir->rc, RC_TYPE_RC6_0, RC_SCANCODE_RC6_0(addr, cmd),
+		   toggle);
+}
+
 static irqreturn_t tangox_ir_irq(int irq, void *dev_id)
 {
 	struct tangox_ir *ir = dev_id;
-	unsigned int data;
-	unsigned int stat;
+	unsigned int rc5_stat;
+	unsigned int rc6_stat;
 
-	stat = readl(ir->base + IR_INT);
+	rc5_stat = readl(ir->rc5_base + IR_INT);
+	writel(rc5_stat, ir->rc5_base + IR_INT);
 
-	if (!(stat & 3))
+	rc6_stat = readl(ir->rc6_base + RC6_CTRL);
+	writel(rc6_stat, ir->rc6_base + RC6_CTRL);
+
+	if (!(rc5_stat & 3) && !(rc6_stat & BIT(31)))
 		return IRQ_NONE;
 
-	writel(stat, ir->base + IR_INT);
+	if (rc5_stat & 1)
+		tangox_ir_handle_rc5(ir);
 
-	if (stat & 1) {
-		data = readl(ir->base + IR_RC5_DATA);
-		tangox_ir_handle_rc5(ir, data);
-	}
+	if (rc5_stat & 2)
+		tangox_ir_handle_nec(ir);
 
-	if (stat & 2) {
-		data = readl(ir->base + IR_NEC_DATA);
-		tangox_ir_handle_nec(ir, data);
-	}
+	if (rc6_stat & BIT(31))
+		tangox_ir_handle_rc6(ir);
 
 	return IRQ_HANDLED;
 }
@@ -106,7 +149,8 @@ static int tangox_ir_open(struct rc_dev *dev)
 {
 	struct tangox_ir *ir = dev->priv;
 
-	writel(0x201, ir->base + IR_CTRL);
+	writel(0x201, ir->rc5_base + IR_CTRL);
+	writel(0x81, ir->rc6_base + RC6_CTRL);
 
 	return 0;
 }
@@ -115,7 +159,8 @@ static void tangox_ir_close(struct rc_dev *dev)
 {
 	struct tangox_ir *ir = dev->priv;
 
-	writel(0x110, ir->base + IR_CTRL);
+	writel(0x110, ir->rc5_base + IR_CTRL);
+	writel(0, ir->rc6_base + RC6_CTRL);
 }
 
 static int tangox_ir_probe(struct platform_device *pdev)
@@ -123,14 +168,19 @@ static int tangox_ir_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct rc_dev *rc;
 	struct tangox_ir *ir;
-	struct resource *res;
+	struct resource *rc5_res;
+	struct resource *rc6_res;
 	unsigned long clkrate;
 	u64 clkdiv;
 	int irq;
 	int err;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
+	rc5_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!rc5_res)
+		return -EINVAL;
+
+	rc6_res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!rc6_res)
 		return -EINVAL;
 
 	irq = platform_get_irq(pdev, 0);
@@ -141,9 +191,13 @@ static int tangox_ir_probe(struct platform_device *pdev)
 	if (!ir)
 		return -ENOMEM;
 
-	ir->base = devm_ioremap_resource(dev, res);
-	if (IS_ERR(ir->base))
-		return PTR_ERR(ir->base);
+	ir->rc5_base = devm_ioremap_resource(dev, rc5_res);
+	if (IS_ERR(ir->rc5_base))
+		return PTR_ERR(ir->rc5_base);
+
+	ir->rc6_base = devm_ioremap_resource(dev, rc6_res);
+	if (IS_ERR(ir->rc6_base))
+		return PTR_ERR(ir->rc6_base);
 
 	ir->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(ir->clk))
@@ -162,11 +216,11 @@ static int tangox_ir_probe(struct platform_device *pdev)
 	}
 
 	rc->dev.parent = dev;
-	rc->input_name = "tangox-ir-rc5";
-	rc->input_phys = "tagnox-ir-rc5/input0";
+	rc->input_name = "tangox-ir";
+	rc->input_phys = "tagnox-ir/input0";
 	rc->driver_type = RC_DRIVER_SCANCODE;
 	rc->map_name = RC_MAP_EMPTY;
-	rc->allowed_protocols = RC_BIT_RC5 | RC_BIT_NEC;
+	rc->allowed_protocols = RC_BIT_RC5 | RC_BIT_NEC | RC_BIT_RC6_0;
 	rc->open = tangox_ir_open;
 	rc->close = tangox_ir_close;
 
@@ -179,22 +233,28 @@ static int tangox_ir_probe(struct platform_device *pdev)
 	clkdiv = (u64)clkrate * NEC_TIME_BASE;
 	do_div(clkdiv, 1000000);
 
-	writel(31 << 24 | 12 << 16 | clkdiv, ir->base + IR_NEC_CTRL);
+	writel(31 << 24 | 12 << 16 | clkdiv, ir->rc5_base + IR_NEC_CTRL);
 
 	clkdiv = (u64)clkrate * RC5_TIME_BASE;
 	do_div(clkdiv, 1000000);
 
-	writel(0x110, ir->base + IR_CTRL);
-	writel(clkdiv, ir->base + IR_RC5_CLK_DIV);
-	writel(0x3, ir->base + IR_INT);
+	writel(0x110, ir->rc5_base + IR_CTRL);
+	writel(clkdiv, ir->rc5_base + IR_RC5_CLK_DIV);
+	writel(0x3, ir->rc5_base + IR_INT);
+
+	clkdiv = (u64)clkrate * RC6_TIME_BASE;
+	do_div(clkdiv, RC6_CARRIER);
+
+	writel(0xc0000000, ir->rc6_base + RC6_CTRL);
+	writel((clkdiv >> 2) << 18 | clkdiv, ir->rc6_base + RC6_CLKDIV);
 
 	err = devm_request_irq(dev, irq, tangox_ir_irq, IRQF_SHARED,
 			       dev_name(dev), ir);
 	if (err)
 		goto err_rc;
 
-	dev_info(dev, "SMP86xx NEC/RC-5 IR decoder at 0x%x IRQ %d\n",
-		 res->start, irq);
+	dev_info(dev, "SMP86xx IR decoder at 0x%x/0x%x IRQ %d\n",
+		 rc5_res->start, rc6_res->start, irq);
 
 	err = rc_register_device(rc);
 	if (err)
@@ -224,7 +284,7 @@ static int tangox_ir_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id tangox_ir_dt_ids[] = {
-	{ .compatible = "sigma,smp8640-ir-rc5" },
+	{ .compatible = "sigma,smp8640-ir" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, tangox_ir_dt_ids);
@@ -233,12 +293,12 @@ static struct platform_driver tangox_ir_driver = {
 	.probe	= tangox_ir_probe,
 	.remove	= tangox_ir_remove,
 	.driver	= {
-		.name		= "tangox-rc5",
+		.name		= "tangox-ir",
 		.of_match_table	= tangox_ir_dt_ids,
 	},
 };
 module_platform_driver(tangox_ir_driver);
 
-MODULE_DESCRIPTION("SMP86xx NEC/RC-5 IR decoder driver");
+MODULE_DESCRIPTION("SMP86xx IR decoder driver");
 MODULE_AUTHOR("Mans Rullgard <mans@mansr.com>");
 MODULE_LICENSE("GPL");

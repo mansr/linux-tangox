@@ -37,5 +37,4 @@ obj-$(CONFIG_IR_TTUSBIR) += ttusbir.o
 obj-$(CONFIG_RC_ST) += st_rc.o
 obj-$(CONFIG_IR_SUNXI) += sunxi-cir.o
 obj-$(CONFIG_IR_IMG) += img-ir/
-obj-$(CONFIG_IR_TANGOX_RC5) += tangox-rc5.o
-obj-$(CONFIG_IR_TANGOX_RC6) += tangox-rc6.o
+obj-$(CONFIG_IR_TANGOX) += tangox-ir.o

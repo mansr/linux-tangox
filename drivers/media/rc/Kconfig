@@ -388,12 +388,8 @@ config IR_SUNXI
       To compile this driver as a module, choose M here: the module will
       be called sunxi-ir.
 
-config IR_TANGOX_RC5
-	tristate "Sigma Designs SMP86xx NEC/RC-5 IR decoder"
-	depends on TANGOX
-
-config IR_TANGOX_RC6
-	tristate "Sigma Designs SMP86xx RC-6 IR decoder"
+config IR_TANGOX
+	tristate "Sigma Designs SMP86xx IR decoder"
 	depends on TANGOX
 
 endif #RC_DEVICES
