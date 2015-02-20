@@ -149,7 +149,7 @@ struct sparablePartitionMap
 	__le32		locSparingTable[4];
 } __attribute__ ((packed));
 
-/* Metadata Partition Map (UDF 2.4.0 2.2.10) */
+/* Metadata Partition Map (UDF 2.50 2.2.10) */
 struct metadataPartitionMap
 {
 	uint8_t		partitionMapType;

@@ -1,0 +1,18 @@
+Feature:
+--------
+Support for UDF 2.5/2.6
+
+Prerequisite patch numbers:
+---------------------------
+none
+
+Primary author:
+---------------
+Sebastian Manciulea/YH Lin
+
+Related to which chip version SMP86xx xx=?
+------------------------------------------
+all
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

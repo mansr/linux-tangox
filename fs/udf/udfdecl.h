@@ -133,6 +133,7 @@ extern uint32_t udf_get_pblock(struct super_block *, uint32_t, uint16_t, uint32_
 extern uint32_t udf_get_pblock_virt15(struct super_block *, uint32_t, uint16_t, uint32_t);
 extern uint32_t udf_get_pblock_virt20(struct super_block *, uint32_t, uint16_t, uint32_t);
 extern uint32_t udf_get_pblock_spar15(struct super_block *, uint32_t, uint16_t, uint32_t);
+extern uint32_t udf_get_pblock_meta25(struct super_block *, uint32_t, uint16_t, uint32_t);
 extern int udf_relocate_blocks(struct super_block *, long, long *);
 
 /* unicode.c */

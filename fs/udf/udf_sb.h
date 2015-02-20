@@ -4,7 +4,7 @@
 /* Since UDF 2.01 is ISO 13346 based... */
 #define UDF_SUPER_MAGIC			0x15013346
 
-#define UDF_MAX_READ_VERSION		0x0201
+#define UDF_MAX_READ_VERSION		0x0250
 #define UDF_MAX_WRITE_VERSION		0x0201
 
 #define UDF_FLAG_USE_EXTENDED_FE	0
@@ -43,6 +43,7 @@ static inline struct udf_sb_info *UDF_SB(struct super_block *sb)
 {\
 	if (UDF_SB(X))\
 	{\
+		if (UDF_SB_PARTMAPS(X))\
 		kfree(UDF_SB_PARTMAPS(X));\
 		UDF_SB_PARTMAPS(X) = NULL;\
 	}\
@@ -115,6 +116,7 @@ static inline struct udf_sb_info *UDF_SB(struct super_block *sb)
 #define UDF_SB_PARTNUM(X,Y)			( UDF_SB_PARTMAPS(X)[(Y)].s_partition_num )
 #define UDF_SB_TYPESPAR(X,Y)			( UDF_SB_PARTMAPS(X)[(Y)].s_type_specific.s_sparing )
 #define UDF_SB_TYPEVIRT(X,Y)			( UDF_SB_PARTMAPS(X)[(Y)].s_type_specific.s_virtual )
+#define UDF_SB_TYPEMETA(X,Y)			( UDF_SB_PARTMAPS(X)[(Y)].s_type_specific.s_metadata )
 #define UDF_SB_PARTFUNC(X,Y)			( UDF_SB_PARTMAPS(X)[(Y)].s_partition_func )
 #define UDF_SB_PARTFLAGS(X,Y)			( UDF_SB_PARTMAPS(X)[(Y)].s_partition_flags )
 #define UDF_SB_BITMAP(X,Y,Z,I)			( UDF_SB_PARTMAPS(X)[(Y)].Z.s_bitmap->s_block_bitmap[I] )

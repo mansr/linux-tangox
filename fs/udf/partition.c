@@ -219,3 +219,155 @@ int udf_relocate_blocks(struct super_block *sb, long old_block, long *new_block)
 
 	return 0;
 }
+
+static uint32_t udf_get_addr_from_short_ad(struct super_block *sb, short_ad *p, int desc_count, int block)
+{
+	int i;
+	int crt_blocks=0;
+
+	if (p == NULL)
+		return 0xFFFFFFFF;
+	
+	udf_debug("SHORT AD SEARCHING BLOCK %d\n",block);
+	
+	for (i=0; i<desc_count; i++)
+	{
+		uint32_t extent_len;
+		int blocks_in_extent;
+
+		extent_len = le32_to_cpu(p[i].extLength);
+		/* keep least 30 sign bits (ecma 167 14.14.1.1) */
+		extent_len &= ((1<<30) - 1);
+	
+		blocks_in_extent = extent_len>>sb->s_blocksize_bits;
+		if ((crt_blocks + blocks_in_extent) > block)
+			break;
+		crt_blocks += blocks_in_extent;
+	}
+
+	/* not found */
+	if (i == desc_count)
+	{
+		udf_debug("block %d not found in allocation desc\n",block);
+		return 0xFFFFFFFF;
+	}
+
+	/* block offset in current extent */
+	block -= crt_blocks;
+
+	block = le32_to_cpu(p[i].extPosition) + block;
+	return block;
+}
+
+static uint32_t udf_try_read_meta(struct super_block *sb, uint32_t block, uint16_t partition, uint32_t offset, struct inode* inode)
+{
+	uint32_t metad_blk;
+	uint32_t phy_blk;
+	struct buffer_head *bh = NULL;
+	
+	metad_blk = 0;
+	
+	switch(UDF_I_ALLOCTYPE(inode))
+	{
+		case ICBTAG_FLAG_AD_SHORT:
+		{
+			short_ad *sa;
+			int len;
+			udf_debug("ICB flag is ICBTAG_FLAG_AD_SHORT\n");
+			len = UDF_I_LENALLOC(inode)/sizeof(short_ad);
+			if (len == 0)
+			{
+				udf_error(sb, __FUNCTION__, "Inode has 0 alloc\n");
+				return 0xFFFFFFFF;
+			}
+			sa = (short_ad*)(UDF_I_DATA(inode) + UDF_I_LENEATTR(inode));
+			if (sa == NULL)
+			{
+				udf_error(sb, __FUNCTION__, "Inode has null alloc desc\n");
+				return 0xFFFFFFFF;
+			}
+				
+			metad_blk = udf_get_addr_from_short_ad(sb, sa, len, block);
+		}
+		break;
+		case ICBTAG_FLAG_AD_LONG:
+			udf_debug("ICB flag is ICBTAG_FLAG_AD_LONG\n");
+			return 0xFFFFFFFF;
+			break;
+		case ICBTAG_FLAG_AD_IN_ICB:
+			udf_debug("ICB flag is ICBTAG_FLAG_AD_IN_ICB\n");
+			break;
+		case ICBTAG_FLAG_AD_EXTENDED:
+			udf_debug("ICB flag is ICBTAG_FLAG_AD_EXTENDED !!!!!!!\n");
+			return 0xFFFFFFFF;
+			break;
+	}
+
+
+	/* map to sparable/physical partition desc */
+	phy_blk = udf_get_pblock(sb, metad_blk, UDF_SB_PARTNUM(sb, partition), offset);
+
+	udf_debug("block=%d partition=%d realblk=%d physical=%d\n",block, partition, metad_blk, phy_blk);
+
+	/* try to read from the physical location */
+	bh = udf_tread(sb, phy_blk);
+
+	if (bh)
+	{
+		udf_debug("udf_try_read_meta SUCCEEDED\n");
+		brelse(bh);
+		return phy_blk;
+	}
+	else
+	{
+		udf_debug("udf_try_read_meta FAILED\n");
+		return 0xFFFFFFFF;
+	}
+}
+
+uint32_t udf_get_pblock_meta25(struct super_block *sb, uint32_t block, uint16_t partition, uint32_t offset)
+{
+	uint32_t retblk;
+	struct inode *inode;
+
+	udf_debug("READING from METADATA\n");
+
+	inode = UDF_SB_TYPEMETA(sb,partition).s_metadata_fe;
+
+	if (inode)
+	{
+		retblk = udf_try_read_meta(sb, block, partition, offset, inode);
+
+		if(retblk == 0xFFFFFFFF)
+		{
+			udf_warning(sb, __FUNCTION__, "OOOOPS ... error reading from METADATA, trying to read from MIRROR");
+
+			inode = UDF_SB_TYPEMETA(sb,partition).s_mirror_fe;
+
+			if (inode == NULL)
+			{
+				udf_error(sb, __FUNCTION__, "mirror inode is null");
+				return 0xFFFFFFFF;
+			}
+
+			retblk = udf_try_read_meta(sb, block, partition, offset, inode);
+		}
+	}
+	else 	/* metadata inode is NULL */
+	{
+		udf_warning(sb, __FUNCTION__, "metadata inode is null. hmmm, will try reading from mirror file");
+
+		inode = UDF_SB_TYPEMETA(sb,partition).s_mirror_fe;
+
+		if (inode == NULL)
+		{
+			udf_error(sb, __FUNCTION__, "mirror inode null too??? bad, bad, bad! how did we get here???");
+			return 0xFFFFFFFF;
+		}
+
+		retblk = udf_try_read_meta(sb, block, partition, offset, inode);
+	}
+
+	return retblk;
+}
+

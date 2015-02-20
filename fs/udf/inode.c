@@ -1309,6 +1309,7 @@ static void udf_fill_inode(struct inode *inode, struct buffer_head *bh)
 		case ICBTAG_FILE_TYPE_REALTIME:
 		case ICBTAG_FILE_TYPE_REGULAR:
 		case ICBTAG_FILE_TYPE_UNDEF:
+		case ICBTAG_FILE_TYPE_VAT20:
 		{
 			if (UDF_I_ALLOCTYPE(inode) == ICBTAG_FLAG_AD_IN_ICB)
 				inode->i_data.a_ops = &udf_adinicb_aops;
@@ -1344,6 +1345,21 @@ static void udf_fill_inode(struct inode *inode, struct buffer_head *bh)
 			inode->i_data.a_ops = &udf_symlink_aops;
 			inode->i_op = &page_symlink_inode_operations;
 			inode->i_mode = S_IFLNK|S_IRWXUGO;
+			break;
+		}
+		case ICBTAG_FILE_TYPE_MAIN:
+		{
+			udf_debug("METADATA FILE-----\n");
+			break;
+		}
+		case ICBTAG_FILE_TYPE_MIRROR:
+		{
+			udf_debug("METADATA MIRROR FILE-----\n");
+			break;
+		}
+		case ICBTAG_FILE_TYPE_BITMAP:
+		{
+			udf_debug("METADATA BITMAP FILE-----\n");
 			break;
 		}
 		default:
@@ -1955,6 +1971,14 @@ int8_t udf_current_aext(struct inode *inode, struct extent_position *epos,
 			etype = le32_to_cpu(lad->extLength) >> 30;
 			*eloc = lelb_to_cpu(lad->extLocation);
 			*elen = le32_to_cpu(lad->extLength) & UDF_EXTENT_LENGTH_MASK;
+			break;
+		}
+		case ICBTAG_FLAG_AD_IN_ICB:
+		{
+			etype = EXT_RECORDED_ALLOCATED;
+			eloc->logicalBlockNum = UDF_I_LOCATION(inode).logicalBlockNum;
+			eloc->partitionReferenceNum = UDF_I_LOCATION(inode).partitionReferenceNum;
+			*elen = UDF_I_LENALLOC(inode);
 			break;
 		}
 		default:
