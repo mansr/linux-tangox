@@ -103,16 +103,12 @@ int em86xx_gpio_read(int gpio);
 void em86xx_gpio_write(int gpio, int data);
 void em86xx_gpio_setdirection(int gpio, int dir);
 
-#if defined(CONFIG_EM86XX_UART0_AS_GPIO_FULL) || defined(CONFIG_EM86XX_UART0_AS_GPIO_PARTIAL)
 int em86xx_uart0_gpio_read(int gpio);
 void em86xx_uart0_gpio_write(int gpio, int data);
 void em86xx_uart0_gpio_setdirection(int gpio, int dir);
-#endif
-#if defined(CONFIG_EM86XX_UART1_AS_GPIO_FULL) || defined(CONFIG_EM86XX_UART1_AS_GPIO_PARTIAL)
 int em86xx_uart1_gpio_read(int gpio);
 void em86xx_uart1_gpio_write(int gpio, int data);
 void em86xx_uart1_gpio_setdirection(int gpio, int dir);
-#endif
 
 #endif
 
