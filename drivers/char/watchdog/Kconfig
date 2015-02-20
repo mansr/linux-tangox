@@ -55,6 +55,12 @@ config SOFT_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called softdog.
 
+config TANGO3_WATCHDOG
+	tristate "SMP86xx watchdog"
+	depends on TANGO3
+	help
+	  Hardware watch dog for Sigma Designs' SMP864x/SMP865x chips.
+
 # ARM Architecture
 
 config AT91RM9200_WATCHDOG

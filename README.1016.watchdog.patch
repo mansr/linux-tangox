@@ -1,0 +1,19 @@
+Feature:
+--------
+H/W watch dog driver for SMP864x/SMP865x chips
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+
+Primary author:
+---------------
+YH Lin
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango3 ES1 or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------
