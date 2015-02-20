@@ -26,7 +26,7 @@ struct fib_rule_hdr
 	__u8		action;
 
 	__u32		flags;
-};
+} __attribute__ ((packed));
 
 enum
 {

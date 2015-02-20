@@ -55,7 +55,7 @@ struct pptp_pkt_hdr {
 	__u16	packetLength;
 	__be16	packetType;
 	__be32	magicCookie;
-};
+} __attribute__ ((packed));
 
 /* PptpControlMessageType values */
 #define PPTP_START_SESSION_REQUEST	1

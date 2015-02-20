@@ -2989,13 +2989,13 @@ static int tcp_fast_parse_options(struct sk_buff *skb, struct tcphdr *th,
 	} else if (tp->rx_opt.tstamp_ok &&
 		   th->doff == (sizeof(struct tcphdr)>>2)+(TCPOLEN_TSTAMP_ALIGNED>>2)) {
 		__be32 *ptr = (__be32 *)(th + 1);
-		if (*ptr == htonl((TCPOPT_NOP << 24) | (TCPOPT_NOP << 16)
+		if (get_unaligned(ptr) == htonl((TCPOPT_NOP << 24) | (TCPOPT_NOP << 16)
 				  | (TCPOPT_TIMESTAMP << 8) | TCPOLEN_TIMESTAMP)) {
 			tp->rx_opt.saw_tstamp = 1;
 			++ptr;
-			tp->rx_opt.rcv_tsval = ntohl(*ptr);
+			tp->rx_opt.rcv_tsval = ntohl(get_unaligned(ptr));
 			++ptr;
-			tp->rx_opt.rcv_tsecr = ntohl(*ptr);
+			tp->rx_opt.rcv_tsecr = ntohl(get_unaligned(ptr));
 			return 1;
 		}
 	}
@@ -4214,15 +4214,15 @@ int tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
 			__be32 *ptr = (__be32 *)(th + 1);
 
 			/* No? Slow path! */
-			if (*ptr != htonl((TCPOPT_NOP << 24) | (TCPOPT_NOP << 16)
+			if (get_unaligned(ptr) != htonl((TCPOPT_NOP << 24) | (TCPOPT_NOP << 16)
 					  | (TCPOPT_TIMESTAMP << 8) | TCPOLEN_TIMESTAMP))
 				goto slow_path;
 
 			tp->rx_opt.saw_tstamp = 1;
 			++ptr;
-			tp->rx_opt.rcv_tsval = ntohl(*ptr);
+			tp->rx_opt.rcv_tsval = ntohl(get_unaligned(ptr));
 			++ptr;
-			tp->rx_opt.rcv_tsecr = ntohl(*ptr);
+			tp->rx_opt.rcv_tsecr = ntohl(get_unaligned(ptr));
 
 			/* If PAWS failed, check it more carefully in slow path */
 			if ((s32)(tp->rx_opt.rcv_tsval - tp->rx_opt.ts_recent) < 0)

@@ -35,6 +35,8 @@
 #include <net/udp.h>
 #include <net/tcp.h>
 
+#include <asm/unaligned.h>
+
 /*
  * xprtsock tunables
  */
@@ -706,10 +708,10 @@ static void xs_udp_data_ready(struct sock *sk, int len)
 				sizeof(_xid), &_xid);
 	if (xp == NULL)
 		goto dropit;
-
+	
 	/* Look up and lock the request corresponding to the given XID */
 	spin_lock(&xprt->transport_lock);
-	rovr = xprt_lookup_rqst(xprt, *xp);
+	rovr = xprt_lookup_rqst(xprt, get_unaligned(xp));
 	if (!rovr)
 		goto out_unlock;
 	task = rovr->rq_task;

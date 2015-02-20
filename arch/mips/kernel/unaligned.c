@@ -91,6 +91,9 @@
 unsigned long unaligned_instructions;
 #endif
 
+/* enable message to print unaligned access */
+#define PRINT_UNALIGNED_ACCESS
+
 static inline int emulate_load_store_insn(struct pt_regs *regs,
 	void __user *addr, unsigned int __user *pc,
 	unsigned long **regptr, unsigned long *newvalue)
@@ -102,11 +105,43 @@ static inline int emulate_load_store_insn(struct pt_regs *regs,
 	regs->regs[0] = 0;
 	*regptr=NULL;
 
+#ifdef PRINT_UNALIGNED_ACCESS
+	if (printk_ratelimit())
+		printk("Cpu%d[%s:%d:0x%08lx:0x%08lx] ", raw_smp_processor_id(),
+	       		current->comm, current->pid, regs->cp0_epc, regs->cp0_badvaddr);
+#endif
+
 	/*
 	 * This load never faults.
 	 */
 	__get_user(insn.word, pc);
 
+#ifdef CONFIG_TANGO3_864X
+	/*
+	  fix DSP r2 lhx and lwx too. see MD00374 page 131 (works on 74K only; on 24K you don't get AdEL but RI!)
+
+	  verified with
+	  
+	  *iptr=0x42434445;
+	  
+	  int q=0xffffffff;
+	  asm __volatile__(".set dspr2; lhx %0, $0(%1)":"=&r"(q):"r"(iptr));
+	  printf("0x%08lx\n",q);
+	  asm __volatile__(".set dspr2; lwx %0, $0(%1)":"=&r"(q):"r"(iptr));
+	  printf("0x%08lx\n",q);
+	*/
+	if ((insn.r_format.opcode==31)
+	    &&(insn.r_format.func==10)) {
+		// cheat the destination
+		insn.i_format.rt=insn.r_format.rd;
+		// cheat the function
+		if (insn.r_format.re==0)
+			insn.i_format.opcode=lw_op;
+		if (insn.r_format.re==4)
+			insn.i_format.opcode=lh_op;
+	}
+#endif
+	
 	switch (insn.i_format.opcode) {
 	/*
 	 * These are instructions that a compiler doesn't generate.  We
@@ -135,6 +170,10 @@ static inline int emulate_load_store_insn(struct pt_regs *regs,
 	case lb_op:
 	case lbu_op:
 	case sb_op:
+#ifdef PRINT_UNALIGNED_ACCESS
+		if (printk_ratelimit())
+			printk("no fix-ups.\n");
+#endif
 		goto sigbus;
 
 	/*
@@ -438,6 +477,10 @@ static inline int emulate_load_store_insn(struct pt_regs *regs,
 		/*
 		 * I herewith declare: this does not happen.  So send SIGBUS.
 		 */
+#ifdef PRINT_UNALIGNED_ACCESS
+		if (printk_ratelimit())
+			printk("no fix-ups.\n");
+#endif
 		goto sigbus;
 
 	case lwc2_op:
@@ -456,11 +499,20 @@ static inline int emulate_load_store_insn(struct pt_regs *regs,
 		 * Pheeee...  We encountered an yet unknown instruction or
 		 * cache coherence problem.  Die sucker, die ...
 		 */
+#ifdef PRINT_UNALIGNED_ACCESS
+		if (printk_ratelimit())
+			printk("no fix-ups.\n");
+#endif
 		goto sigill;
 	}
 
 #ifdef CONFIG_PROC_FS
 	unaligned_instructions++;
+#endif
+
+#ifdef PRINT_UNALIGNED_ACCESS
+	if (printk_ratelimit())
+		printk("fix-ups done.\n");
 #endif
 
 	return 0;

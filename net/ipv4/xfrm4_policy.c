@@ -223,8 +223,8 @@ _decode_session4(struct sk_buff *skb, struct flowi *fl)
 			if (pskb_may_pull(skb, xprth + 4 - skb->data)) {
 				__be16 *ports = (__be16 *)xprth;
 
-				fl->fl_ip_sport = ports[0];
-				fl->fl_ip_dport = ports[1];
+				fl->fl_ip_sport = get_unaligned(&ports[0]);
+				fl->fl_ip_dport = get_unaligned(&ports[1]);
 			}
 			break;
 
@@ -241,7 +241,7 @@ _decode_session4(struct sk_buff *skb, struct flowi *fl)
 			if (pskb_may_pull(skb, xprth + 4 - skb->data)) {
 				__be32 *ehdr = (__be32 *)xprth;
 
-				fl->fl_ipsec_spi = ehdr[0];
+				fl->fl_ipsec_spi = get_unaligned(&ehdr[0]);
 			}
 			break;
 
@@ -249,7 +249,7 @@ _decode_session4(struct sk_buff *skb, struct flowi *fl)
 			if (pskb_may_pull(skb, xprth + 8 - skb->data)) {
 				__be32 *ah_hdr = (__be32*)xprth;
 
-				fl->fl_ipsec_spi = ah_hdr[1];
+				fl->fl_ipsec_spi = get_unaligned(&ah_hdr[1]);
 			}
 			break;
 
@@ -257,7 +257,7 @@ _decode_session4(struct sk_buff *skb, struct flowi *fl)
 			if (pskb_may_pull(skb, xprth + 4 - skb->data)) {
 				__be16 *ipcomp_hdr = (__be16 *)xprth;
 
-				fl->fl_ipsec_spi = htonl(ntohs(ipcomp_hdr[1]));
+				fl->fl_ipsec_spi = htonl(ntohs(get_unaligned(&ipcomp_hdr[1])));
 			}
 			break;
 		default:

@@ -44,7 +44,7 @@ struct ipv6_rt_hdr {
 	 *	type specific data
 	 *	variable length field
 	 */
-};
+} __attribute__ ((packed));
 
 
 struct ipv6_opt_hdr {
@@ -72,7 +72,7 @@ struct rt0_hdr {
 	struct in6_addr		addr[0];
 
 #define rt0_type		rt_hdr.type
-};
+} __attribute__ ((packed));
 
 /*
  *	routing header type 2
@@ -84,7 +84,7 @@ struct rt2_hdr {
 	struct in6_addr		addr;
 
 #define rt2_type		rt_hdr.type
-};
+} __attribute__ ((packed));
 
 /*
  *	home address option in destination options header
@@ -103,19 +103,19 @@ struct ipv6_auth_hdr {
 	__be32 spi;
 	__be32 seq_no;           /* Sequence number */
 	__u8  auth_data[0];     /* Length variable but >=4. Mind the 64 bit alignment! */
-};
+} __attribute__ ((packed));
 
 struct ipv6_esp_hdr {
 	__be32 spi;
 	__be32 seq_no;           /* Sequence number */
 	__u8  enc_data[0];      /* Length variable but >=8. Mind the 64 bit alignment! */
-};
+} __attribute__ ((packed));
 
 struct ipv6_comp_hdr {
 	__u8 nexthdr;
 	__u8 flags;
 	__be16 cpi;
-};
+} __attribute__ ((packed));
 
 /*
  *	IPv6 fixed header
@@ -142,7 +142,7 @@ struct ipv6hdr {
 
 	struct	in6_addr	saddr;
 	struct	in6_addr	daddr;
-};
+} __attribute__ ((packed));
 
 /*
  * This structure contains configuration options per IPv6 link.

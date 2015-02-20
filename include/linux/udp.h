@@ -24,7 +24,7 @@ struct udphdr {
 	__be16	dest;
 	__be16	len;
 	__sum16	check;
-};
+} __attribute__ ((packed));
 
 #ifdef __KERNEL__
 #include <linux/skbuff.h>

@@ -259,6 +259,9 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx)
 			MIPSInst_SIMM(ir));
 		u64 val;
 
+		if ((u32)va & (sizeof(u64)-1))	/* not aligned to proper boundary */
+			return SIGBUS;
+
 		fpuemustats.loads++;
 		if (get_user(val, va)) {
 			fpuemustats.errors++;
@@ -272,6 +275,9 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx)
 		u64 __user *va = (u64 __user *) (xcp->regs[MIPSInst_RS(ir)] +
 			MIPSInst_SIMM(ir));
 		u64 val;
+
+		if ((u32)va & (sizeof(u64)-1))	/* not aligned to proper boundary */
+			return SIGBUS;
 
 		fpuemustats.stores++;
 		DIFROMREG(val, MIPSInst_RT(ir));
@@ -690,6 +696,9 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
 				xcp->regs[MIPSInst_FT(ir)]);
 
+			if ((u32)va & (sizeof(u64)-1))	/* not aligned to proper boundary */
+				return SIGBUS;
+
 			fpuemustats.loads++;
 			if (get_user(val, va)) {
 				fpuemustats.errors++;
@@ -701,6 +710,9 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 		case sdxc1_op:
 			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
 				xcp->regs[MIPSInst_FT(ir)]);
+
+			if ((u32)va & (sizeof(u64)-1))	/* not aligned to proper boundary */
+				return SIGBUS;
 
 			fpuemustats.stores++;
 			DIFROMREG(val, MIPSInst_FS(ir));
