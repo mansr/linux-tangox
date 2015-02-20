@@ -18,7 +18,8 @@ cflags-y :=
 # Select the object file format to substitute into the linker script.
 #
 ifdef CONFIG_CPU_LITTLE_ENDIAN
-32bit-tool-prefix	= mipsel-linux-
+#32bit-tool-prefix	= mipsel-linux-
+32bit-tool-prefix	= mips-linux-gnu-
 64bit-tool-prefix	= mips64el-linux-
 32bit-bfd		= elf32-tradlittlemips
 64bit-bfd		= elf64-tradlittlemips
@@ -79,7 +80,7 @@ endif
 # crossformat linking we rely on the elf2ecoff tool for format conversion.
 #
 cflags-y			+= -G 0 -mno-abicalls -fno-pic -pipe
-cflags-y			+= -msoft-float
+#cflags-y			+= -msoft-float
 LDFLAGS_vmlinux			+= -G 0 -static -n -nostdlib
 MODFLAGS			+= -mlong-calls
 
@@ -674,7 +675,7 @@ cflags-$(CONFIG_TANGO3_864X)	+= -DEM86XX_REVISION=3
 #endif
 cflags-$(CONFIG_TANGO3)		+= -DCPU_REMAP_SPACE=$(KERNEL_START_ADDRESS) 
 cflags-$(CONFIG_TANGO3_865X)	+= -mtune=24kf
-cflags-$(CONFIG_TANGO3_864X)	+= -mtune=24kf
+cflags-$(CONFIG_TANGO3_864X)	+= -mtune=74kf -mdspr2
 endif
 endif
 
