@@ -49,7 +49,7 @@ config MTD_PARTITIONS
 
 config MTD_REDBOOT_PARTS
 	tristate "RedBoot partition table parsing"
-	depends on MTD_PARTITIONS
+	depends on MTD_PARTITIONS && !TANGOX
 	---help---
 	  RedBoot is a ROM monitor and bootloader which deals with multiple
 	  'images' in flash devices by putting a table one of the erase
@@ -99,7 +99,7 @@ config MTD_REDBOOT_PARTS_READONLY
 
 config MTD_CMDLINE_PARTS
 	bool "Command line partition table parsing"
-	depends on MTD_PARTITIONS = "y" && MTD = "y"
+	depends on MTD_PARTITIONS = "y" && MTD = "y" && !TANGOX_XENV_READ
 	---help---
 	  Allow generic configuration of the MTD partition tables via the kernel
 	  command line. Multiple flash resources are supported for hardware where
