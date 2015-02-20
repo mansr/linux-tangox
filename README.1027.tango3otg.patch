@@ -1,0 +1,21 @@
+Feature:
+--------
+Supporting Tango3 OTG in device mode.
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+1002
+1007
+
+Primary author:
+---------------
+Craig Qu
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+52/53
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

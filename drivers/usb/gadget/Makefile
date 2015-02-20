@@ -2,6 +2,7 @@
 # USB peripheral controller drivers
 #
 obj-$(CONFIG_USB_DUMMY_HCD)	+= dummy_hcd.o
+obj-$(CONFIG_USB_TANGO3_UDC)    += tango3_udc.o
 obj-$(CONFIG_USB_NET2280)	+= net2280.o
 obj-$(CONFIG_USB_PXA2XX)	+= pxa2xx_udc.o
 obj-$(CONFIG_USB_GOKU)		+= goku_udc.o

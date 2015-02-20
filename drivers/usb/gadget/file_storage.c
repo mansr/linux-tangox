@@ -217,9 +217,9 @@
  */
 
 
-#undef DEBUG
-#undef VERBOSE
-#undef DUMP_MSGS
+//#define DEBUG
+//#define VERBOSE
+//#define DUMP_MSGS
 
 
 #include <asm/system.h>
@@ -1481,7 +1481,18 @@ static int standard_setup_req(struct fsg_dev *fsg,
 		*(u8 *) req->buf = 0;
 		value = 1;
 		break;
-
+        case USB_REQ_SET_ADDRESS:
+                if (ctrl->bRequestType != (USB_DIR_OUT | USB_TYPE_STANDARD |
+                                USB_RECIP_DEVICE)){
+                        break;
+                }
+                if (w_index != 0) {
+                        value = -EDOM;
+                        break;
+                }
+                *(u8 *) req->buf = 0;
+                value = 1;
+                break;
 	default:
 		VDBG(fsg,
 			"unknown control req %02x.%02x v%04x i%04x l%u\n",
