@@ -34,9 +34,14 @@ unsigned long em8xxx_sys_clkgen_pll;
 unsigned long em8xxx_sys_premux;
 unsigned long em8xxx_sys_mux;
 unsigned long em8xxx_max_dx_size;
+
 #ifdef CONFIG_TANGO3
+#ifndef CONFIG_TANGOX_MIXED_DRAM_USAGE
 unsigned long phy_remap;
 unsigned long max_remap_size;
+#else
+unsigned long max_remap_size = MAX_KERNEL_MEMSIZE;
+#endif
 #endif 
 
 unsigned long tangox_chip_id(void);
@@ -51,7 +56,7 @@ int is_tango3_es2(void);
 #ifdef CONFIG_TANGO2
 unsigned long em8xxx_remap_registers[5];
 #elif defined(CONFIG_TANGO3)
-unsigned long em8xxx_remap_registers[8];
+unsigned long em8xxx_remap_registers[9];
 #endif 
 
 /*
@@ -188,6 +193,137 @@ extern void __init tangox_device_info(void);
 extern const char *tangox_xenv_cmdline(void);
 
 #ifdef CONFIG_TANGO3
+#ifdef CONFIG_TANGOX_MIXED_DRAM_USAGE
+#define REMAP_SIZE	0x04000000UL
+static inline void update_remap(unsigned int remap, unsigned long mapaddr)
+{
+	if (gbus_read_reg32(REG_BASE_cpu_block + CPU_remap + (remap * 4)) != mapaddr) {
+		gbus_write_reg32(REG_BASE_cpu_block + CPU_remap + (remap * 4), mapaddr);
+		iob();
+	}
+	em8xxx_remap_registers[remap] = mapaddr & 0xfc000000UL;
+}
+
+unsigned long __init dram_remap_setup(unsigned long dsize)
+{
+	unsigned long max_d0_size = 0, max_d1_size = 0, tmp, tsize = 0, fd0 = 0;
+	unsigned long dx_sizes[2], dx_addrs[2];
+	unsigned int size = sizeof(unsigned long), i, j;
+
+	/* check the boundaries for DRAM0 and DRAM1 */
+	if ((xenv_get((void *)KSEG1ADDR(REG_BASE_cpu_block + LR_XENV2_RW), MAX_LR_XENV2_RW, XENV_LRRW_RUAMM0_GA, &tmp, &size) == 0) 
+			&& (size == sizeof(unsigned long))) 
+		fd0 = max_d0_size = tmp - MEM_BASE_dram_controller_0;
+	if ((xenv_get((void *)KSEG1ADDR(REG_BASE_cpu_block + LR_XENV2_RW), MAX_LR_XENV2_RW, XENV_LRRW_RUAMM1_GA, &tmp, &size) == 0) 
+			&& (size == sizeof(unsigned long))) 
+		max_d1_size = tmp - MEM_BASE_dram_controller_1;
+
+	/* Max. dynamic remap can do only 384MB */
+	max_d0_size = (max_d0_size > 0x18000000UL) ? 0x18000000UL : max_d0_size;
+	max_d1_size = (max_d1_size > 0x18000000UL) ? 0x18000000UL : max_d1_size;
+
+	printk("Desired kernel memory size: 0x%08lx\n", dsize);
+	printk("Max. DRAM0/1 size allowed: 0x%08lx/0x%08lx\n", max_d0_size, max_d1_size);
+
+	if (gbus_read_reg32(REG_BASE_cpu_block + CPU_remap + (REMAP_IDX * 4)) >= MEM_BASE_dram_controller_1) {
+		/* Use DRAM1 first */
+		dx_sizes[0] = max_d1_size;
+		dx_sizes[1] = max_d0_size;
+		dx_addrs[0] = MEM_BASE_dram_controller_1;
+		dx_addrs[1] = MEM_BASE_dram_controller_0;
+	} else {
+		/* Use DRAM0 first */
+		dx_sizes[0] = max_d0_size;
+		dx_sizes[1] = max_d1_size;
+		dx_addrs[0] = MEM_BASE_dram_controller_0;
+		dx_addrs[1] = MEM_BASE_dram_controller_1;
+	}
+
+	for (i = REMAP_IDX, j = 0; (dx_sizes[0] >= REMAP_SIZE) && (dsize >= REMAP_SIZE) && (i < 8); i++, j++) {
+		update_remap(i, dx_addrs[0] + (j * REMAP_SIZE));
+		dx_sizes[0] -= REMAP_SIZE;
+		dsize -= REMAP_SIZE;
+		tsize += REMAP_SIZE;
+		printk(" Mapped 0x%08lx(size 0x%08lx) via remap%d\n", 
+			dx_addrs[0] + (j * REMAP_SIZE), REMAP_SIZE, i);
+	}
+	if (i < 8) {
+		if (dsize > 0) {
+			if (dsize < REMAP_SIZE) {
+				if (dx_sizes[0] >= dsize) {
+					update_remap(i, dx_addrs[0] + (j * REMAP_SIZE));
+					tsize += dsize;
+					printk(" Mapped 0x%08lx(size 0x%08lx) via remap%d\n", 
+						dx_addrs[0] + (j * REMAP_SIZE), dsize, i);
+					goto done;
+				} else if (dx_sizes[0] > dx_sizes[1]) {
+					update_remap(i, dx_addrs[0] + (j * REMAP_SIZE));
+					tsize += dx_sizes[0];
+					printk(" Mapped 0x%08lx(size 0x%08lx) via remap%d\n", 
+						dx_addrs[0] + (j * REMAP_SIZE), dx_sizes[0], i);
+					goto done;
+				}
+			} else {
+				if (dx_sizes[0] > dx_sizes[1]) {
+					update_remap(i, dx_addrs[0] + (j * REMAP_SIZE));
+					tsize += dx_sizes[0];
+					printk(" Mapped 0x%08lx(size 0x%08lx) via remap%d\n", 
+						dx_addrs[0] + (j * REMAP_SIZE), dx_sizes[0], i);
+					goto done;
+				}
+			}
+		}
+	} else {
+		/* Check to see if the last, fixed remap works? */
+		if (dsize > 0) {
+			unsigned long msz = (fd0 > 0x1c000000UL) ? (fd0 - 0x1c000000UL) : 0UL;
+			msz = (msz > dsize) ? dsize : msz;
+			if (msz) {
+				tsize += msz;
+				printk(" Mapped 0x%08lx(size 0x%08lx) via remap%d\n", 
+					MEM_BASE_dram_controller_0 + 0x1c000000UL, msz, i);
+			}
+		}
+		goto done;
+	}
+
+	for (j = 0; (dx_sizes[1] >= REMAP_SIZE) && (dsize >= REMAP_SIZE) && (i < 8); i++, j++) {
+		update_remap(i, dx_addrs[1] + (j * REMAP_SIZE));
+		dx_sizes[1] -= REMAP_SIZE;
+		dsize -= REMAP_SIZE;
+		tsize += REMAP_SIZE;
+		printk(" Mapped 0x%08lx(size 0x%08lx) via remap%d\n", 
+			dx_addrs[1] + (j * REMAP_SIZE), REMAP_SIZE, i);
+	}
+	if (i < 8) {
+		if (dsize > 0) {
+			unsigned long msz = (dx_sizes[1] > dsize) ? dsize : dx_sizes[1];
+			update_remap(i, dx_addrs[1] + (j * REMAP_SIZE));
+			tsize += msz;
+			printk(" Mapped 0x%08lx(size 0x%08lx) via remap%d\n", 
+				dx_addrs[1] + (j * REMAP_SIZE), msz, i);
+			goto done;
+		}
+	} else {
+		/* Check to see if the last, fixed remap works? */
+		if (dsize > 0) {
+			unsigned long msz = (fd0 > 0x1c000000UL) ? (fd0 - 0x1c000000UL) : 0UL;
+			msz = (msz > dsize) ? dsize : msz;
+			if (msz) {
+				tsize += msz;
+				printk(" Mapped 0x%08lx(size 0x%08lx) via remap%d\n", 
+					MEM_BASE_dram_controller_0 + 0x1c000000UL, msz, i);
+			}
+		}
+		goto done;
+	}
+
+done:
+	printk("Final kernel memory size: 0x%08lx\n", tsize);
+	return(tsize);
+}
+#endif
+
 static inline unsigned long fixup_dram_address(unsigned long addr)
 {
 	if ((addr >= 0x10000000) && (addr < 0x20000000))
@@ -247,6 +383,9 @@ void __init prom_init(void)
 		i++) {
 		em8xxx_remap_registers[i] = gbus_read_reg32(REG_BASE_cpu_block + CPU_remap + (i * 4));
 	}
+#if defined(CONFIG_TANGO3)
+	em8xxx_remap_registers[8] = 0x9c000000UL; /* Hard-wired remap here */
+#endif
 
 	/* 
 	 * Set remap so that 0x1fc00000 and 0x0 back to they should be...
@@ -256,8 +395,9 @@ void __init prom_init(void)
 	iob();
 	
 #ifdef CONFIG_TANGO3
-#define REMAP_IDX      (((CPU_REMAP_SPACE-CPU_remap2_address)/0x04000000)+2)
-#define MAX_KERNEL_MEMSIZE	(0x18000000-(((REMAP_IDX)-2)*0x04000000))
+#ifdef CONFIG_TANGOX_MIXED_DRAM_USAGE
+	printk("Mixed DRAM usage enabled.\n");
+#else
 	phy_remap = fixup_dram_address(em8xxx_remap_registers[REMAP_IDX]);
 	max_remap_size = 0x04000000; /* minimum 64MB */
 	if (phy_remap != em8xxx_remap_registers[REMAP_IDX]) { /* fix up needed */
@@ -276,6 +416,7 @@ void __init prom_init(void)
 	}
 	printk("Physical map 0x%08lx to 0x%08lx, max remap/kernel size: 0x%08lx/0x%08lx.\n",
 		phy_remap, (unsigned long)CPU_REMAP_SPACE, max_remap_size, (unsigned long)MAX_KERNEL_MEMSIZE);
+#endif
 #endif
 #ifdef CONFIG_TANGO2
 #define MAX_KERNEL_MEMSIZE	(0x10000000)
@@ -434,6 +575,9 @@ void __init prom_init(void)
 		em8xxx_kmem_size = max_remap_size;
 
 #ifdef CONFIG_TANGOX_XENV_READ
+#ifdef CONFIG_TANGOX_MIXED_DRAM_USAGE
+	em8xxx_kmem_size = dram_remap_setup(em8xxx_kmem_size);
+#else
 	{
 		unsigned long max_d0_size = 0, max_d1_size = 0, tmp;
 		unsigned int size = sizeof(unsigned long);
@@ -449,6 +593,7 @@ void __init prom_init(void)
 		em8xxx_kmem_size = em8xxx_max_dx_size;
 		printk("Maximum kernel memory size is 0x%08lx with RUAMM restriction.\n", em8xxx_kmem_size);
 	}
+#endif
 #endif
 	em8xxx_kmem_end = KSEG1ADDR(em8xxx_kmem_start + em8xxx_kmem_size) - KSEG1ADDR(CPU_REMAP_SPACE);
 	update_lrrw_kend(em8xxx_kmem_end);
@@ -665,9 +810,15 @@ EXPORT_SYMBOL(is_tango3_es2);
 EXPORT_SYMBOL(is_tango3_es3);
 EXPORT_SYMBOL(is_tango3_es4);
 EXPORT_SYMBOL(is_tango3_es5);
+EXPORT_SYMBOL(em8xxx_kmem_size);
+EXPORT_SYMBOL(em8xxx_kmem_start);
 #ifdef CONFIG_TANGO3
-EXPORT_SYMBOL(phy_remap);
 EXPORT_SYMBOL(max_remap_size);
+#ifndef CONFIG_TANGOX_MIXED_DRAM_USAGE
+EXPORT_SYMBOL(phy_remap);
+#else
+EXPORT_SYMBOL(em8xxx_remap_registers);
+#endif
 #endif
 
 int tangox_get_order(unsigned long size)

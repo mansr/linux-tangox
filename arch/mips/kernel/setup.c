@@ -40,7 +40,6 @@
 #include <asm/tango3/memcfg.h>
 #include <asm/tango3/tango3.h>
 #include <asm/tango3/hardware.h>
-
 #include "../tangox/xenv.h"
 #include "../tangox/xenvkeys.h"
 #endif
@@ -445,9 +444,11 @@ static int __init early_parse_mem(char *p)
         extern unsigned long em8xxx_kmem_start;
         extern unsigned long em8xxx_kmem_size;
 #ifdef CONFIG_TANGO3
-	extern unsigned long max_remap_size;
+#ifndef CONFIG_TANGOX_MIXED_DRAM_USAGE
 	extern unsigned long phy_remap;
 	extern unsigned long em8xxx_max_dx_size;
+#endif
+	extern unsigned long max_remap_size;
 	void update_lrrw_kend(unsigned long kend);
 #endif
 #endif
@@ -478,11 +479,10 @@ static int __init early_parse_mem(char *p)
 	if (start == CPHYSADDR(em8xxx_kmem_start)) {
 		unsigned long em8xxx_kmem_end;
 #ifdef CONFIG_TANGO3
-#define REMAP_IDX      (((CPU_REMAP_SPACE-CPU_remap2_address)/0x04000000)+2)
-#define MAX_KERNEL_MEMSIZE	(0x18000000-(((REMAP_IDX)-2)*0x04000000))
 		em8xxx_kmem_size = ((size + em8xxx_kmem_start) & 0xfff00000) - em8xxx_kmem_start;
 
 		if (em8xxx_kmem_size > max_remap_size) {
+#ifndef CONFIG_TANGOX_MIXED_DRAM_USAGE
 			if (em8xxx_kmem_size > 0x18000000) /* Maximum 384MB */
 				em8xxx_kmem_size = max_remap_size;
 			else {
@@ -501,13 +501,23 @@ static int __init early_parse_mem(char *p)
 				printk("Modified physical map 0x%08lx to 0x%08lx, max remap/kernel size: 0x%08lx/0x%08lx.\n",
 						phy_remap, (unsigned long)CPU_REMAP_SPACE, max_remap_size, (unsigned long)MAX_KERNEL_MEMSIZE);
 			}
+#else
+			em8xxx_kmem_size = max_remap_size;
+#endif
 		}
 
 #ifdef CONFIG_TANGOX_XENV_READ
+#ifdef CONFIG_TANGOX_MIXED_DRAM_USAGE
+		{
+			unsigned long dram_remap_setup(unsigned long desired_size);
+			em8xxx_kmem_size = dram_remap_setup(em8xxx_kmem_size);
+		}
+#else
 		if ((em8xxx_max_dx_size != 0) && (em8xxx_kmem_size > em8xxx_max_dx_size)) { /* don't push into RUAMM area */
 			em8xxx_kmem_size = em8xxx_max_dx_size;
 			printk("Maximum kernel memory size is 0x%08lx with RUAMM restriction.\n", em8xxx_kmem_size);
 		}
+#endif
 #endif
 		em8xxx_kmem_end = KSEG1ADDR(em8xxx_kmem_start + em8xxx_kmem_size) - KSEG1ADDR(CPU_REMAP_SPACE);
 

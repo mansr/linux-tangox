@@ -219,15 +219,14 @@ static void clear_halt (struct tango3_ep *ep)
  */
 static inline unsigned long PHYSADDR(void *addr) 
 {
-		return tangox_dma_address(CPHYSADDR((unsigned long)addr));
+	return tangox_dma_address(CPHYSADDR((unsigned long)addr));
 }
 
 static inline int tangox_valid_dma_addr(unsigned long mapaddr)
 {
-	extern unsigned long phy_remap, max_remap_size;
-	if ((mapaddr >= phy_remap) && (mapaddr < (phy_remap + max_remap_size)))
-		return 1;
-	else
+	if (mapaddr < MEM_BASE_dram_controller_0)
 		return 0;
+
+	return (tangox_inv_dma_address(mapaddr) != mapaddr) ? 1 : 0;
 }
 #endif

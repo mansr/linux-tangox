@@ -103,33 +103,75 @@ int printk(const char * fmt, ...) __attribute__ ((format (printf, 1, 2)));
 static inline int printk(const char *s, ...) __attribute__ ((format (printf, 1, 2)));
 #endif
 
+#ifndef REMAP_IDX
+#define REMAP_IDX      (((CPU_REMAP_SPACE-CPU_remap2_address)/0x04000000UL)+2)
+#endif
+#ifndef MAX_KERNEL_MEMSIZE
+#ifdef CONFIG_TANGOX_MIXED_DRAM_USAGE
+#define MAX_KERNEL_MEMSIZE	(0x1c000000UL-(((REMAP_IDX)-2)*0x04000000UL))
+#else
+#define MAX_KERNEL_MEMSIZE	(0x18000000UL-(((REMAP_IDX)-2)*0x04000000UL))
+#endif
+#endif
+
 // Physical address mapping
 static inline unsigned long tangox_dma_address(unsigned long physaddr)
 {
-	extern unsigned long phy_remap, max_remap_size;
+#ifdef CONFIG_TANGOX_MIXED_DRAM_USAGE
+	extern unsigned long em8xxx_remap_registers[9];
+#else
+	extern unsigned long phy_remap;
+#endif
+	extern unsigned long em8xxx_kmem_size;
 
+#ifdef CONFIG_TANGOX_MIXED_DRAM_USAGE
+	if ((physaddr < CPU_REMAP_SPACE) && (physaddr >= (CPU_REMAP_SPACE + em8xxx_kmem_size))) {
+		printk("<3>" "dma_address conversion failure (0x%08lx in range 0x%08lx-0x%08lx)\n",
+			physaddr, (unsigned long)CPU_REMAP_SPACE, (unsigned long)CPU_REMAP_SPACE + em8xxx_kmem_size);
+		return(physaddr); /* use whatever is specified */
+	} else {
+		return(em8xxx_remap_registers[((physaddr & 0x1c000000UL) >> 26) + 1] + (physaddr & 0x03ffffffUL));
+	}
+#else
 	/* for Tango3, another remap takes place */
-	if ((physaddr >= CPU_REMAP_SPACE) && (physaddr < (CPU_REMAP_SPACE + max_remap_size)))
+	if ((physaddr >= CPU_REMAP_SPACE) && (physaddr < (CPU_REMAP_SPACE + em8xxx_kmem_size)))
 		return(phy_remap + (physaddr - CPU_REMAP_SPACE));
 	else {
 		printk("<3>" "dma_address conversion failure (0x%08lx in range 0x%08lx-0x%08lx)\n",
-			physaddr, (unsigned long)CPU_REMAP_SPACE, (unsigned long)CPU_REMAP_SPACE + max_remap_size);
+			physaddr, (unsigned long)CPU_REMAP_SPACE, (unsigned long)CPU_REMAP_SPACE + em8xxx_kmem_size);
 		return(physaddr); /* use whatever is specified */
 	}
+#endif
 }
 
 // Inverted physical address mapping
 static inline unsigned long tangox_inv_dma_address(unsigned long mapaddr)
 {
-	extern unsigned long phy_remap, max_remap_size;
+#ifdef CONFIG_TANGOX_MIXED_DRAM_USAGE
+	extern unsigned long em8xxx_remap_registers[9];
+#else
+	extern unsigned long phy_remap;
+#endif
+	extern unsigned long em8xxx_kmem_size;
 
-	if ((mapaddr >= phy_remap) && (mapaddr < (phy_remap + max_remap_size)))
+#ifdef CONFIG_TANGOX_MIXED_DRAM_USAGE
+	int i;
+	unsigned long msize = 0;
+	for (i = REMAP_IDX; (msize < em8xxx_kmem_size) && (i < 9); msize += 0x04000000, i++) {
+		if ((mapaddr >= em8xxx_remap_registers[i]) && (mapaddr < (em8xxx_remap_registers[i] + 0x04000000UL))) 
+			return(((i - 2) * 0x04000000UL) + CPU_REMAP_SPACE + (mapaddr & 0x03ffffffUL));
+	}
+	printk("<3>" "dma_address inversion failure (0x%08lx)\n", mapaddr);
+	return(mapaddr); /* use whatever is specified */
+#else
+	if ((mapaddr >= phy_remap) && (mapaddr < (phy_remap + em8xxx_kmem_size)))
 		return(CPU_REMAP_SPACE + (mapaddr - phy_remap));
 	else {
 		printk("<3>" "dma_address inversion failure (0x%08lx in range 0x%08lx-0x%08lx)\n",
-			mapaddr, phy_remap, phy_remap + max_remap_size);
+			mapaddr, phy_remap, phy_remap + em8xxx_kmem_size);
 		return(mapaddr); /* use whatever is specified */
 	}
+#endif
 }
 #endif
 

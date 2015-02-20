@@ -1,0 +1,22 @@
+Feature:
+--------
+Allow kernel to run in mixed DRAM mode.
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+1002
+1004
+1027
+
+Primary author:
+---------------
+YH Lin
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango3
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

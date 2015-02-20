@@ -52,7 +52,7 @@ extern unsigned long em8xxx_sys_frequency;
 #ifdef CONFIG_TANGO2
 extern unsigned long em8xxx_remap_registers[5];
 #elif defined(CONFIG_TANGO3)
-extern unsigned long em8xxx_remap_registers[8];
+extern unsigned long em8xxx_remap_registers[9];
 #endif
 
 unsigned long tangox_get_cpuclock(void);

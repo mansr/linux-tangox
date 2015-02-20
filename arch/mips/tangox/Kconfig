@@ -63,6 +63,16 @@ config TANGOX_SYSTEMRAM_ACTUALSIZE
 	 This is the default amount of RAM available to the Linux kernel. It can be
 	 override with "mem=" command line option.
 
+config TANGOX_MIXED_DRAM_USAGE
+	bool "Mixed DRAM usage"
+	depends on TANGO3_SMP86XX
+	default y
+	help
+	 This option, if enabled, will allow kernel to use both DRAM banks at the 
+         same time. In addition, kernel will try to detect the available memory that
+         it can use from DRAM0/DRAM1 and try to use the maximum of both combined to
+         satisfy specified "mem=" command line option (or SYSTEMRAM_ACTUALSIZE).
+
 config TANGOX_IGNORE_CMDLINE
 	bool "Ignore YAMON, XENV & memcfg command line"
 	depends on TANGO2_SMP863X || TANGO3_SMP86XX

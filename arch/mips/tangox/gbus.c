@@ -44,6 +44,68 @@ static RMuint32 set_remap(RMuint32 remap_reg, RMuint32 value)
 
 #if defined(CONFIG_TANGO3)
 
+#ifdef CONFIG_TANGOX_MIXED_DRAM_USAGE
+#define BUILD_GBUS_READ_OP(size)									\
+RMuint##size gbus_read_uint##size(struct gbus *pgbus, RMuint32 byte_address) 				\
+{													\
+	RMuint32 remap;											\
+	RMuint##size tmp;										\
+	if (byte_address < CPU_remap2_address) {							\
+		tmp = *((volatile RMuint##size *)KSEG1ADDR(byte_address)); 				\
+		rmb();											\
+	} else {											\
+		unsigned long flags;									\
+		local_irq_save(flags); /* Ensure remap won't be changed */				\
+		/* Use CPU_remapx to temporarily map the address */					\
+		if (likely(byte_address != (REG_BASE_cpu_block + TMP_REMAPPED_REG))) {			\
+			remap = set_remap(TMP_REMAPPED_REG, byte_address & TMP_REMAPPED_MASK);		\
+			tmp = *((volatile RMuint##size *)KSEG1ADDR(TMP_REMAPPED_BASE + 			\
+								(byte_address & (TMP_REMAPPED_SIZE-1))));	\
+			rmb();										\
+			set_remap(TMP_REMAPPED_REG, remap & TMP_REMAPPED_MASK);				\
+		} else {										\
+			remap = set_remap(TMP_REMAPPED_REG1, byte_address & TMP_REMAPPED_MASK1);	\
+			tmp = *((volatile RMuint##size *)KSEG1ADDR(TMP_REMAPPED_BASE1 + 		\
+								(byte_address & (TMP_REMAPPED_SIZE1-1))));	\
+			rmb();										\
+			set_remap(TMP_REMAPPED_REG1, remap & TMP_REMAPPED_MASK1);			\
+		}											\
+		local_irq_restore(flags);								\
+	}												\
+	return(tmp);											\
+}
+
+#define BUILD_GBUS_WRITE_OP(size)									\
+void gbus_write_uint##size(struct gbus *pgbus, RMuint32 byte_address, RMuint##size data)		\
+{													\
+	RMuint32 remap;											\
+	mb();												\
+	if (byte_address < CPU_remap2_address) {							\
+		*((volatile RMuint##size *)KSEG1ADDR(byte_address)) = data;				\
+		iob();											\
+	} else {											\
+		unsigned long flags;									\
+		local_irq_save(flags); /* Ensure remap won't be changed */				\
+		/* Use CPU_remapx to temporarily map the address */					\
+		if (likely(byte_address != (REG_BASE_cpu_block + TMP_REMAPPED_REG))) {			\
+			remap = set_remap(TMP_REMAPPED_REG, byte_address & TMP_REMAPPED_MASK);		\
+			*((volatile RMuint##size *)KSEG1ADDR(TMP_REMAPPED_BASE + 			\
+							(byte_address & (TMP_REMAPPED_SIZE-1)))) = data;	\
+			iob();										\
+			set_remap(TMP_REMAPPED_REG, remap & TMP_REMAPPED_MASK);				\
+		} else {										\
+			remap = set_remap(TMP_REMAPPED_REG1, byte_address & TMP_REMAPPED_MASK1);	\
+			*((volatile RMuint##size *)KSEG1ADDR(TMP_REMAPPED_BASE1 + 			\
+							(byte_address & (TMP_REMAPPED_SIZE1-1)))) = data;	\
+			iob();										\
+			set_remap(TMP_REMAPPED_REG1, remap & TMP_REMAPPED_MASK1);			\
+		}											\
+		local_irq_restore(flags);								\
+	}												\
+}
+
+#else
+
 #define BUILD_GBUS_READ_OP(size)									\
 RMuint##size gbus_read_uint##size(struct gbus *pgbus, RMuint32 byte_address) 				\
 {													\
@@ -110,6 +172,7 @@ void gbus_write_uint##size(struct gbus *pgbus, RMuint32 byte_address, RMuint##si
 		local_irq_restore(flags);								\
 	}												\
 }
+#endif
 
 #elif defined(CONFIG_TANGO2)
 
