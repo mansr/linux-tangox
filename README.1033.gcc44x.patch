@@ -1,0 +1,18 @@
+Feature:
+--------
+Support gcc 4.4.x.
+
+Prerequisite patch numbers:
+---------------------------
+none
+
+Primary author:
+---------------
+YH Lin
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+all
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------
