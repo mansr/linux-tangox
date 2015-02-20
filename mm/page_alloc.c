@@ -189,6 +189,7 @@ static inline int bad_range(struct zone *zone, struct page *page)
 
 static void bad_page(struct page *page)
 {
+	HWTRIGGER(0, 0x36a9, "bad_page");
 	printk(KERN_EMERG "Bad page state in process '%s'\n"
 		KERN_EMERG "page:%p flags:0x%0*lx mapping:%p mapcount:%d count:%d\n"
 		KERN_EMERG "Trying to fix it up, but a reboot is needed\n"

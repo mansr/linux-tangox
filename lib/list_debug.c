@@ -21,12 +21,14 @@ void __list_add(struct list_head *new,
 			      struct list_head *next)
 {
 	if (unlikely(next->prev != prev)) {
+		HWTRIGGER(0, 0, "list_add corruption");
 		printk(KERN_ERR "list_add corruption. next->prev should be "
 			"prev (%p), but was %p. (next=%p).\n",
 			prev, next->prev, next);
 		BUG();
 	}
 	if (unlikely(prev->next != next)) {
+		HWTRIGGER(0, 0, "list_add corruption");
 		printk(KERN_ERR "list_add corruption. prev->next should be "
 			"next (%p), but was %p. (prev=%p).\n",
 			next, prev->next, prev);
@@ -62,11 +64,13 @@ EXPORT_SYMBOL(list_add);
 void list_del(struct list_head *entry)
 {
 	if (unlikely(entry->prev->next != entry)) {
+		HWTRIGGER(0, 0, "list_del corruption");
 		printk(KERN_ERR "list_del corruption. prev->next should be %p, "
 				"but was %p\n", entry, entry->prev->next);
 		BUG();
 	}
 	if (unlikely(entry->next->prev != entry)) {
+		HWTRIGGER(0, 0, "list_del corruption");
 		printk(KERN_ERR "list_del corruption. next->prev should be %p, "
 				"but was %p\n", entry, entry->next->prev);
 		BUG();

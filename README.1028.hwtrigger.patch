@@ -1,0 +1,19 @@
+Feature:
+--------
+H/W trigger points for kernel crashes, to be able to get caught by JTAG
+device (e.g. FS2 navigator).
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+
+Primary author:
+---------------
+MIPS Technology
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

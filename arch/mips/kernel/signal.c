@@ -423,6 +423,7 @@ asmlinkage void sys_sigreturn(nabi_no_regargs struct pt_regs regs)
 	/* Unreached */
 
 badframe:
+	CHWTRIGGER(&regs, SIGSEGV, "_sys_sigreturn");
 	force_sig(SIGSEGV, current);
 }
 #endif /* CONFIG_TRAD_SIGNALS */
@@ -469,6 +470,7 @@ asmlinkage void sys_rt_sigreturn(nabi_no_regargs struct pt_regs regs)
 	/* Unreached */
 
 badframe:
+	CHWTRIGGER(&regs, SIGSEGV, "_sys_rt_sigreturn");
 	force_sig(SIGSEGV, current);
 }
 

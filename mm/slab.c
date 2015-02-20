@@ -1815,6 +1815,8 @@ static void check_poison_obj(struct kmem_cache *cachep, void *objp)
 			/* Mismatch ! */
 			/* Print header */
 			if (lines == 0) {
+				HWTRIGGER(task_pt_regs(current), 0,
+					  "slab corruption");
 				printk(KERN_ERR
 					"Slab corruption: %s start=%p, len=%d\n",
 					cachep->name, realobj, size);
@@ -2134,6 +2136,7 @@ kmem_cache_create (const char *name, size_t size, size_t align,
 	 */
 	if (!name || in_interrupt() || (size < BYTES_PER_WORD) ||
 	    size > KMALLOC_MAX_SIZE || dtor) {
+		HWTRIGGER(0, 0, "kmem_cache_create :early error");
 		printk(KERN_ERR "%s: Early error in slab %s\n", __FUNCTION__,
 				name);
 		BUG();
@@ -2693,6 +2696,7 @@ static void slab_put_obj(struct kmem_cache *cachep, struct slab *slabp,
 	WARN_ON(slabp->nodeid != nodeid);
 
 	if (slab_bufctl(slabp)[objnr] + 1 <= SLAB_LIMIT + 1) {
+		HWTRIGGER(0, 0, "slab_put_obj: double free");
 		printk(KERN_ERR "slab: double free detected in cache "
 				"'%s', objp %p\n", cachep->name, objp);
 		BUG();
@@ -2820,6 +2824,7 @@ failed:
 static void kfree_debugcheck(const void *objp)
 {
 	if (!virt_addr_valid(objp)) {
+		HWTRIGGER(0, 0, "kfree_debugcheck: out of range");
 		printk(KERN_ERR "kfree_debugcheck: out of range ptr %lxh.\n",
 		       (unsigned long)objp);
 		BUG();
@@ -2901,10 +2906,19 @@ static void check_slabp(struct kmem_cache *cachep, struct slab *slabp)
 	/* Check slab's freelist to see if this obj is there. */
 	for (i = slabp->free; i != BUFCTL_END; i = slab_bufctl(slabp)[i]) {
 		entries++;
-		if (entries > cachep->num || i >= cachep->num)
+		if (entries > cachep->num || i >= cachep->num) {
+			if (entries > cachep->num)
+				HWTRIGGER(0, 0,
+					 "check_slabp: entries > cachep->num");
+			if (i > cachep->num)
+				HWTRIGGER(0, 0,
+					  "check_slabp: i > cachep->num");
 			goto bad;
+		}
 	}
 	if (entries != cachep->num - slabp->inuse) {
+		HWTRIGGER(0, 0,
+			  "check_slabp: entries != cachep->num-slabp->inuse");
 bad:
 		printk(KERN_ERR "slab: Internal list corruption detected in "
 				"cache '%s'(%d), slabp %p(%d). Hexdump:\n",

@@ -56,6 +56,8 @@ static void spin_bug(spinlock_t *lock, const char *msg)
 	if (!debug_locks_off())
 		return;
 
+	HWTRIGGER(0, 0, "spin_bug");
+
 	if (lock->owner && lock->owner != SPINLOCK_OWNER_INIT)
 		owner = lock->owner;
 	printk(KERN_EMERG "BUG: spinlock %s on CPU#%d, %s/%d\n",
@@ -113,6 +115,7 @@ static void __spin_lock_debug(spinlock_t *lock)
 		/* lockup suspected: */
 		if (print_once) {
 			print_once = 0;
+			HWTRIGGER(0, 0, "__spin_lock_debug");
 			printk(KERN_EMERG "BUG: spinlock lockup on CPU#%d, "
 					"%s/%d, %p\n",
 				raw_smp_processor_id(), current->comm,
@@ -159,6 +162,7 @@ static void rwlock_bug(rwlock_t *lock, const char *msg)
 	if (!debug_locks_off())
 		return;
 
+	HWTRIGGER(0, 0, "rwlock_bug");
 	printk(KERN_EMERG "BUG: rwlock %s on CPU#%d, %s/%d, %p\n",
 		msg, raw_smp_processor_id(), current->comm,
 		current->pid, lock);
@@ -183,6 +187,7 @@ static void __read_lock_debug(rwlock_t *lock)
 		/* lockup suspected: */
 		if (print_once) {
 			print_once = 0;
+			HWTRIGGER(0, 0, "__read_lock_debug");
 			printk(KERN_EMERG "BUG: read-lock lockup on CPU#%d, "
 					"%s/%d, %p\n",
 				raw_smp_processor_id(), current->comm,
@@ -258,6 +263,7 @@ static void __write_lock_debug(rwlock_t *lock)
 		/* lockup suspected: */
 		if (print_once) {
 			print_once = 0;
+			HWTRIGGER(0, 0, "__write_lock_debug");
 			printk(KERN_EMERG "BUG: write-lock lockup on CPU#%d, "
 					"%s/%d, %p\n",
 				raw_smp_processor_id(), current->comm,

@@ -103,4 +103,14 @@ config MIPS_UNCACHED
 	  hardware debugging with a logic analyzer and need to see all traffic
 	  on the bus.
 
+config HWTRIGGER
+	bool "Generate hardware trigger points for kernel detected errors"
+	help
+	  If you say Y here the kernel will generate some sort of hardware event
+	  that can be detected by extrnal test equipment. The exact event is
+	  determined by the _HWTRIGGER macro in include/asm-mips/bug.h.
+	  Only useful when you have the test equipment available and are tracking
+	  down difficuly hardware/software bugs.
+	  Say N unless you know what you're doing.
+
 endmenu

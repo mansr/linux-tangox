@@ -209,11 +209,13 @@ int __compute_return_epc(struct pt_regs *regs)
 	return 0;
 
 unaligned:
+	HWTRIGGER(regs, SIGBUS, "unaligned epc");
 	printk("%s: unaligned epc - sending SIGBUS.\n", current->comm);
 	force_sig(SIGBUS, current);
 	return -EFAULT;
 
 sigill:
+	HWTRIGGER(regs, SIGBUS, "DSP branch but not DSP ASE");
 	printk("%s: DSP branch but not DSP ASE - sending SIGBUS.\n", current->comm);
 	force_sig(SIGBUS, current);
 	return -EFAULT;

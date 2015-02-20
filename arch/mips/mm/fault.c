@@ -130,6 +130,7 @@ bad_area:
 bad_area_nosemaphore:
 	/* User mode accesses just cause a SIGSEGV */
 	if (user_mode(regs)) {
+		CHWTRIGGER(regs, SIGSEGV, "do_page_fault");
 		tsk->thread.cp0_badvaddr = address;
 		tsk->thread.error_code = write;
 #if 0
@@ -160,6 +161,8 @@ no_context:
 	 * Oops. The kernel tried to access some bad page. We'll have to
 	 * terminate things with extreme prejudice.
 	 */
+	HWTRIGGER(regs, 0, "do_page_fault");
+
 	bust_spinlocks(1);
 
 	printk(KERN_ALERT "CPU %d Unable to handle kernel paging request at "
@@ -190,7 +193,9 @@ do_sigbus:
 	/* Kernel mode? Handle exceptions or die */
 	if (!user_mode(regs))
 		goto no_context;
-	else
+
+	CHWTRIGGER(regs, SIGBUS, "do_page_fault");
+
 	/*
 	 * Send a sigbus, regardless of whether we were in kernel
 	 * or user mode.

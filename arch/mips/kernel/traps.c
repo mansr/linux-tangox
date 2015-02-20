@@ -21,6 +21,7 @@
 #include <linux/kallsyms.h>
 #include <linux/bootmem.h>
 #include <linux/interrupt.h>
+#include <linux/ptrace.h>
 
 #include <asm/bootinfo.h>
 #include <asm/branch.h>
@@ -328,6 +329,8 @@ NORET_TYPE void ATTRIB_NORET die(const char * str, struct pt_regs * regs)
 	unsigned long dvpret = dvpe();
 #endif /* CONFIG_MIPS_MT_SMTC */
 
+	HWTRIGGER(regs, SIGSEGV, "die");
+
 	console_verbose();
 	spin_lock_irq(&die_lock);
 	bust_spinlocks(1);
@@ -374,6 +377,12 @@ asmlinkage void do_be(struct pt_regs *regs)
 	const struct exception_table_entry *fixup = NULL;
 	int data = regs->cp0_cause & 4;
 	int action = MIPS_BE_FATAL;
+
+	/*
+	 * This should be done after searching the exception table
+	 * But on Malta this should never happen, so do it early
+	 */
+	HWTRIGGER(regs, SIGBUS, "do_be");
 
 	/* XXX For now.  Fixme, this searches the wrong table ...  */
 	if (data && !user_mode(regs))
@@ -607,6 +616,7 @@ asmlinkage void do_ov(struct pt_regs *regs)
 	info.si_signo = SIGFPE;
 	info.si_errno = 0;
 	info.si_addr = (void __user *) regs->cp0_epc;
+	CHWTRIGGER(regs, SIGFPE, "do_ov");
 	force_sig_info(SIGFPE, &info, current);
 }
 
@@ -646,12 +656,15 @@ asmlinkage void do_fpe(struct pt_regs *regs, unsigned long fcr31)
 		own_fpu(1);	/* Using the FPU again.  */
 
 		/* If something went wrong, signal */
-		if (sig)
+		if (sig) {
+			CHWTRIGGER(regs, sig, "do_fpe");
 			force_sig(sig, current);
+		}
 
 		return;
 	}
 
+	CHWTRIGGER(regs, SIGFPE, "do_fpe");
 	force_sig(SIGFPE, current);
 }
 
@@ -690,18 +703,30 @@ asmlinkage void do_bp(struct pt_regs *regs)
 		info.si_signo = SIGFPE;
 		info.si_errno = 0;
 		info.si_addr = (void __user *) regs->cp0_epc;
+		CHWTRIGGER(regs, SIGFPE, "do_bp");
 		force_sig_info(SIGFPE, &info, current);
 		break;
 	case BRK_BUG:
 		die("Kernel bug detected", regs);
 		break;
+	case BRK_HWTRIGGER << 10:
+		if (user_mode(regs)) {
+			CHWTRIGGER(regs, (unsigned int)0, "userland trigger");
+			compute_return_epc(regs);
+			return;
+		}
+		/* Fall through */
 	default:
 		die_if_kernel("Break instruction in kernel code", regs);
+		if (!(current->ptrace & PT_PTRACED) ||
+		    (bcode != (BRK_SSTEPBP << 10)))
+			CHWTRIGGER(regs, SIGTRAP, "do_bp");
 		force_sig(SIGTRAP, current);
 	}
 	return;
 
 out_sigsegv:
+	CHWTRIGGER(regs, SIGSEGV, "do_bp");
 	force_sig(SIGSEGV, current);
 }
 
@@ -734,6 +759,7 @@ asmlinkage void do_tr(struct pt_regs *regs)
 		info.si_signo = SIGFPE;
 		info.si_errno = 0;
 		info.si_addr = (void __user *) regs->cp0_epc;
+		CHWTRIGGER(regs, SIGFPE, "do_tr");
 		force_sig_info(SIGFPE, &info, current);
 		break;
 	case BRK_BUG:
@@ -741,11 +767,13 @@ asmlinkage void do_tr(struct pt_regs *regs)
 		break;
 	default:
 		die_if_kernel("Trap instruction in kernel code", regs);
+		CHWTRIGGER(regs, SIGTRAP, "do_tr");
 		force_sig(SIGTRAP, current);
 	}
 	return;
 
 out_sigsegv:
+	CHWTRIGGER(regs, SIGSEGV, "do_tr");
 	force_sig(SIGSEGV, current);
 }
 
@@ -760,6 +788,7 @@ asmlinkage void do_ri(struct pt_regs *regs)
 	if (!simulate_rdhwr(regs))
 		return;
 
+	CHWTRIGGER(regs, SIGILL, "do_ri");
 	force_sig(SIGILL, current);
 }
 
@@ -794,8 +823,10 @@ asmlinkage void do_cpu(struct pt_regs *regs)
 			int sig;
 			sig = fpu_emulator_cop1Handler(regs,
 						&current->thread.fpu, 0);
-			if (sig)
+			if (sig) {
+				CHWTRIGGER(regs, sig, "do_cpu");
 				force_sig(sig, current);
+			}
 #ifdef CONFIG_MIPS_MT_FPAFF
 			else {
 			/*
@@ -835,11 +866,13 @@ asmlinkage void do_cpu(struct pt_regs *regs)
 		break;
 	}
 
+	CHWTRIGGER(regs, SIGILL, "do_cpu");
 	force_sig(SIGILL, current);
 }
 
 asmlinkage void do_mdmx(struct pt_regs *regs)
 {
+	CHWTRIGGER(regs, SIGILL, "do_mdmx");
 	force_sig(SIGILL, current);
 }
 
@@ -849,6 +882,7 @@ asmlinkage void do_watch(struct pt_regs *regs)
 	 * We use the watch exception where available to detect stack
 	 * overflows.
 	 */
+	CHWTRIGGER(regs, 0, "do_watch");
 	dump_tlb_all();
 	show_regs(regs);
 	panic("Caught WATCH exception - probably caused by stack overflow.");
@@ -859,6 +893,7 @@ asmlinkage void do_mcheck(struct pt_regs *regs)
 	const int field = 2 * sizeof(unsigned long);
 	int multi_match = regs->cp0_status & ST0_TS;
 
+	CHWTRIGGER(regs, 0, "do_mcheck");
 	show_regs(regs);
 
 	if (multi_match) {
@@ -914,6 +949,7 @@ asmlinkage void do_mt(struct pt_regs *regs)
 	}
 	die_if_kernel("MIPS MT Thread exception in kernel", regs);
 
+	CHWTRIGGER(regs, SIGILL, "do_mt");
 	force_sig(SIGILL, current);
 }
 
@@ -923,6 +959,7 @@ asmlinkage void do_dsp(struct pt_regs *regs)
 	if (cpu_has_dsp)
 		panic("Unexpected DSP exception\n");
 
+	CHWTRIGGER(regs, SIGFPE, "do_dsp");
 	force_sig(SIGILL, current);
 }
 
@@ -933,6 +970,7 @@ asmlinkage void do_reserved(struct pt_regs *regs)
 	 * caused by a new unknown cpu type or after another deadly
 	 * hard/software error.
 	 */
+	HWTRIGGER(regs, 0, "do_reserved");
 	show_regs(regs);
 	panic("Caught reserved exception %ld - should not happen.",
 	      (regs->cp0_cause & 0x7f) >> 2);
@@ -1082,6 +1120,7 @@ void *set_except_vector(int n, void *addr)
 
 static asmlinkage void do_default_vi(void)
 {
+	HWTRIGGER(get_irq_regs(), 0, "do_default_vi");
 	show_regs(get_irq_regs());
 	panic("Caught unexpected vectored interrupt.");
 }
@@ -1535,3 +1574,60 @@ void __init trap_init(void)
 	flush_icache_range(ebase, ebase + 0x400);
 	flush_tlb_handlers();
 }
+
+#ifdef CONFIG_HWTRIGGER
+
+void
+hwtriggerinfo(char *file, int line, void *rp, unsigned int code, char *why)
+{
+	struct pt_regs *regs = (struct pt_regs *)rp;
+	if (why) {
+		char *who = (!regs || !user_mode(regs)) ?
+			"Kernel" : current->comm;
+		printk(KERN_DEBUG "%s:%d: HWTRIGGER(%u) for %s: %s\n",
+		       file, line, code, who, why);
+	}
+	if (regs)
+		show_registers(regs);
+	else
+		dump_stack();
+}
+
+/*
+ * Decide if HWTRIGGER is needed
+ */
+
+int
+chwtrigger(void *rp)
+{
+	struct pt_regs *regs = (struct pt_regs *)rp;
+	struct {
+		char *comm;
+		int len;
+	} *p, ignored[] = {
+		{"crashme", 7},
+		{"lat_sig", 0}
+	};
+#define NIGNORED (sizeof(ignored)/sizeof(ignored[0]))
+
+	/* Unconditional trigger from kernel mode */
+	if (regs && !user_mode(regs))
+		return 1;
+
+	/* Ignore some userland programs */
+	for (p = ignored; p < &ignored[NIGNORED]; p++) {
+		if (p->len) {
+			if (strncmp(current->comm, p->comm, p->len) == 0)
+				return 0;
+		} else {
+			if (strcmp (current->comm, p->comm) == 0)
+				return 0;
+		}
+	}
+
+	/* Trigger on everything else */
+	return 1;
+}
+
+
+#endif

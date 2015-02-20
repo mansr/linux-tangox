@@ -260,6 +260,7 @@ typedef struct journal_superblock_s
 #define J_ASSERT(assert)						\
 do {									\
 	if (!(assert)) {						\
+		HWTRIGGER(0, 0, "JBD assertion");			\
 		printk (KERN_EMERG					\
 			"Assertion failure in %s() at %s:%d: \"%s\"\n",	\
 			__FUNCTION__, __FILE__, __LINE__, # assert);	\

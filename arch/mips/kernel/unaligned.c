@@ -523,18 +523,21 @@ fault:
 		return 1;
 
 	die_if_kernel ("Unhandled kernel unaligned access", regs);
+	CHWTRIGGER(regs, SIGSEGV, "emulate_load_store_insn");
 	send_sig(SIGSEGV, current, 1);
 
 	return 0;
 
 sigbus:
 	die_if_kernel("Unhandled kernel unaligned access", regs);
+	CHWTRIGGER(regs, SIGBUS, "emulate_load_store_insn");
 	send_sig(SIGBUS, current, 1);
 
 	return 0;
 
 sigill:
 	die_if_kernel("Unhandled kernel unaligned access or invalid instruction", regs);
+	CHWTRIGGER(regs, SIGILL, "emulate_load_store_insn");
 	send_sig(SIGILL, current, 1);
 
 	return 0;
@@ -592,6 +595,7 @@ asmlinkage void do_ade(struct pt_regs *regs)
 
 sigbus:
 	die_if_kernel("Kernel unaligned instruction access", regs);
+	CHWTRIGGER(regs, SIGBUS, "do_ade");
 	force_sig(SIGBUS, current);
 
 	/*
