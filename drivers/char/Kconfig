@@ -497,6 +497,13 @@ config TANGOX_SCARD
        help
          Support Smartcard interface for SMP86xx.
 
+config TANGOX_UIR
+       tristate "SMP86xx Universal IR remote support" 
+       depends on TANGO3
+       default m
+       help
+         Support Universal Infra-Red remote controller interface for SMP86xx.
+
 config UNIX98_PTYS
 	bool "Unix98 PTY support" if EMBEDDED
 	default y
