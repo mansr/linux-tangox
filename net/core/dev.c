@@ -453,6 +453,9 @@ int netdev_boot_setup_check(struct net_device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_SD_IPFILTER
+void *(*sd_ipfilter)(unsigned char *, int) = NULL;
+#endif
 
 /**
  *	netdev_boot_base	- get address from boot time settings
@@ -1640,6 +1643,13 @@ int netif_rx(struct sk_buff *skb)
 	struct softnet_data *queue;
 	unsigned long flags;
 
+#ifdef CONFIG_SD_IPFILTER
+	if ((sd_ipfilter != NULL) && (((*sd_ipfilter)(skb->data, skb->len)) == NULL)) {
+		kfree_skb(skb);
+		return NET_RX_SUCCESS;
+	}
+#endif
+
 	/* if netpoll wants it, pretend we never saw it */
 	if (netpoll_rx(skb))
 		return NET_RX_DROP;
@@ -1837,6 +1847,13 @@ int netif_receive_skb(struct sk_buff *skb)
 	struct net_device *orig_dev;
 	int ret = NET_RX_DROP;
 	__be16 type;
+
+#ifdef CONFIG_SD_IPFILTER
+	if ((sd_ipfilter != NULL) && (((*sd_ipfilter)(skb->data, skb->len)) == NULL)) {
+		kfree_skb(skb);
+		return NET_RX_SUCCESS;
+	}
+#endif
 
 	/* if we've gotten here through NAPI, check netpoll */
 	if (skb->dev->poll && netpoll_rx(skb))
@@ -3783,6 +3800,10 @@ EXPORT_SYMBOL(br_fdb_put_hook);
 
 #ifdef CONFIG_KMOD
 EXPORT_SYMBOL(dev_load);
+#endif
+
+#ifdef CONFIG_SD_IPFILTER
+EXPORT_SYMBOL(sd_ipfilter);
 #endif
 
 EXPORT_PER_CPU_SYMBOL(softnet_data);
