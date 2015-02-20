@@ -205,6 +205,13 @@ obj-$(CONFIG_MLX4_CORE) += mlx4/
 
 obj-$(CONFIG_MACB) += macb.o
 
+# For SMP863x ethernet
+obj-$(CONFIG_TANGO2_ENET) += tango2_enet.o
+obj-$(CONFIG_TANGO2_ENET_OLD) += tango2_enet_old.o
+
+# For SMP86xx ethernet (Tango3)
+obj-$(CONFIG_TANGOX_ENET) += tangox_enet.o
+ 
 obj-$(CONFIG_ARM) += arm/
 obj-$(CONFIG_DEV_APPLETALK) += appletalk/
 obj-$(CONFIG_TR) += tokenring/

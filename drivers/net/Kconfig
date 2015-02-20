@@ -1239,6 +1239,24 @@ config IBM_EMAC_TAH
 	depends on IBM_EMAC && 440GX
 	default y
 
+config TANGO2_ENET
+	tristate "SMP863x Builtin Ethernet support"
+	depends on NET_ETHERNET && TANGO2 
+	select MII
+	select CRC32
+	help
+	 This option adds support for the SMP863x integrated Ethernet
+	 controller.  This driver uses NAPI and generic Linux MII
+	 support.
+
+config TANGO2_ENET_OLD
+	tristate "SMP863x Builtin Ethernet support (old driver)"
+	depends on NET_ETHERNET && TANGO2 
+	help
+	 This option adds support  for the SMP863x integrated Ethernet
+	 controller. This  is the orignal driver from  Sigma with only
+	 small changes.
+
 config NET_PCI
 	bool "EISA, VLB, PCI and on board controllers"
 	depends on NET_ETHERNET && (ISA || EISA || PCI)
@@ -1888,6 +1906,16 @@ menuconfig NETDEV_1000
 	default y
 
 if NETDEV_1000
+
+config TANGOX_ENET
+	tristate "SMP86xx Builtin Gigabit Ethernet support (SMP864x/SMP865x)"
+	depends on NET_ETHERNET && TANGO3
+	select MII
+	select CRC32
+	help
+	 This option adds support for the SMP86xx integrated Gigabit Ethernet
+	 controller.  This driver uses NAPI and generic Linux MII
+	 support.
 
 config ACENIC
 	tristate "Alteon AceNIC/3Com 3C985/NetGear GA620 Gigabit support"
