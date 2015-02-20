@@ -828,6 +828,107 @@ int udp_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
 	if (flags & MSG_ERRQUEUE)
 		return ip_recv_error(sk, msg, len);
 
+	/* PATCH:RECVMULTI */
+	/*** Start fastUDP patch ***/
+	if (flags & MSG_RECVMULTI)
+	{
+	    void *pThisMsg;
+	    void **pThisVec;
+	    void *pVector = NULL;
+	    int   err;
+	    int   arrayLen = msg->msg_iov->iov_len & 0xFFFF; /* low 16 bits = # bufs */
+	    int   bufLen   = msg->msg_iov->iov_len >> 16; /* hi 16 bits is length of bufs */
+	    int   bufsFilled = 0;
+
+#ifdef FASTUDP_DEBUG
+	    printk(KERN_DEBUG "fastUDP: iov_base=%p; iov_len=0x%X\n",
+		   msg->msg_iov->iov_base, msg->msg_iov->iov_len );
+	    printk(KERN_DEBUG "fastUDP: arraylen=%d; buflen=%d\n",arrayLen,bufLen);
+	    printk(KERN_DEBUG "buf1 @ %p (u)\n",*(void**)(msg->msg_iov->iov_base));
+#endif
+	    if (flags & MSG_PEEK) {
+		return -EINVAL;		/* PEEK not allowed with fastUDP */
+	    }
+	    /* RecvMulti flag means that the ubuf ptr actually points to an array of ubufptrs,
+	     * and the user expects us to fill as many of them as we can without blocking. The
+	     * list of ubufptrs is in msg->iovec->iov_base; the length of the list is 
+             * encoded in msg->iovec->iov_len's low 16 bits, as a count of bufs; the higher 
+	     * 16 bits contains the (minimum) length of each of the buffers.
+	     */
+		flags |= MSG_DONTWAIT;
+		noblock = 1;
+		pVector = kmalloc(arrayLen * sizeof(void*), GFP_KERNEL);
+		if(pVector==NULL)
+			return -ENOMEM;
+		if((err = copy_from_user(pVector, msg->msg_iov->iov_base, arrayLen * sizeof(void*))) != 0)
+		{
+		    printk(KERN_ERR "fastUDP: copy_from_user() of bufferVector failed.\n");
+		    kfree(pVector);
+		    return -EFAULT;
+		}
+		pThisVec = pVector;
+		while (arrayLen--)
+		{
+		    struct iovec iov;
+
+		    pThisMsg = *(pThisVec++);
+		    iov.iov_base = pThisMsg+4;
+		    iov.iov_len = bufLen;
+		    skb = skb_recv_datagram(sk, flags, noblock, &err);
+		    if (!skb)
+		    {
+			if (bufsFilled == 0)
+			{
+			    err = -EAGAIN;
+			}
+			else
+			{
+			    err = bufsFilled;
+			}
+			break;
+		    }
+  		    copied = skb->len - sizeof(struct udphdr);
+		    if (copied > bufLen) {
+			copied = bufLen;
+			msg->msg_flags |= MSG_TRUNC;
+			arrayLen = 0;	/* break out of the multi loop at the bottom */
+		    }
+		    /* Note that we don't bother to checksum TRUNCATED msgs.... */
+		    if ((skb->ip_summed==CHECKSUM_UNNECESSARY) || (msg->msg_flags&MSG_TRUNC))
+		    {
+		        err = skb_copy_datagram_iovec(skb, sizeof(struct udphdr), &iov, copied);
+		    } else {
+			err = skb_copy_and_csum_datagram_iovec(skb, sizeof(struct udphdr), &iov);
+		    }
+
+		    if (err)
+		    {
+			printk(KERN_NOTICE "fastUDP: skb_copy_datagram_iovec() returned err=%d; copied=%d\n",err,copied);
+			arrayLen = 0;		/* break out of the multi loop at the bottom */
+			goto fastudp_out_free;
+		    }
+		    /* Save this msg's length in the front of the buffer */
+		    *(int*)pThisMsg = copied;
+		    /* Save the timestamp. Means we return only the last msg's stamp... */
+		    sock_recv_timestamp(msg, sk, skb);
+		    /* Copy the address. Means we return only the last msg's address... */
+		    if (sin)
+		    {
+		        sin->sin_family = AF_INET;
+			sin->sin_port = udp_hdr(skb)->source;
+			sin->sin_addr.s_addr = ip_hdr(skb)->saddr;
+		        memset(sin->sin_zero, 0, sizeof(sin->sin_zero));
+		    }
+		    err = ++bufsFilled;
+	fastudp_out_free:
+	  	    skb_free_datagram(sk, skb);
+		}
+		kfree(pVector);
+  		return err;
+
+	}   /*** end of fastUDP patch ***/
+	/* PATCH:RECVMULTI (end) */
+
 try_again:
 	skb = skb_recv_datagram(sk, flags, noblock, &err);
 	if (!skb)

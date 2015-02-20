@@ -250,6 +250,8 @@ struct ucred {
 #define MSG_ERRQUEUE	0x2000	/* Fetch message from error queue */
 #define MSG_NOSIGNAL	0x4000	/* Do not generate SIGPIPE */
 #define MSG_MORE	0x8000	/* Sender will send more */
+	/* PATCH:RECVMULTI */
+#define MSG_RECVMULTI	0x10000	/* UDP recv-multi request */
 
 #define MSG_EOF         MSG_FIN
 
