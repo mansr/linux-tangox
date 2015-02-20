@@ -76,6 +76,8 @@ MODULE_ALIAS_SCSI_DEVICE(TYPE_WORM);
 	 CDC_CD_R|CDC_CD_RW|CDC_DVD|CDC_DVD_R|CDC_DVD_RAM|CDC_GENERIC_PACKET| \
 	 CDC_MRW|CDC_MRW_W|CDC_RAM)
 
+#define DEFAULT_CAPACITY	0xffffffff
+
 static int sr_probe(struct device *);
 static int sr_remove(struct device *);
 static int sr_init_command(struct scsi_cmnd *);
@@ -574,7 +576,7 @@ static int sr_probe(struct device *dev)
 	cd->disk = disk;
 	cd->driver = &sr_template;
 	cd->disk = disk;
-	cd->capacity = 0x1fffff;
+	cd->capacity = DEFAULT_CAPACITY;
 	cd->device->changed = 1;	/* force recheck CD type */
 	cd->use = 1;
 	cd->readcd_known = 0;
@@ -646,7 +648,7 @@ static void get_sectorsize(struct scsi_cd *cd)
 
 
 	if (the_result) {
-		cd->capacity = 0x1fffff;
+		cd->capacity = DEFAULT_CAPACITY;
 		sector_size = 2048;	/* A guess, just in case */
 	} else {
 #if 0
@@ -698,7 +700,7 @@ out:
 	return;
 
 Enomem:
-	cd->capacity = 0x1fffff;
+	cd->capacity = DEFAULT_CAPACITY;
 	cd->device->sector_size = 2048;	/* A guess, just in case */
 	goto out;
 }
