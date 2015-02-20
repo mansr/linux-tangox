@@ -280,6 +280,10 @@ static int sg_io(struct file *file, request_queue_t *q,
 	if (!rq->timeout)
 		rq->timeout = BLK_DEFAULT_TIMEOUT;
 
+#ifdef CONFIG_SD_DIRECT_DMA
+	rq->rq_disk = bd_disk;
+#endif
+
 	if (hdr->iovec_count) {
 		const int size = sizeof(struct sg_iovec) * hdr->iovec_count;
 		struct sg_iovec *iov;
@@ -503,7 +507,10 @@ static int __blk_send_generic(request_queue_t *q, struct gendisk *bd_disk, int c
 	rq->data_len = 0;
 	rq->timeout = BLK_DEFAULT_TIMEOUT;
 	memset(rq->cmd, 0, sizeof(rq->cmd));
-	rq->cmd[0] = cmd;
+	rq->cmd[0] = cmd & 0xff;
+	rq->cmd[1] = (cmd >> 8) & 0xff;
+	rq->cmd[2] = (cmd >> 16) & 0xff;
+	rq->cmd[3] = (cmd >> 24) & 0xff;
 	rq->cmd[4] = data;
 	rq->cmd_len = 6;
 	err = blk_execute_rq(q, bd_disk, rq, 0);
@@ -514,7 +521,7 @@ static int __blk_send_generic(request_queue_t *q, struct gendisk *bd_disk, int c
 
 static inline int blk_send_start_stop(request_queue_t *q, struct gendisk *bd_disk, int data)
 {
-	return __blk_send_generic(q, bd_disk, GPCMD_START_STOP_UNIT, data);
+	return __blk_send_generic(q, bd_disk, GPCMD_START_STOP_UNIT | 0x100 /* immed */, data);
 }
 
 int scsi_cmd_ioctl(struct file *file, struct gendisk *bd_disk, unsigned int cmd, void __user *arg)

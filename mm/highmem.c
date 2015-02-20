@@ -191,6 +191,9 @@ void fastcall kunmap_high(struct page *page)
 	BUG_ON(!vaddr);
 	nr = PKMAP_NR(vaddr);
 
+	if (bio_flagged(*bio_orig, BIO_PHYSICAL)) 
+		return;
+
 	/*
 	 * A count must never go down to zero
 	 * without a TLB flush!

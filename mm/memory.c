@@ -993,6 +993,21 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
 	vm_flags &= force ? (VM_MAYREAD | VM_MAYWRITE) : (VM_READ | VM_WRITE);
 	i = 0;
 
+#if defined(CONFIG_MIPS) && defined(CONFIG_DMA_NONCOHERENT)
+	if (len && (current == tsk)) {
+		struct vm_area_struct *vma = find_vma(current->mm, start & PAGE_MASK);
+		if (vma && ((start & PAGE_MASK) >= vma->vm_start) && (((start & PAGE_MASK) + (len << PAGE_SHIFT)) <= vma->vm_end)) {
+			if (write) {
+				if (vma->vm_flags & VM_READ)
+					dma_cache_inv(start & PAGE_MASK, len << PAGE_SHIFT);
+			} else {
+				if (vma->vm_flags & VM_WRITE)
+					dma_cache_wback_inv(start & PAGE_MASK, len << PAGE_SHIFT);
+			}
+		}
+	}
+#endif
+
 	do {
 		struct vm_area_struct *vma;
 		unsigned int foll_flags;

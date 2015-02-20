@@ -31,6 +31,10 @@
 #include <linux/blktrace_api.h>
 #include <linux/fault-inject.h>
 
+#if defined(CONFIG_MIPS) && defined(CONFIG_DMA_NONCOHERENT)
+#include <scsi/sg.h>
+#endif
+
 /*
  * for max sense size
  */
@@ -2330,10 +2334,19 @@ static int __blk_rq_unmap_user(struct bio *bio)
 	int ret = 0;
 
 	if (bio) {
-		if (bio_flagged(bio, BIO_USER_MAPPED))
-			bio_unmap_user(bio);
-		else
-			ret = bio_uncopy_user(bio);
+#ifdef CONFIG_SD_DIRECT_DMA
+		if (bio_flagged(bio, BIO_PHYSICAL)) {
+			up_read(&current->mm->mmap_sem); 
+			kfree(bio);
+		} else {
+#endif
+			if (bio_flagged(bio, BIO_USER_MAPPED))
+				bio_unmap_user(bio);
+			else
+				ret = bio_uncopy_user(bio);
+#ifdef CONFIG_SD_DIRECT_DMA
+		}
+#endif
 	}
 
 	return ret;
@@ -2345,18 +2358,65 @@ static int __blk_rq_map_user(request_queue_t *q, struct request *rq,
 	unsigned long uaddr;
 	struct bio *bio, *orig_bio;
 	int reading, ret;
+        int dma_alignment = 0;
 
+#ifdef CONFIG_SD_DIRECT_DMA
+        extern int is_contiguous_memory(void __user *userbuf, unsigned int len, unsigned long *paddr);
+        unsigned long paddr;
+        struct gendisk *disk = rq->rq_disk;
+#endif
 	reading = rq_data_dir(rq) == READ;
+
+        if (reading) {
+                if (!access_ok(VERIFY_WRITE, (void __user *)ubuf, len))
+                        return -EFAULT;
+        } else if (!access_ok(VERIFY_READ, (void __user *)ubuf, len))
+                return -EFAULT;
 
 	/*
 	 * if alignment requirement is satisfied, map in user pages for
 	 * direct dma. else, set up kernel bounce buffers
 	 */
 	uaddr = (unsigned long) ubuf;
-	if (!(uaddr & queue_dma_alignment(q)) && !(len & queue_dma_alignment(q)))
-		bio = bio_map_user(q, NULL, uaddr, len, reading);
-	else
-		bio = bio_copy_user(q, uaddr, len, reading);
+        dma_alignment = queue_dma_alignment(q);
+
+        if (((uaddr & dma_alignment) == 0) && ((len & dma_alignment) == 0)) {
+#if defined(CONFIG_MIPS) && defined(CONFIG_DMA_NONCOHERENT)
+                if (reading)
+                        dma_cache_inv(uaddr, len);
+                else
+                        dma_cache_wback_inv(uaddr, len);
+#endif
+#ifdef CONFIG_SD_DIRECT_DMA
+                down_read(&current->mm->mmap_sem); /* lock the page table */
+                if ((len >= (128 * 1024)) && (is_contiguous_memory(ubuf, len, &paddr) != 0) &&
+                    (disk->major == IDE0_MAJOR)) { /* Only with Sigma's IDE interface */
+
+                        bio = kmalloc(sizeof(struct bio), GFP_KERNEL);
+                        if (bio == NULL)
+                                return -ENOMEM;
+
+                        memset(bio, 0, sizeof(struct bio));
+                        bio->bi_flags |= (1<<BIO_PHYSICAL);
+                        bio->bi_rw = (reading ? 0 : 1) | BIO_RW_SYNC;
+                        bio->bi_size = len;
+                        bio->bi_io_vec = (void *)ubuf;
+
+                        /* to carry physical addr to ide driver */
+                        bio->bi_private = (void *)paddr;
+                } else {
+                        up_read(&current->mm->mmap_sem); /* unlock the table since DDMA is not used */
+#endif
+                bio = bio_map_user(q, NULL, uaddr, len, reading);
+                if (IS_ERR(bio)) {
+                        /* the map operation failed, use copy instead */
+                        bio = bio_copy_user(q, uaddr, len, reading);
+                }
+#ifdef CONFIG_SD_DIRECT_DMA
+                }
+#endif
+        } else
+                bio = bio_copy_user(q, uaddr, len, reading);
 
 	if (IS_ERR(bio))
 		return PTR_ERR(bio);
@@ -2482,10 +2542,22 @@ EXPORT_SYMBOL(blk_rq_map_user);
 int blk_rq_map_user_iov(request_queue_t *q, struct request *rq,
 			struct sg_iovec *iov, int iov_count, unsigned int len)
 {
+	int i;
 	struct bio *bio;
 
 	if (!iov || iov_count <= 0)
 		return -EINVAL;
+
+#if defined(CONFIG_MIPS) && defined(CONFIG_DMA_NONCOHERENT)
+	for (i = 0; i < iov_count; i++) {
+		if (iov[i].iov_len) {
+			if (rq_data_dir(rq) == READ) 
+				dma_cache_inv((unsigned long)iov[i].iov_base, iov[i].iov_len);
+			else 
+				dma_cache_wback_inv((unsigned long)iov[i].iov_base, iov[i].iov_len);
+		}
+	}
+#endif
 
 	/* we don't allow misaligned data like bio_map_user() does.  If the
 	 * user is using sg, they're expected to know the alignment constraints
@@ -3671,6 +3743,19 @@ void blk_rq_bio_prep(request_queue_t *q, struct request *rq, struct bio *bio)
 {
 	/* first two bits are identical in rq->cmd_flags and bio->bi_rw */
 	rq->cmd_flags |= (bio->bi_rw & 3);
+#ifdef CONFIG_SD_DIRECT_DMA
+        if (bio_flagged(bio, BIO_PHYSICAL)) {
+                rq->nr_phys_segments = 1;
+                rq->nr_hw_segments = 1;
+                rq->current_nr_sectors = bio_cur_sectors(bio);
+                rq->hard_cur_sectors = rq->current_nr_sectors;
+                rq->hard_nr_sectors = rq->nr_sectors = bio_sectors(bio);
+                rq->buffer = bio_data(bio);
+
+                /*elevator doesn't know about this request*/
+                rq->cmd_flags &= ~REQ_SORTED;
+        } else {
+#endif
 
 	rq->nr_phys_segments = bio_phys_segments(q, bio);
 	rq->nr_hw_segments = bio_hw_segments(q, bio);
@@ -3679,7 +3764,9 @@ void blk_rq_bio_prep(request_queue_t *q, struct request *rq, struct bio *bio)
 	rq->hard_nr_sectors = rq->nr_sectors = bio_sectors(bio);
 	rq->buffer = bio_data(bio);
 	rq->data_len = bio->bi_size;
-
+#ifdef CONFIG_SD_DIRECT_DMA
+        }
+#endif
 	rq->bio = rq->biotail = bio;
 }
 

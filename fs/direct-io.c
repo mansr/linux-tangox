@@ -1009,6 +1009,14 @@ direct_io_worker(int rw, struct kiocb *iocb, struct inode *inode,
 		user_addr = (unsigned long)iov[seg].iov_base;
 		dio->size += bytes = iov[seg].iov_len;
 
+#if defined(CONFIG_MIPS) && defined(CONFIG_DMA_NONCOHERENT)
+		if (bytes) {
+			if (rw == WRITE)
+				dma_cache_wback_inv(user_addr, bytes);
+			else
+				dma_cache_inv(user_addr, bytes);
+		}
+#endif
 		/* Index into the first page of the first block */
 		dio->first_block_in_page = (user_addr & ~PAGE_MASK) >> blkbits;
 		dio->final_block_in_request = dio->block_in_file +

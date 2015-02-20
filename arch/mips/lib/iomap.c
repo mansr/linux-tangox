@@ -5,9 +5,15 @@
  * (C) Copyright 2006 Ralf Baechle <ralf@linux-mips.org>
  * (C) Copyright 2007 MIPS Technologies, Inc.
  *     written by Ralf Baechle <ralf@linux-mips.org>
+ * (C) Copyright 2007 Sigma Designs, Inc.
  */
 #include <linux/module.h>
 #include <asm/io.h>
+
+ #include <linux/ioport.h>
+ #include <linux/module.h>
+ #include <linux/pci.h>
+
 
 /*
  * Read/write from/to an (offsettable) iomem cookie. It might be a PIO
@@ -210,17 +216,18 @@ static void __iomem *ioport_map_legacy(unsigned long port, unsigned int nr)
 
 void __iomem *ioport_map(unsigned long port, unsigned int nr)
 {
-	if (port > PIO_MASK)
+	unsigned long end;
+
+	end = port + nr - 1UL;
+	if (ioport_resource.start > port ||
+	    ioport_resource.end < end || port > end)
 		return NULL;
 
-	return ioport_map_legacy(port, nr);
+	return (void __iomem *)(mips_io_port_base + port);
 }
-
-EXPORT_SYMBOL(ioport_map);
 
 void ioport_unmap(void __iomem *addr)
 {
-	/* Nothing to do */
 }
-
+EXPORT_SYMBOL(ioport_map);
 EXPORT_SYMBOL(ioport_unmap);
