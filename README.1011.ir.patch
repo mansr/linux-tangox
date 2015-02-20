@@ -1,0 +1,19 @@
+Feature:
+--------
+Support for SMP86xx InfraRed (IR) controller
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+
+Primary author:
+---------------
+YH Lin
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango2 ES6/RevA or above, or Tango3 ES1 or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------
