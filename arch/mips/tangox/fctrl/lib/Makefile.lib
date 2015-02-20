@@ -1,0 +1,74 @@
+
+#
+# Use this Makefile only when in standalone fashion
+#
+
+ifeq ($(TOP_DIR),)
+$(error Kernel top level directory need to be specified!)
+endif
+
+include $(TOP_DIR)/.config
+
+CROSS = mipsel-linux-
+CC = $(CROSS)gcc
+LD = $(CROSS)ld
+AR = $(CROSS)ar
+OBJCOPY = $(CROSS)objcopy
+
+FCDIR = fc
+CFLAGS = -Wall -Werror -Wstrict-prototypes -Wsign-compare -O2 -G 0 -mno-abicalls -fno-pic 
+CFLAGS += -fno-builtin -mabi=32 -march=mips32r2 -Wa,-32 -Wa,-march=mips32r2 -Wa,-mips32r2 -Wa,--trap
+CFLAGS += -I$(TOP_DIR)/include -I$(TOP_DIR)/include/asm-mips/mach-tango2 -I$(TOP_DIR)/include/asm-mips/mach-generic
+CFLAGS += -DEM86XX_CHIP=EM86XX_CHIPID_TANGO2 -DEM86XX_REVISION=6 -DCONFIG_TANGO2
+CFLAGS += -I$(FCDIR)
+
+# DMEM_BASE_audio_engine_0
+LOCALMEM_BASE	:= 0xa0190010
+WITH_IR		:= n
+WITH_FIP	:= n
+WITH_ETH	:= n
+INPUT_TABLE_SIZE:= 64
+FCTRL_DEBUG	:= n
+
+ifeq ($(FCTRL_DEBUG),y)
+CFLAGS += -DFC_DEBUG
+endif
+
+FCLIB_OBJS = freqctrl.o
+
+ifeq ($(WITH_ETH),y)
+FCLIB_OBJS += eth.o
+endif
+
+ifeq ($(WITH_IR),y)
+FCLIB_OBJS += ir.o
+endif
+
+ifeq ($(WITH_FIP),y)
+FCLIB_OBJS += fip.o
+endif
+
+all: freqctrl.a 
+
+freqctrl.a: $(FCLIB_OBJS)
+	$(AR) rcs $@ $(FCLIB_OBJS)
+
+$(FCDIR)/fcconfig.h $(FCDIR)/fcbin.h: Makefile
+	$(MAKE) -C $(FCDIR) TOP_DIR=$(TOP_DIR) LOCALMEM_BASE=$(LOCALMEM_BASE) WITH_IR=$(WITH_IR) WITH_FIP=$(WITH_FIP) WITH_ETH=$(WITH_ETH) INPUT_TABLE_SIZE=$(INPUT_TABLE_SIZE) FCTRL_DEBUG=$(FCTRL_DEBUG) 
+
+freqctrl.o: freqctrl.c freqctrl.h $(FCDIR)/fcconfig.h $(FCDIR)/fcbin.h Makefile platform.h $(FCDIR)/fcconfig.h $(FCDIR)/fcbin.h
+	$(CC) $(CFLAGS) -D__KERNEL__ -c -o $@ freqctrl.c
+
+eth.o: eth.c Makefile platform.h $(FCDIR)/fcconfig.h $(FCDIR)/fcbin.h
+	$(CC) $(CFLAGS) -D__KERNEL__ -c -o $@ eth.c
+
+ir.o: ir.c Makefile platform.h $(FCDIR)/fcconfig.h $(FCDIR)/fcbin.h
+	$(CC) $(CFLAGS) -D__KERNEL__ -c -o $@ ir.c
+
+fip.o: fip.c Makefile platform.h $(FCDIR)/fcconfig.h $(FCDIR)/fcbin.h
+	$(CC) $(CFLAGS) -D__KERNEL__ -c -o $@ fip.c
+
+cleanall clean:
+	$(MAKE) -C $(FCDIR) clean
+	rm -f freqctrl.a $(FCLIB_OBJS)
+

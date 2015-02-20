@@ -1,0 +1,60 @@
+OUTPUT_ARCH(mips)
+ENTRY(__frequency_set)
+SECTIONS
+{
+  /* Read-only sections, merged into text segment: */
+  .text      :
+  {
+    _ftext = . ;
+    fc.o (.text)		/* entry point		    */
+    *(.text)
+    _ecode = ABSOLUTE(.) ;	/* End of code 			    */
+    *(.rodata)
+    *(.rodata.*)
+    *(.rodata1)
+  } =0
+  _etext = .;
+
+  . = ALIGN(256);
+  _sdata = .;
+
+  .data :
+  AT( _sdata )
+  {
+    _fdata = .;	/* Start of initialised data	    */
+    *(.data)
+   
+    . = ALIGN(8);
+
+/*    _gp = . + 0x7ff0;*/ /* Base of small data		    */
+
+    *(.lit8) 
+    *(.lit4) 
+    *(.sdata) 
+
+    . = ALIGN(8);
+
+    _edata  = .;	/* End of initialised data	    */
+  }
+
+  _fbss = .;
+  .sbss : 
+  { 
+    *(.sbss) 
+    *(.scommon)
+  }
+  .bss :
+  {
+    *(.bss)
+    *(COMMON)
+  }
+
+  . = ALIGN(8);
+  _end = .;
+
+  /* Sections to be discarded */
+  /DISCARD/ :
+  {
+    	*(.reginfo)
+  }
+}

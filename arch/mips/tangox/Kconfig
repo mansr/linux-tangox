@@ -63,7 +63,6 @@ config TANGOX_SYSTEMRAM_ACTUALSIZE
 	 This is the default amount of RAM available to the Linux kernel. It can be
 	 override with "mem=" command line option.
 
-
 config TANGOX_IGNORE_CMDLINE
 	bool "Ignore YAMON, XENV & memcfg command line"
 	depends on TANGO2_SMP863X || TANGO3_SMP86XX
@@ -72,7 +71,6 @@ config TANGOX_IGNORE_CMDLINE
 	 If you say  yes, boot command line from  YAMON, XENV & memcfg
 	 will be ignored. You can then use CONFIG_CMDLINE to force the
 	 kernel command line.
-
 
 config TANGOX_PROM_CONSOLE
 	bool "Register an early console"
@@ -123,6 +121,52 @@ config TANGOX_DSP_FREQUENCY
  	help
  	 DSP frequency.
  
+config TANGOX_FREQUENCY_CONTROL
+	tristate "Allow dynamic frequency control"
+	depends on TANGO2_SMP863X && !TANGOX_FIXED_FREQUENCIES
+	default y if TANGO2_SMP863X
+	help
+	 To enable frequency control (under /proc/tangoxfreq) as well as
+	 standby mode support.
+
+config TANGOX_STANDBY_SUPPORT
+	bool "Standby mode support for SMP86xx (Experimental)"
+	depends on TANGOX_FREQUENCY_CONTROL
+	default n
+	help
+	 To enable standby mode support (suspend on RAM). At least one of the input 
+	 mechanism (IR, FIP, built-in ethernet) needs to enable to wake up the 
+	 system. To trigger standby mode, "echo standby > /proc/tangoxfreq/standby".
+
+config TANGOX_STANDBY_WAKEUP_IR
+	bool "Wake up from standby mode via IR"
+	depends on TANGOX_STANDBY_SUPPORT
+	default y
+	help
+	 Support system wake up by IR.
+
+config TANGOX_STANDBY_WAKEUP_FIP
+	bool "Wake up from standby mode via FIP"
+	depends on TANGOX_STANDBY_SUPPORT
+	default y
+	help
+	 Support system wake up by FIP.
+ 
+config TANGOX_STANDBY_WAKEUP_ETH
+	bool "Wake up from standby mode via built-in ethernet"
+	depends on TANGOX_STANDBY_SUPPORT
+	default y
+	help
+	 Support system wake up by WOL (Wakeup-On-LAN) with magic packet.
+
+config TANGOX_STANDBY_INPUT_TABLE_SIZE
+	int "The size of the filter table, needs to be multiple of 4's"
+	depends on TANGOX_STANDBY_WAKEUP_IR || TANGOX_STANDBY_WAKEUP_FIP
+	default 128
+	help
+	 The filter table to be used to filter the input so only the ones are 
+	 allowed as wake up event.
+
 config TANGOX_UART_USE_SYSCLK
 	bool "Use system clock for UART"
 	depends on TANGO2_SMP863X || TANGO3_SMP86XX

@@ -1,0 +1,26 @@
+Feature:
+--------
+Changing frequencies is allowed while syncing up the timer.
+Runtime frequency control via procfs interface.
+(Optionally) standy mode support -- experimental.
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+1002
+1005
+1011
+1012
+1013
+
+Primary author:
+---------------
+YH Lin
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+all
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

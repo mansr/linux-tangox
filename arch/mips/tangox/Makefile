@@ -18,3 +18,7 @@ obj-y += gpio.o
 
 obj-y += mbus.o
 
+obj-$(CONFIG_TANGOX_FREQUENCY_CONTROL) += fctrl/
+
+clean-files += $(shell $(MAKE) -C $(TOPDIR)/arch/mips/tangox/fctrl/lib/fc clean)
+
