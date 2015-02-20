@@ -1,0 +1,19 @@
+Feature:
+--------
+OProfile patch for Tango3
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+
+Primary author:
+---------------
+Emmanuel Michon/YH Lin
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango3 ES1 or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

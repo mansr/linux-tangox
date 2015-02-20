@@ -38,6 +38,10 @@
 #define vpe_id()	0
 #endif
 
+#ifdef CONFIG_TANGO3
+#define PERFCOUNTER_IRQ		((read_c0_intctl() >> 26) & 7)
+#endif
+
 #define __define_perf_accessors(r, n, np)				\
 									\
 static inline unsigned int r_c0_ ## r ## n(void)			\
@@ -172,7 +176,11 @@ static void mipsxx_cpu_stop(void *args)
 	}
 }
 
+#ifdef CONFIG_TANGO3
+static irqreturn_t mipsxx_perfcount_handler(int irq, void *dev_id)
+#else
 static int mipsxx_perfcount_handler(void)
+#endif
 {
 	unsigned int counters = op_model_mipsxx_ops.num_counters;
 	unsigned int control;
@@ -322,9 +330,13 @@ static int __init mipsxx_init(void)
 		return -ENODEV;
 	}
 
+#ifdef CONFIG_TANGO3
+	return request_irq(PERFCOUNTER_IRQ, mipsxx_perfcount_handler, 0, "Perfcounter24", &reg);
+#else
 	perf_irq = mipsxx_perfcount_handler;
 
 	return 0;
+#endif
 }
 
 static void mipsxx_exit(void)
@@ -335,7 +347,11 @@ static void mipsxx_exit(void)
 #endif
 	reset_counters(counters);
 
+#ifdef CONFIG_TANGO3
+	free_irq(PERFCOUNTER_IRQ, &reg);
+#else
 	perf_irq = null_perf_irq;
+#endif
 }
 
 struct op_mips_model op_model_mipsxx_ops = {

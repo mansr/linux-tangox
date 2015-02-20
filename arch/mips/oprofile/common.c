@@ -69,6 +69,12 @@ static void op_mips_stop(void)
 	on_each_cpu(model->cpu_stop, NULL, 0, 1);
 }
 
+static void op_mips_backtrace(struct pt_regs * const regs, unsigned int depth)
+{
+	/* dummy for now */
+	return;
+}
+
 int __init oprofile_arch_init(struct oprofile_operations *ops)
 {
 	struct op_mips_model *lmodel = NULL;
@@ -109,6 +115,7 @@ int __init oprofile_arch_init(struct oprofile_operations *ops)
 	ops->start		= op_mips_start;
 	ops->stop		= op_mips_stop;
 	ops->cpu_type		= lmodel->cpu_type;
+	ops->backtrace		= op_mips_backtrace;
 
 	printk(KERN_INFO "oprofile: using %s performance monitoring.\n",
 	       lmodel->cpu_type);
