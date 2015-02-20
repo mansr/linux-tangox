@@ -1,0 +1,20 @@
+Feature:
+--------
+Smartcard interface support for SMP86xx chips
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+1003
+
+Primary author:
+---------------
+YH Lin
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango2 ES6/RevA or above, or Tango3 ES1 or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

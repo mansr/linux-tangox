@@ -490,6 +490,13 @@ config TANGOX_FIP_REF2
 
 endchoice
 
+config TANGOX_SCARD
+       tristate "SMP86xx Smartcard support" 
+       depends on TANGOX
+       default m
+       help
+         Support Smartcard interface for SMP86xx.
+
 config UNIX98_PTYS
 	bool "Unix98 PTY support" if EMBEDDED
 	default y
