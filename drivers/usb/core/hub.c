@@ -72,6 +72,28 @@ struct usb_hub {
 	struct delayed_work	leds;
 };
 
+#ifdef CONFIG_USB_EHSET
+/* Semaphore used for Hi-Speed Host Electrical tests */
+static DECLARE_MUTEX(ehset_sem);
+static struct workqueue_struct *EHSET_workqueue = NULL;
+static int ehset_mode = 0;
+/* 
+ * 1: EHSET_TEST_SE0_NAK;
+ * 2: EHSET_TEST_J;
+ * 3: EHSET_TEST_K;
+ * 4: EHSET_TEST_PACKET;
+ * 5: EHSET_TEST_FORCE_ENABLE; Reserved
+ * 6: EHSET_HS_HOST_PORT_SUSPEND_RESUME;
+ * 7: EHSET_SINGLE_STEP_GET_DEV_DESC;
+ * 8: EHSET_SINGLE_STEP_SET_FEATURE;
+ */
+module_param (ehset_mode, int, S_IRUGO);
+MODULE_PARM_DESC (ehset_mode, "EHSET test mode");
+#endif /* CONFIG_USB_EHSET */
+
+static int hub_suspend(struct usb_interface *, pm_message_t);
+static int hub_resume(struct usb_interface *);
+
 
 /* Protect struct usb_device->state and ->children members
  * Note: Both are also protected by ->dev.sem, except that ->state can
@@ -1273,6 +1295,107 @@ static inline void show_string(struct usb_device *udev, char *id, char *string)
 #endif
 
 
+#ifdef CONFIG_USB_EHSET
+/*TODO: */
+struct usb_device       *ehset_udev;
+static void EHSET_tests(struct work_struct *work)
+{
+	struct usb_device       *udev=0; 
+	struct usb_hcd          *hcd=0;
+	int                     status, len;
+	u8                      port = 0;
+	char 		       c;
+
+	udev = ehset_udev;//(struct usb_device *)&work->data;
+	hcd  = container_of(udev->bus, struct usb_hcd, self);
+
+	/* Get one based port number, supposed it is one digit */
+	len = strlen(udev->dev.bus_id);
+	c = udev->dev.bus_id[len-1];
+	port = c-'0'; 
+
+	dev_info(&udev->dev, "running EHSET Test 0x%x\n",
+                udev->descriptor.idProduct);
+
+
+	switch (udev->descriptor.idProduct) {
+	case EHSET_TEST_SE0_NAK:
+	        status = hcd->driver->hub_control(hcd, SetPortFeature,
+	                        USB_PORT_FEAT_TEST,
+	                        (USB_PORT_TEST_SE0_NAK<<8)|port,
+	                        NULL, 0);
+	        if (status)
+	                dev_err(&udev->dev, "SetPortFeature Failed\n");
+	        /* This test runs until the host is powered off */
+	        break;
+	case EHSET_TEST_J:
+	        status = hcd->driver->hub_control(hcd, SetPortFeature,
+	                        USB_PORT_FEAT_TEST,
+	                        (USB_PORT_TEST_J<<8)|port,
+	                        NULL, 0);
+	        if (status)
+	                dev_err(&udev->dev, "SetPortFeature Failed\n");
+	        /* This test runs until the host is powered off */
+	        break;
+	case EHSET_TEST_K:
+	        status = hcd->driver->hub_control(hcd, SetPortFeature,
+	                        USB_PORT_FEAT_TEST,
+	                        (USB_PORT_TEST_K<<8)|port,
+	                        NULL, 0);
+	        if (status)
+	                dev_err(&udev->dev, "SetPortFeature Failed\n");
+	        /* This test runs until the host is powered off */
+	        break;
+	case EHSET_TEST_PACKET:
+	        status = hcd->driver->hub_control(hcd, SetPortFeature,
+	                        USB_PORT_FEAT_TEST,
+	                        (USB_PORT_TEST_PACKET<<8)|port,
+	                        NULL, 0);
+	        if (status)
+	                dev_err(&udev->dev, "SetPortFeature Failed\n");
+	        down(&ehset_sem);
+	        hcd->EHSET_in_progress = 0;
+	        up(&ehset_sem);
+	        break;
+	/* Note the FORCE ENABLE test is no longer used in the EHSET spec. */
+	case EHSET_TEST_FORCE_ENABLE:
+	        status = hcd->driver->hub_control(hcd, SetPortFeature,
+	                        USB_PORT_FEAT_TEST,
+	                        (USB_PORT_TEST_FORCE_ENABLE<<8)|port,
+	                        NULL, 0);
+	        if (status)
+	                dev_err(&udev->dev, "SetPortFeature Failed\n");
+	        down(&ehset_sem);
+	        hcd->EHSET_in_progress = 0;
+	        up(&ehset_sem);
+	        break;
+	case EHSET_HS_HOST_PORT_SUSPEND_RESUME:
+	case EHSET_SINGLE_STEP_GET_DEV_DESC:
+	case EHSET_SINGLE_STEP_SET_FEATURE:
+	        status = hcd->driver->hub_control(hcd, SetPortFeature,
+	                        USB_PORT_FEAT_TEST,
+	                        ((udev->descriptor.idProduct&0xFF)<<8)|
+	                        port, (char *)udev, 0);
+	        if (status)
+	                dev_err(&udev->dev, "SetPortFeature Failed\n");
+	        down(&ehset_sem);
+	        hcd->EHSET_in_progress = 0;
+	        up(&ehset_sem);
+	        break;
+	default:
+	        dev_err(&udev->dev, "EHSET: Unsupported test mode %x\n",
+	                        udev->descriptor.idProduct);
+	        down(&ehset_sem);
+	        hcd->EHSET_in_progress = 0;
+	        up(&ehset_sem);
+	}
+}
+#endif /* CONFIG_USB_EHSET */
+
+
+
+
+
 #ifdef	CONFIG_USB_OTG
 #include "otg_whitelist.h"
 static int __usb_port_suspend(struct usb_device *, int port1);
@@ -1409,6 +1532,58 @@ int usb_new_device(struct usb_device *udev)
 			usb_autosuspend_device(udev->parent);
 		goto fail;
 	}
+#ifdef CONFIG_USB_EHSET
+    usb_unlock_device(udev);
+	
+	dev_info(&udev->dev, "Found EHSET Test Device VID=0x%x PID=0x%x\n",
+			udev->descriptor.idVendor, udev->descriptor.idProduct);
+
+	if(udev->descriptor.idVendor == 0x1A0A)
+		; /* found a fixture */
+	else {
+		/* found a device, fake it by overwriting the PID*/
+		udev->descriptor.idProduct = 0x100 + ehset_mode;
+	}
+
+	if ( udev->speed == USB_SPEED_HIGH &&
+		udev->parent == udev->bus->root_hub &&
+		((udev->descriptor.idVendor == CONFIG_USB_EHSET_VID ) ||
+		(udev->descriptor.idVendor == 0x1A0A ))) {
+		static struct work_struct       EHSET_work;
+		//struct usb_hcd                  *hcd = udev->bus->hcpriv;
+		struct usb_hcd                  *hcd = container_of(udev->bus, struct usb_hcd, self);
+
+		dev_info(&udev->dev, "EHSET Test on Device VID=0x%x TEST_MODE=0x%x\n",
+			udev->descriptor.idVendor, udev->descriptor.idProduct);
+
+		if (!EHSET_workqueue) {
+			EHSET_workqueue = create_singlethread_workqueue("USB EHSET");
+
+			if (!EHSET_workqueue) 
+				dev_err(&udev->dev, "EHSET: Failed to create a workqueue\n");
+		}
+
+		if (EHSET_workqueue) {
+			if (down_trylock(&ehset_sem) == 0) {
+				if (!hcd->EHSET_in_progress) {
+					hcd->EHSET_in_progress = 1;
+                    up(&ehset_sem);
+                    INIT_WORK(&EHSET_work, EHSET_tests);
+					atomic_long_set(&EHSET_work.data, (u32)udev);
+					/* TODO:*/
+					ehset_udev = udev;
+					queue_work(EHSET_workqueue, &EHSET_work);
+				} else {
+					up(&ehset_sem);
+					dev_err(&udev->dev, "EHSET: test already in progress\n");
+                }
+			} else 
+				dev_err(&udev->dev, "EHSET: Failed to get lock\n");
+		}
+	} else
+		dev_info(&udev->dev, "EHSET Test Device (VID=%x) not match\n",
+							udev->descriptor.idVendor);
+#endif /* CONFIG_USB_EHSET */
 
 exit:
 	return err;
@@ -2897,6 +3072,14 @@ void usb_hub_cleanup(void)
 	 * individual hub resources. -greg
 	 */
 	usb_deregister(&hub_driver);
+
+#ifdef CONFIG_USB_EHSET
+       if (EHSET_workqueue)
+               destroy_workqueue(EHSET_workqueue);
+#endif /* CONFIG_USB_EHSET */
+
+
+
 } /* usb_hub_cleanup() */
 
 static int config_descriptors_changed(struct usb_device *udev)

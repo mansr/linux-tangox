@@ -15,3 +15,6 @@ obj-$(CONFIG_USB_UHCI_HCD)	+= uhci-hcd.o
 obj-$(CONFIG_USB_SL811_HCD)	+= sl811-hcd.o
 obj-$(CONFIG_USB_SL811_CS)	+= sl811_cs.o
 obj-$(CONFIG_USB_U132_HCD)	+= u132-hcd.o
+obj-$(CONFIG_TANGOX_EHCI_HCD)   += tangox-ehci-hcd.o
+obj-$(CONFIG_TANGOX_OHCI_HCD)   += tangox-ohci-hcd.o
+

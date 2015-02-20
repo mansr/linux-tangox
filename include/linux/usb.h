@@ -948,6 +948,8 @@ extern int usb_disabled(void);
 #define URB_ZERO_PACKET		0x0040	/* Finish bulk OUT with short packet */
 #define URB_NO_INTERRUPT	0x0080	/* HINT: no non-error interrupt
 					 * needed */
+#define URB_HCD_DRIVER_TEST     0xFFFF  /* Do NOT hand back or free this URB. */
+
 
 struct usb_iso_packet_descriptor {
 	unsigned int offset;

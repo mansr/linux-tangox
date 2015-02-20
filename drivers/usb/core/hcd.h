@@ -92,6 +92,8 @@ struct usb_hcd {
 	unsigned		poll_rh:1;	/* poll for rh status? */
 	unsigned		poll_pending:1;	/* status has changed? */
 	unsigned		wireless:1;	/* Wireless USB HCD */
+        unsigned                EHSET_in_progress:1;
+
 
 	int			irq;		/* irq allocated */
 	void __iomem		*regs;		/* device memory/io */

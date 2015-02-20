@@ -28,8 +28,16 @@
 
 /*-------------------------------------------------------------------------*/
 
-#ifdef	CONFIG_PM
 
+#ifdef CONFIG_TANGOX
+
+#define COMPANION_PORT     2  /* For B+ or ES7+, set to 0 instead */
+
+extern int is_tango2_es89(void);
+extern int is_tango3_chip(void);
+#endif /* CONFIG_TANGOX */
+
+#if 1//def	CONFIG_PM
 static int ehci_bus_suspend (struct usb_hcd *hcd)
 {
 	struct ehci_hcd		*ehci = hcd_to_ehci (hcd);
@@ -454,6 +462,10 @@ static int ehci_hub_control (
 	int		retval = 0;
 	unsigned	selector;
 
+#ifdef CONFIG_USB_EHSET
+        u32             temp1;
+#endif
+
 	/*
 	 * FIXME:  support SetPortFeatures USB_PORT_FEAT_INDICATOR.
 	 * HCS_INDICATOR may say we can change LEDs to off/amber/green.
@@ -732,12 +744,286 @@ static int ehci_hub_control (
 		 * about the EHCI-specific stuff.
 		 */
 		case USB_PORT_FEAT_TEST:
+#ifndef CONFIG_TANGOX
 			if (!selector || selector > 5)
 				goto error;
 			ehci_quiesce(ehci);
 			ehci_halt(ehci);
 			temp |= selector << 16;
 			ehci_writel(ehci, temp, status_reg);
+#else
+#ifdef CONFIG_USB_EHSET
+		   wIndex |= selector << 8;
+           ehci_info (ehci, "running EHCI test %x on port %x\n",
+                           ((wIndex>>8)&0xFF), (wIndex&0xFF)+1);
+
+            /* EHCI spec. 4.14 Port Test Modes*/
+            temp1  = ((wIndex)>>8)&0xFF;
+            if(temp1 < (EHSET_HS_HOST_PORT_SUSPEND_RESUME&0xFF)){
+
+                    /* Disable Periodic and async schedules*/
+                    temp1 = readl (&ehci->regs->command);
+                    temp1 &= ~(CMD_ASE | CMD_PSE);
+                    writel (temp1, &ehci->regs->command);
+
+                    /* Suspend the ports*/
+                    spin_unlock_irqrestore (&ehci->lock, flags);
+                    ehci_bus_suspend (hcd);
+                    spin_lock_irqsave (&ehci->lock, flags);
+
+                    /* stop the host controller*/
+                    temp1 = readl (&ehci->regs->command);
+                    temp1 &= ~CMD_RUN;
+                    writel (temp1, &ehci->regs->command);
+                    handshake (ehci, &ehci->regs->status, STS_HALT, STS_HALT, 16 * 125);
+           }
+
+           switch (((wIndex)>>8)&0xFF) {
+           case USB_PORT_TEST_J:
+                   ehci_info (ehci, "Testing J State\n");
+                   writel (temp|PORT_TEST_J,
+                                   &ehci->regs->port_status
+                                   [wIndex&0xFF]);
+                   break;
+           case USB_PORT_TEST_K:
+                   ehci_info (ehci, "Testing K State\n");
+                   writel (temp|PORT_TEST_K,
+                                   &ehci->regs->port_status
+                                   [wIndex&0xFF]);
+                   break;
+           case USB_PORT_TEST_SE0_NAK:
+                   ehci_info (ehci, "Testing SE0_NAK\n");
+                   writel (temp|PORT_TEST_SE0_NAK,
+                                   &ehci->regs->port_status
+                                   [wIndex&0xFF]);
+                   break;
+           case USB_PORT_TEST_PACKET:
+                   ehci_info (ehci, "Sending Test Packets\n");
+                   writel (temp|PORT_TEST_PACKET,
+                                   &ehci->regs->port_status
+                                   [wIndex&0xFF]);
+                   break;
+           case USB_PORT_TEST_FORCE_ENABLE:
+                   ehci_info (ehci, "Testing FORCE_ENABLE\n");
+                   writel (temp|PORT_TEST_FORCE_ENABLE,
+                                   &ehci->regs->port_status
+                                   [wIndex&0xFF]);
+                   break;
+           case (EHSET_HS_HOST_PORT_SUSPEND_RESUME&0xFF):
+           {
+                   spin_unlock_irqrestore (&ehci->lock, flags);
+                   ehci_info (ehci, "Testing SUSPEND RESUME\n");
+                   set_current_state(TASK_UNINTERRUPTIBLE);
+                   schedule_timeout(msecs_to_jiffies(15000));
+                   ehci_info (ehci, "Suspend Root Hub\n");
+                   ehci_bus_suspend (hcd);
+                   set_current_state(TASK_UNINTERRUPTIBLE);
+                   schedule_timeout(msecs_to_jiffies(15000));
+                   ehci_info (ehci, "Resume Root Hub\n");
+                   ehci_bus_resume (hcd);
+                   spin_lock_irqsave (&ehci->lock, flags);
+                   break;
+           }
+           case (EHSET_SINGLE_STEP_GET_DEV_DESC&0xFF):
+           {
+                   struct list_head        qtd_list;
+                   struct list_head        test_list;
+                   struct usb_device       *dev;
+                   struct ehci_qtd         *qtd;
+                   struct urb              urb;
+                   struct usb_ctrlrequest  setup_packet;
+                   char    data_buffer[USB_DT_DEVICE_SIZE];
+
+                   spin_unlock_irqrestore (&ehci->lock, flags);
+                   ehci_info (ehci, "Testing SINGLE_STEP_GET_DEV"
+                                   "_DESC\n");
+                   if (!buf) {
+                           ehci_err (ehci, "No usb_device pointer"
+                                           " found\n");
+                           spin_lock_irqsave (&ehci->lock, flags);
+                           goto error;
+                   }
+                   set_current_state(TASK_UNINTERRUPTIBLE);
+                   schedule_timeout(msecs_to_jiffies(15000));
+
+                   dev = (struct usb_device *)buf;
+                   setup_packet.bRequestType = USB_DIR_IN;
+                   setup_packet.bRequest = USB_REQ_GET_DESCRIPTOR;
+                   setup_packet.wValue = (USB_DT_DEVICE << 8);
+                   setup_packet.wIndex = 0;
+                   setup_packet.wLength = USB_DT_DEVICE_SIZE;
+
+                   INIT_LIST_HEAD (&qtd_list);
+                   INIT_LIST_HEAD (&test_list);
+                   urb.transfer_buffer_length =
+                           USB_DT_DEVICE_SIZE;
+                   urb.dev = dev;
+                   urb.pipe = usb_rcvctrlpipe(dev, 0);
+                   urb.hcpriv = dev->ep0.hcpriv;
+                   urb.setup_packet = (char *)&setup_packet;
+                   urb.transfer_buffer = data_buffer;
+                   urb.transfer_flags = URB_HCD_DRIVER_TEST;
+                   spin_lock_init(&urb.lock);
+                   urb.setup_dma = dma_map_single (
+                           hcd->self.controller,
+                           urb.setup_packet,
+                           sizeof (struct usb_ctrlrequest),
+                           DMA_TO_DEVICE);
+                   if (!urb.setup_dma || !urb.transfer_dma) {
+                           ehci_err (ehci, "dma_map_single Failed"
+                                           "\n");
+                           spin_lock_irqsave (&ehci->lock, flags);
+                           goto error;
+                   }
+
+                   if (!qh_urb_transaction (ehci, &urb, &qtd_list,
+                                           GFP_ATOMIC))
+                   {
+                           ehci_err (ehci, "qh_urb_transaction "
+                                           "Failed\n");
+                           spin_lock_irqsave (&ehci->lock, flags);
+                           goto error;
+                   }
+
+                   qtd =  container_of (qtd_list.next,
+                                   struct ehci_qtd, qtd_list);
+                   list_del_init (&qtd->qtd_list);
+                   list_add (&qtd->qtd_list, &test_list);
+                   qtd =  container_of (qtd_list.next,
+                                   struct ehci_qtd, qtd_list);
+                   list_del_init (&qtd->qtd_list);
+                   list_add_tail (&qtd->qtd_list, &test_list);
+                   qtd =  container_of (qtd_list.next,
+                                   struct ehci_qtd, qtd_list);
+                   list_del_init (&qtd->qtd_list);
+                   ehci_qtd_free (ehci, qtd);
+
+                   ehci_info (ehci, "Sending SETUP&DATA PHASE\n");
+                   if (submit_async (ehci, &dev->ep0, &urb,
+                                   &test_list, GFP_ATOMIC))
+                   {
+                           ehci_err (ehci, "Failed to queue up "
+                                           "qtds\n");
+                           spin_lock_irqsave (&ehci->lock, flags);
+                           goto error;
+                   }
+                   spin_lock_irqsave (&ehci->lock, flags);
+                   break;
+           }
+           case (EHSET_SINGLE_STEP_SET_FEATURE&0xFF):
+           {
+                   struct list_head        qtd_list;
+                   struct list_head        setup_list;
+                   struct list_head        data_list;
+                   struct usb_device       *dev;
+                   struct ehci_qtd         *qtd;
+                   struct urb              urb;
+                   struct usb_ctrlrequest  setup_packet;
+                   char    data_buffer[USB_DT_DEVICE_SIZE];
+
+                   spin_unlock_irqrestore (&ehci->lock, flags);
+                   ehci_info (ehci, "Testing SINGLE_STEP_SET_"
+                                   "FEATURE\n");
+                   if (!buf) {
+                           ehci_err (ehci, "No usb_device pointer"
+                                           " found\n");
+                           spin_lock_irqsave (&ehci->lock, flags);
+                           goto error;
+                   }
+                   dev = (struct usb_device *)buf;
+                   setup_packet.bRequestType = USB_DIR_IN;
+                   setup_packet.bRequest = USB_REQ_GET_DESCRIPTOR;
+                   setup_packet.wValue = (USB_DT_DEVICE << 8);
+                   setup_packet.wIndex = 0;
+                   setup_packet.wLength = USB_DT_DEVICE_SIZE;
+
+                   INIT_LIST_HEAD (&qtd_list);
+                   INIT_LIST_HEAD (&setup_list);
+                   INIT_LIST_HEAD (&data_list);
+                   urb.transfer_buffer_length =
+                           USB_DT_DEVICE_SIZE;
+                   urb.dev = dev;
+                   urb.pipe = usb_rcvctrlpipe(dev, 0);
+                   urb.hcpriv = dev->ep0.hcpriv;
+                   urb.setup_packet = (char *)&setup_packet;
+                   urb.transfer_buffer = data_buffer;
+                   urb.transfer_flags = URB_HCD_DRIVER_TEST;
+                   spin_lock_init(&urb.lock);
+                   urb.setup_dma = dma_map_single (
+                           hcd->self.controller,
+                           urb.setup_packet,
+                           sizeof (struct usb_ctrlrequest),
+                           DMA_TO_DEVICE);
+                   urb.transfer_dma = dma_map_single (
+                           hcd->self.controller,
+                           urb.transfer_buffer,
+                           sizeof (struct usb_ctrlrequest),
+                           DMA_TO_DEVICE);
+                   if (!urb.setup_dma || !urb.transfer_dma) {
+                           ehci_err (ehci, "dma_map_single Failed"
+                                           "\n");
+                           spin_lock_irqsave (&ehci->lock, flags);
+                           goto error;
+                   }
+
+                   if (!qh_urb_transaction (ehci, &urb, &qtd_list,
+                                           GFP_ATOMIC))
+                   {
+                           ehci_err (ehci, "qh_urb_transaction "
+                                           "Failed\n");
+                           spin_lock_irqsave (&ehci->lock, flags);
+                           goto error;
+                   }
+
+                   qtd =  container_of (qtd_list.next,
+                                   struct ehci_qtd, qtd_list);
+                   list_del_init (&qtd->qtd_list);
+                   list_add (&qtd->qtd_list, &setup_list);
+                   qtd =  container_of (qtd_list.next,
+                                   struct ehci_qtd, qtd_list);
+                   list_del_init (&qtd->qtd_list);
+                   list_add (&qtd->qtd_list, &data_list);
+                   qtd =  container_of (qtd_list.next,
+                                   struct ehci_qtd, qtd_list);
+                   list_del_init (&qtd->qtd_list);
+                   ehci_qtd_free (ehci, qtd);
+
+                   ehci_info (ehci, "Sending SETUP PHASE\n");
+                   if (submit_async (ehci, &dev->ep0, &urb,
+                                   &setup_list, GFP_ATOMIC))
+                   {
+                           ehci_err (ehci, "Failed to queue up "
+                                           "qtds\n");
+                           spin_lock_irqsave (&ehci->lock, flags);
+                           goto error;
+                   }
+
+                   set_current_state(TASK_UNINTERRUPTIBLE);
+                   schedule_timeout(msecs_to_jiffies(15000));
+                   urb.status = 0;
+                   urb.actual_length = 0;
+
+                   ehci_info (ehci, "Sending DATA PHASE\n");
+                   if (submit_async (ehci, &dev->ep0, &urb,
+                                   &data_list, GFP_ATOMIC))
+                   {
+                           ehci_err (ehci, "Failed to queue up "
+                                           "qtds\n");
+                           spin_lock_irqsave (&ehci->lock, flags);
+                           goto error;
+                   }
+                   spin_lock_irqsave (&ehci->lock, flags);
+                   break;
+           }
+           default:
+                   ehci_err (ehci, "EHSET: Unknown test %x\n",
+                                   (wIndex>>8)&0xFF);
+                   goto error;
+           }
+
+//           break;
+#endif /* CONFIG_USB_EHSET */
+#endif
 			break;
 
 		default:
@@ -748,6 +1034,7 @@ static int ehci_hub_control (
 
 	default:
 error:
+                ehci_err (ehci, "SetPortFeature: Unknown Feature %x\n", wValue);
 		/* "stall" on error */
 		retval = -EPIPE;
 	}

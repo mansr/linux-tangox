@@ -254,7 +254,14 @@ struct ehci_regs {
 #define PORT_WKOC_E	(1<<22)		/* wake on overcurrent (enable) */
 #define PORT_WKDISC_E	(1<<21)		/* wake on disconnect (enable) */
 #define PORT_WKCONN_E	(1<<20)		/* wake on connect (enable) */
+
 /* 19:16 for port testing */
+#define PORT_TEST_J     (1<<16)
+#define PORT_TEST_K     (2<<16)
+#define PORT_TEST_SE0_NAK       (3<<16)
+#define PORT_TEST_PACKET        (4<<16)
+#define PORT_TEST_FORCE_ENABLE  (5<<16)
+
 #define PORT_LED_OFF	(0<<14)
 #define PORT_LED_AMBER	(1<<14)
 #define PORT_LED_GREEN	(2<<14)
@@ -644,6 +651,25 @@ ehci_port_speed(struct ehci_hcd *ehci, unsigned int portsc)
 
 #define	ehci_port_speed(ehci, portsc)	(1<<USB_PORT_FEAT_HIGHSPEED)
 #endif
+
+
+static struct list_head * qh_urb_transaction (
+               struct ehci_hcd *ehci,
+               struct urb *urb,
+               struct list_head *head,
+               gfp_t flags);
+
+static int submit_async (
+               struct ehci_hcd *ehci,
+               struct usb_host_endpoint *ep,
+               struct urb *urb,
+               struct list_head *qtd_list,
+               gfp_t mem_flags);
+
+static inline void ehci_qtd_free (
+               struct ehci_hcd *ehci,
+               struct ehci_qtd *qtd);
+
 
 /*-------------------------------------------------------------------------*/
 

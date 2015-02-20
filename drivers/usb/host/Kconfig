@@ -4,6 +4,26 @@
 comment "USB Host Controller Drivers"
 	depends on USB
 
+config TANGOX_EHCI_HCD
+        tristate "SMP86xx EHCI HCD (USB 2.0) support"
+        depends on USB && TANGOX 
+	---help---
+	  SMP86xx chips has an USB 2.0 host controller integrated. 
+	  Enable this option if your board has this chip. If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tangox-ehci-hcd.
+
+config TANGOX_OHCI_HCD
+        tristate "SMP86xx OHCI HCD support"
+        depends on USB && USB_ARCH_HAS_OHCI && TANGOX && !USB_EHSET
+        ---help---
+	  SMP86xx chips has an USB 1.1 OHCI controller integrated. 
+	  Enable this option if your board has this chip. If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tangox-ohci-hcd.
+
 config USB_EHCI_HCD
 	tristate "EHCI HCD (USB 2.0) support"
 	depends on USB && USB_ARCH_HAS_EHCI
@@ -31,7 +51,7 @@ config USB_EHCI_HCD
 
 config USB_EHCI_SPLIT_ISO
 	bool "Full speed ISO transactions (EXPERIMENTAL)"
-	depends on USB_EHCI_HCD && EXPERIMENTAL
+	depends on (USB_EHCI_HCD || TANGOX_EHCI_HCD) && EXPERIMENTAL
 	default n
 	---help---
 	  This code is new and hasn't been used with many different
@@ -40,7 +60,7 @@ config USB_EHCI_SPLIT_ISO
 
 config USB_EHCI_ROOT_HUB_TT
 	bool "Root Hub Transaction Translators (EXPERIMENTAL)"
-	depends on USB_EHCI_HCD && EXPERIMENTAL
+	depends on (USB_EHCI_HCD || TANGOX_EHCI_HCD) && EXPERIMENTAL
 	---help---
 	  Some EHCI chips have vendor-specific extensions to integrate
 	  transaction translators, so that no OHCI or UHCI companion
@@ -86,7 +106,7 @@ config USB_ISP116X_HCD
 
 config USB_OHCI_HCD
 	tristate "OHCI HCD support"
-	depends on USB && USB_ARCH_HAS_OHCI
+	depends on USB && (USB_ARCH_HAS_OHCI || PCI)
 	select ISP1301_OMAP if MACH_OMAP_H2 || MACH_OMAP_H3
 	select I2C if ARCH_PNX4008
 	---help---
