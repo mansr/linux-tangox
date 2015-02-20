@@ -465,7 +465,7 @@ else
 PHONY += include/config/auto.conf
 
 include/config/auto.conf:
-	$(Q)test -e include/linux/autoconf.h -a -e $@ || (		\
+	-@$(Q)test -e include/linux/autoconf.h -a -e $@ || (		\
 	echo;								\
 	echo "  ERROR: Kernel configuration is invalid.";		\
 	echo "         include/linux/autoconf.h or $@ are missing.";	\
