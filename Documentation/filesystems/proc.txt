@@ -1333,6 +1333,14 @@ To free pagecache, dentries and inodes:
 As this is a non-destructive operation and dirty objects are not freeable, the
 user should run `sync' first.
 
+tail_largefiles
+---------------
+
+When enabled reads from large files to the tail end of the inactive lru list.
+This means that any cache from reading large files is dropped very quickly,
+preventing loss of mapped ram and useful pagecache when large files are read.
+This does, however, make caching less effective when working with large files.
+
 
 2.5 /proc/sys/dev - Device specific parameters
 ----------------------------------------------

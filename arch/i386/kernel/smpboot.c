@@ -1094,7 +1094,7 @@ static void __init smp_boot_cpus(unsigned int max_cpus)
 		"Total of %d processors activated (%lu.%02lu BogoMIPS).\n",
 		cpucount+1,
 		bogosum/(500000/HZ),
-		(bogosum/(5000/HZ))%100);
+		(bogosum * 10/(50000/HZ))%100);
 	
 	Dprintk("Before bogocount - setting activated=1.\n");
 

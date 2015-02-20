@@ -34,8 +34,13 @@
 #define SCHED_FIFO		1
 #define SCHED_RR		2
 #define SCHED_BATCH		3
+#define SCHED_ISO		4
+#define SCHED_IDLEPRIO		5
 
 #ifdef __KERNEL__
+
+#define SCHED_MAX		SCHED_IDLEPRIO
+#define SCHED_RANGE(policy)	((policy) <= SCHED_MAX)
 
 struct sched_param {
 	int sched_priority;
@@ -129,7 +134,7 @@ extern unsigned long nr_uninterruptible(void);
 extern unsigned long nr_active(void);
 extern unsigned long nr_iowait(void);
 extern unsigned long weighted_cpuload(const int cpu);
-
+extern int above_background_load(void);
 
 /*
  * Task state bitmask. NOTE! These bits are also
@@ -150,8 +155,7 @@ extern unsigned long weighted_cpuload(const int cpu);
 #define EXIT_ZOMBIE		16
 #define EXIT_DEAD		32
 /* in tsk->state again */
-#define TASK_NONINTERACTIVE	64
-#define TASK_DEAD		128
+#define TASK_DEAD		64
 
 #define __set_task_state(tsk, state_value)		\
 	do { (tsk)->state = (state_value); } while (0)
@@ -537,14 +541,19 @@ struct signal_struct {
 
 #define MAX_USER_RT_PRIO	100
 #define MAX_RT_PRIO		MAX_USER_RT_PRIO
+#define PRIO_RANGE		(40)
+#define ISO_PRIO		(MAX_RT_PRIO - 1)
 
-#define MAX_PRIO		(MAX_RT_PRIO + 40)
+#define MAX_PRIO		(MAX_RT_PRIO + PRIO_RANGE)
 
-#define rt_prio(prio)		unlikely((prio) < MAX_RT_PRIO)
+#define rt_prio(prio)		unlikely((prio) < ISO_PRIO)
 #define rt_task(p)		rt_prio((p)->prio)
 #define batch_task(p)		(unlikely((p)->policy == SCHED_BATCH))
-#define is_rt_policy(p)		((p) != SCHED_NORMAL && (p) != SCHED_BATCH)
+#define is_rt_policy(policy)	((policy) == SCHED_FIFO || \
+					(policy) == SCHED_RR)
 #define has_rt_policy(p)	unlikely(is_rt_policy((p)->policy))
+#define iso_task(p)		unlikely((p)->policy == SCHED_ISO)
+#define idleprio_task(p)	unlikely((p)->policy == SCHED_IDLEPRIO)
 
 /*
  * Some day this will be a full-fledged user tracking system..
@@ -809,13 +818,6 @@ struct mempolicy;
 struct pipe_inode_info;
 struct uts_namespace;
 
-enum sleep_type {
-	SLEEP_NORMAL,
-	SLEEP_NONINTERACTIVE,
-	SLEEP_INTERACTIVE,
-	SLEEP_INTERRUPTED,
-};
-
 struct prio_array;
 
 struct task_struct {
@@ -835,20 +837,33 @@ struct task_struct {
 	int load_weight;	/* for niceness load balancing purposes */
 	int prio, static_prio, normal_prio;
 	struct list_head run_list;
+	/*
+	 * This bitmap shows what priorities this task has received quota
+	 * from for this major priority rotation on its current runqueue.
+	 */
+	DECLARE_BITMAP(bitmap, PRIO_RANGE + 1);
 	struct prio_array *array;
+	/* Which major runqueue rotation did this task run */
+	unsigned long rotation;
 
 	unsigned short ioprio;
 #ifdef CONFIG_BLK_DEV_IO_TRACE
 	unsigned int btrace_seq;
 #endif
-	unsigned long sleep_avg;
 	unsigned long long timestamp, last_ran;
 	unsigned long long sched_time; /* sched_clock time spent running */
-	enum sleep_type sleep_type;
 
 	unsigned int policy;
 	cpumask_t cpus_allowed;
-	unsigned int time_slice, first_time_slice;
+	/*
+	 * How much this task is entitled to run at the current priority
+	 * before being requeued at a lower priority.
+	 */
+	int time_slice;
+	/* Is this the very first time_slice this task has ever run. */
+	unsigned int first_time_slice;
+	/* How much this task receives at each priority level */
+	int quota;
 
 #if defined(CONFIG_SCHEDSTATS) || defined(CONFIG_TASK_DELAY_ACCT)
 	struct sched_info sched_info;
@@ -1013,6 +1028,7 @@ struct task_struct {
 	struct held_lock held_locks[MAX_LOCK_DEPTH];
 	unsigned int lockdep_recursion;
 #endif
+	unsigned long mutexes_held;
 
 /* journalling filesystem info */
 	void *journal_info;
@@ -1181,9 +1197,11 @@ static inline void put_task_struct(struct task_struct *t)
 #define PF_SWAPWRITE	0x00800000	/* Allowed to write to swap */
 #define PF_SPREAD_PAGE	0x01000000	/* Spread page cache over cpuset */
 #define PF_SPREAD_SLAB	0x02000000	/* Spread some slab caches over cpuset */
+#define PF_ISOREF	0x04000000	/* SCHED_ISO task has used up quota */
 #define PF_MEMPOLICY	0x10000000	/* Non-default NUMA mempolicy */
 #define PF_MUTEX_TESTER	0x20000000	/* Thread belongs to the rt mutex tester */
 #define PF_FREEZER_SKIP	0x40000000	/* Freezer should not count it as freezeable */
+#define PF_NONSLEEP	0x80000000	/* Waiting on in-kernel activity */
 
 /*
  * Only the _current_ task can read/write to tsk->flags, but other
@@ -1253,7 +1271,7 @@ static inline int rt_mutex_getprio(struct task_struct *p)
 #endif
 
 extern void set_user_nice(struct task_struct *p, long nice);
-extern int task_prio(const struct task_struct *p);
+extern int task_prio(struct task_struct *p);
 extern int task_nice(const struct task_struct *p);
 extern int can_nice(const struct task_struct *p, const int nice);
 extern int task_curr(const struct task_struct *p);

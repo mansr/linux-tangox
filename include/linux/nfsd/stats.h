@@ -35,8 +35,8 @@ struct nfsd_stats {
 
 };
 
-/* thread usage wraps very million seconds (approx one fortnight) */
-#define	NFSD_USAGE_WRAP	(HZ*1000000)
+/* thread usage wraps every one hundred thousand seconds (approx one day) */
+#define	NFSD_USAGE_WRAP	(HZ*100000)
 
 #ifdef __KERNEL__
 

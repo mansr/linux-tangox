@@ -17,6 +17,7 @@
 #include <linux/bio.h>
 #include <linux/swapops.h>
 #include <linux/writeback.h>
+#include <linux/swap-prefetch.h>
 #include <asm/pgtable.h>
 
 static struct bio *get_swap_bio(gfp_t gfp_flags, pgoff_t index,
@@ -118,6 +119,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
 		ret = -ENOMEM;
 		goto out;
 	}
+	add_to_swapped_list(page);
 	if (wbc->sync_mode == WB_SYNC_ALL)
 		rw |= (1 << BIO_RW_SYNC);
 	count_vm_event(PSWPOUT);

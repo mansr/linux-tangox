@@ -10,6 +10,7 @@
 #include <linux/mm.h>
 #include <linux/kernel_stat.h>
 #include <linux/swap.h>
+#include <linux/swap-prefetch.h>
 #include <linux/init.h>
 #include <linux/pagemap.h>
 #include <linux/buffer_head.h>
@@ -95,7 +96,7 @@ static int __add_to_swap_cache(struct page *page, swp_entry_t entry,
 	return error;
 }
 
-static int add_to_swap_cache(struct page *page, swp_entry_t entry)
+int add_to_swap_cache(struct page *page, swp_entry_t entry)
 {
 	int error;
 
@@ -147,6 +148,9 @@ int add_to_swap(struct page * page, gfp_t gfp_mask)
 {
 	swp_entry_t entry;
 	int err;
+
+	/* Swap prefetching is delayed if we're swapping pages */
+	delay_swap_prefetch();
 
 	BUG_ON(!PageLocked(page));
 
@@ -319,6 +323,9 @@ struct page *read_swap_cache_async(swp_entry_t entry,
 {
 	struct page *found_page, *new_page = NULL;
 	int err;
+
+	/* Swap prefetching is delayed if we're already reading from swap */
+	delay_swap_prefetch();
 
 	do {
 		/*

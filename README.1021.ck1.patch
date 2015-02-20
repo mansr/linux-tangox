@@ -1,0 +1,18 @@
+Feature:
+--------
+Con Kolivas's ck1 patch (staircase deadline scheduler and others)
+
+Prerequisite patch numbers:
+---------------------------
+none
+
+Primary author:
+---------------
+Con Kolivas
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+all
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

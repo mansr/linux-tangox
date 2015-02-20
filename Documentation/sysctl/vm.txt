@@ -22,6 +22,8 @@ Currently, these files are in /proc/sys/vm:
 - dirty_background_ratio
 - dirty_expire_centisecs
 - dirty_writeback_centisecs
+- hardmaplimit
+- mapped
 - max_map_count
 - min_free_kbytes
 - laptop_mode
@@ -31,12 +33,15 @@ Currently, these files are in /proc/sys/vm:
 - min_unmapped_ratio
 - min_slab_ratio
 - panic_on_oom
+- swap_prefetch
+- swap_prefetch_delay
+- swap_prefetch_sleep
 
 ==============================================================
 
 dirty_ratio, dirty_background_ratio, dirty_expire_centisecs,
 dirty_writeback_centisecs, vfs_cache_pressure, laptop_mode,
-block_dump, swap_token_timeout, drop-caches:
+block_dump, swap_token_timeout, drop-caches, tail_largefiles:
 
 See Documentation/filesystems/proc.txt
 
@@ -83,6 +88,27 @@ is dependent on the amount of memory in your machine.
 The number of pages the kernel reads in at once is equal to
 2 ^ page-cluster. Values above 2 ^ 5 don't make much sense
 for swap because we only cluster swap data in 32-page groups.
+
+==============================================================
+
+hardmaplimit:
+
+This flag makes the vm adhere to the mapped value as closely as possible
+except in the most extreme vm stress where doing so would provoke an out
+of memory condition (see mapped below).
+
+Enabled by default.
+
+==============================================================
+
+mapped:
+
+This is the percentage ram that is filled with mapped pages (applications)
+before the vm will start reclaiming mapped pages by moving them to swap.
+It is altered by the relative stress of the vm at the time so is not
+strictly adhered to to prevent provoking out of memory kills.
+
+Set to 66 by default.
 
 ==============================================================
 
@@ -216,3 +242,37 @@ above-mentioned.
 The default value is 0.
 1 and 2 are for failover of clustering. Please select either
 according to your policy of failover.
+
+==============================================================
+
+swap_prefetch
+
+This enables or disables the swap prefetching feature. When the virtual
+memory subsystem has been extremely idle for at least swap_prefetch_sleep
+seconds it will start copying back pages from swap into the swapcache and keep
+a copy in swap. Valid values are 0 - 3. A value of 0 disables swap
+prefetching, 1 enables it unless laptop_mode is enabled, 2 enables it in the
+presence of laptop_mode, and 3 enables it unconditionally, ignoring whether
+the system is idle or not. If set to 0, swap prefetch wil not even try to keep
+record of ram swapped out to have the most minimal impact on performance.
+
+The default value is 1.
+
+==============================================================
+
+swap_prefetch_delay
+
+This is the time in seconds that swap prefetching is delayed upon finding
+the system is not idle (ie the vm is busy or non-niced cpu load is present).
+
+The default value is 1.
+
+==============================================================
+
+swap_prefetch_sleep
+
+This is the time in seconds that the swap prefetch kernel thread is put to
+sleep for when the ram is found to be full and it is unable to prefetch
+further.
+
+The default value is 5.

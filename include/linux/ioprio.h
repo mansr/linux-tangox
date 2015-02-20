@@ -22,7 +22,7 @@
  * class, the default for any process. IDLE is the idle scheduling class, it
  * is only served when no one else is using the disk.
  */
-enum {
+enum ioprio_class {
 	IOPRIO_CLASS_NONE,
 	IOPRIO_CLASS_RT,
 	IOPRIO_CLASS_BE,
@@ -53,8 +53,25 @@ static inline int task_ioprio(struct task_struct *task)
 	return IOPRIO_NORM;
 }
 
+static inline enum ioprio_class
+	task_policy_ioprio_class(struct task_struct *task)
+{
+	if (rt_task(task))
+		return IOPRIO_CLASS_RT;
+	if (idleprio_task(task))
+		return IOPRIO_CLASS_IDLE;
+	return IOPRIO_CLASS_BE;
+}
+
 static inline int task_nice_ioprio(struct task_struct *task)
 {
+	if (rt_task(task))
+		return (MAX_RT_PRIO - task->rt_priority) * IOPRIO_BE_NR /
+			(MAX_RT_PRIO + 1);
+	if (iso_task(task))
+		return 0;
+	if (idleprio_task(task))
+		return IOPRIO_BE_NR - 1;
 	return (task_nice(task) + 20) / 5;
 }
 

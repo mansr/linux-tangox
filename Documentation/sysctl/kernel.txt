@@ -25,6 +25,9 @@ show up in /proc/sys/kernel:
 - domainname
 - hostname
 - hotplug
+- interactive
+- iso_cpu
+- iso_period
 - java-appletviewer           [ binfmt_java, obsolete ]
 - java-interpreter            [ binfmt_java, obsolete ]
 - kstack_depth_to_print       [ X86 only ]
@@ -43,6 +46,7 @@ show up in /proc/sys/kernel:
 - printk
 - real-root-dev               ==> Documentation/initrd.txt
 - reboot-cmd                  [ SPARC only ]
+- rr_interval
 - rtsig-max
 - rtsig-nr
 - sem
@@ -161,6 +165,40 @@ hotplug:
 
 Path for the hotplug policy agent.
 Default value is "/sbin/hotplug".
+
+==============================================================
+
+interactive:
+
+The staircase-deadline cpu scheduler can be set in either purely
+forward-looking mode for absolutely rigid fairness and cpu distribution
+according to nice level, or it can allow a small per-process history
+to smooth out cpu usage perturbations common in interactive tasks by
+enabling this sysctl. While small fairness issues can arise with this
+enabled, overall fairness is usually still strongly maintained and
+starvation is never possible. Enabling this can significantly smooth
+out 3d graphics and games.
+
+Default value is 1 (enabled).
+
+==============================================================
+
+iso_cpu:
+
+This sets the percentage cpu that the unprivileged SCHED_ISO tasks can
+run effectively at realtime priority, averaged over a rolling iso_period
+seconds.
+
+Set to 80 (percent) by default.
+
+==============================================================
+
+iso_period:
+
+This sets the number of seconds over which SCHED_ISO cpu usage is averaged
+to see if it exceeds its allocated cpu bandwidth.
+
+Set to 5 (seconds) by default.
 
 ==============================================================
 
@@ -285,6 +323,19 @@ reboot-cmd: (Sparc only)
 ??? This seems to be a way to give an argument to the Sparc
 ROM/Flash boot loader. Maybe to tell it what to do after
 rebooting. ???
+
+==============================================================
+
+rr_interval:
+
+This is the smallest duration that any cpu process scheduling unit
+will run for. Increasing this value can increase throughput of cpu
+bound tasks substantially but at the expense of increased latencies
+overall. This value is in milliseconds and the default value chosen
+depends on the number of cpus available at scheduler initialisation
+with a minimum of 8.
+
+Valid values are from 1-5000.
 
 ==============================================================
 

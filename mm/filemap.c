@@ -466,6 +466,16 @@ int add_to_page_cache_lru(struct page *page, struct address_space *mapping,
 	return ret;
 }
 
+int add_to_page_cache_lru_tail(struct page *page,
+	struct address_space *mapping, pgoff_t offset, gfp_t gfp_mask)
+{
+	int ret = add_to_page_cache(page, mapping, offset, gfp_mask);
+
+	if (ret == 0)
+		lru_cache_add_tail(page);
+	return ret;
+}
+
 #ifdef CONFIG_NUMA
 struct page *__page_cache_alloc(gfp_t gfp)
 {
@@ -839,6 +849,34 @@ static void shrink_readahead_size_eio(struct file *filp,
 	ra->ra_pages /= 4;
 }
 
+/*
+ * Sysctl which determines whether we should read from large files to the
+ * tail of the inactive lru list.
+ */
+int vm_tail_largefiles __read_mostly = 1;
+
+static inline int nr_mapped(void)
+{
+	return global_page_state(NR_FILE_MAPPED) +
+		global_page_state(NR_ANON_PAGES);
+}
+
+/*
+ * This examines how large in pages a file size is and returns 1 if it is
+ * more than half the unmapped ram. Avoid doing read_page_state which is
+ * expensive unless we already know it is likely to be large enough.
+ */
+static int large_isize(unsigned long nr_pages)
+{
+	if (nr_pages * 6 > vm_total_pages) {
+		 unsigned long unmapped_ram = vm_total_pages - nr_mapped();
+
+		if (nr_pages * 2 > unmapped_ram)
+			return 1;
+	}
+	return 0;
+}
+
 /**
  * do_generic_mapping_read - generic file read routine
  * @mapping:	address_space to be read
@@ -1051,8 +1089,19 @@ no_cached_page:
 				goto out;
 			}
 		}
-		error = add_to_page_cache_lru(cached_page, mapping,
-						index, GFP_KERNEL);
+
+		/*
+		 * If we know the file is large we add the pages read to the
+		 * end of the lru as we're unlikely to be able to cache the
+		 * whole file in ram so make those pages the first to be
+		 * dropped if not referenced soon.
+		 */
+		if (vm_tail_largefiles && large_isize(end_index))
+			error = add_to_page_cache_lru_tail(cached_page,
+						mapping, index, GFP_KERNEL);
+		else
+			error = add_to_page_cache_lru(cached_page, mapping,
+							index, GFP_KERNEL);
 		if (error) {
 			if (error == -EEXIST)
 				goto find_page;

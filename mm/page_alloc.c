@@ -1251,7 +1251,7 @@ restart:
 		goto nopage;
 
 	for (z = zonelist->zones; *z; z++)
-		wakeup_kswapd(*z, order);
+		wakeup_kswapd(*z, order, p);
 
 	/*
 	 * OK, we're below the kswapd watermark and have kicked background
@@ -1315,7 +1315,7 @@ nofail_alloc:
 	reclaim_state.reclaimed_slab = 0;
 	p->reclaim_state = &reclaim_state;
 
-	did_some_progress = try_to_free_pages(zonelist->zones, gfp_mask);
+	did_some_progress = try_to_free_pages(zonelist->zones, gfp_mask, p);
 
 	p->reclaim_state = NULL;
 	p->flags &= ~PF_MEMALLOC;
@@ -1577,6 +1577,7 @@ void show_free_areas(void)
 			" min:%lukB"
 			" low:%lukB"
 			" high:%lukB"
+			" lots:%lukB"
 			" active:%lukB"
 			" inactive:%lukB"
 			" present:%lukB"
@@ -1588,6 +1589,7 @@ void show_free_areas(void)
 			K(zone->pages_min),
 			K(zone->pages_low),
 			K(zone->pages_high),
+			K(zone->pages_lots),
 			K(zone_page_state(zone, NR_ACTIVE)),
 			K(zone_page_state(zone, NR_INACTIVE)),
 			K(zone->present_pages),
@@ -3149,6 +3151,7 @@ void setup_per_zone_pages_min(void)
 
 		zone->pages_low   = zone->pages_min + (tmp >> 2);
 		zone->pages_high  = zone->pages_min + (tmp >> 1);
+		zone->pages_lots  = zone->pages_min + tmp;
 		spin_unlock_irqrestore(&zone->lru_lock, flags);
 	}
 

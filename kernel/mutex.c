@@ -60,6 +60,16 @@ EXPORT_SYMBOL(__mutex_init);
 static void fastcall noinline __sched
 __mutex_lock_slowpath(atomic_t *lock_count);
 
+static inline void inc_mutex_count(void)
+{
+	current->mutexes_held++;
+}
+
+static inline void dec_mutex_count(void)
+{
+	current->mutexes_held--;
+}
+
 /***
  * mutex_lock - acquire the mutex
  * @lock: the mutex to be acquired
@@ -89,6 +99,7 @@ void inline fastcall __sched mutex_lock(struct mutex *lock)
 	 * 'unlocked' into 'locked' state.
 	 */
 	__mutex_fastpath_lock(&lock->count, __mutex_lock_slowpath);
+	inc_mutex_count();
 }
 
 EXPORT_SYMBOL(mutex_lock);
@@ -114,6 +125,7 @@ void fastcall __sched mutex_unlock(struct mutex *lock)
 	 * into 'unlocked' state:
 	 */
 	__mutex_fastpath_unlock(&lock->count, __mutex_unlock_slowpath);
+	dec_mutex_count();
 }
 
 EXPORT_SYMBOL(mutex_unlock);
@@ -283,9 +295,14 @@ __mutex_lock_interruptible_slowpath(atomic_t *lock_count);
  */
 int fastcall __sched mutex_lock_interruptible(struct mutex *lock)
 {
+	int ret;
+
 	might_sleep();
-	return __mutex_fastpath_lock_retval
+	ret = __mutex_fastpath_lock_retval
 			(&lock->count, __mutex_lock_interruptible_slowpath);
+	if (likely(!ret))
+		inc_mutex_count();
+	return ret;
 }
 
 EXPORT_SYMBOL(mutex_lock_interruptible);
@@ -340,8 +357,12 @@ static inline int __mutex_trylock_slowpath(atomic_t *lock_count)
  */
 int fastcall __sched mutex_trylock(struct mutex *lock)
 {
-	return __mutex_fastpath_trylock(&lock->count,
+	int ret = __mutex_fastpath_trylock(&lock->count,
 					__mutex_trylock_slowpath);
+
+	if (likely(ret))
+		inc_mutex_count();
+	return ret;
 }
 
 EXPORT_SYMBOL(mutex_trylock);

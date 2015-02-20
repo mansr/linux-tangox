@@ -13,6 +13,13 @@ add_page_to_inactive_list(struct zone *zone, struct page *page)
 }
 
 static inline void
+add_page_to_inactive_list_tail(struct zone *zone, struct page *page)
+{
+	list_add_tail(&page->lru, &zone->inactive_list);
+	__inc_zone_state(zone, NR_INACTIVE);
+}
+
+static inline void
 del_page_from_active_list(struct zone *zone, struct page *page)
 {
 	list_del(&page->lru);

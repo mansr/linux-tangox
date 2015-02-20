@@ -223,7 +223,6 @@ static __init void kthreadd_setup(void)
 
 	ignore_signals(tsk);
 
-	set_user_nice(tsk, -5);
 	set_cpus_allowed(tsk, CPU_MASK_ALL);
 }
 

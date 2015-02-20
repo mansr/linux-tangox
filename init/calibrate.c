@@ -122,12 +122,12 @@ void __devinit calibrate_delay(void)
 		printk("Calibrating delay loop (skipped)... "
 			"%lu.%02lu BogoMIPS preset\n",
 			loops_per_jiffy/(500000/HZ),
-			(loops_per_jiffy/(5000/HZ)) % 100);
+			(loops_per_jiffy * 10/(50000/HZ)) % 100);
 	} else if ((loops_per_jiffy = calibrate_delay_direct()) != 0) {
 		printk("Calibrating delay using timer specific routine.. ");
 		printk("%lu.%02lu BogoMIPS (lpj=%lu)\n",
 			loops_per_jiffy/(500000/HZ),
-			(loops_per_jiffy/(5000/HZ)) % 100,
+			(loops_per_jiffy * 10/(50000/HZ)) % 100,
 			loops_per_jiffy);
 	} else {
 		loops_per_jiffy = (1<<12);
@@ -166,7 +166,7 @@ void __devinit calibrate_delay(void)
 		/* Round the value and print it */
 		printk("%lu.%02lu BogoMIPS (lpj=%lu)\n",
 			loops_per_jiffy/(500000/HZ),
-			(loops_per_jiffy/(5000/HZ)) % 100,
+			(loops_per_jiffy * 10/(50000/HZ)) % 100,
 			loops_per_jiffy);
 	}
 
