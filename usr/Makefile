@@ -33,8 +33,32 @@ ifneq ($(wildcard $(obj)/.initramfs_data.cpio.gz.d),)
 	include $(obj)/.initramfs_data.cpio.gz.d
 endif
 
+# The $(shell echo $(CONFIG_INITRAMFS_SOURCE)) is to remove the
+# gratuitous begin and end quotes from the Kconfig string type.
+# Internal, escaped quotes in the Kconfig string will loose the
+# escape and become active quotes.
+quotefixed_initramfs_source := $(shell echo $(CONFIG_INITRAMFS_SOURCE))
+
+ifneq '$(quotefixed_initramfs_source)' '' # if the INITRAMFS option is set
+ifeq '$(wildcard $(quotefixed_initramfs_source))' '' # but it does not exist in the file system
+$(warning                                                                    )
+$(warning Error: cannot find the initramfs source $(CONFIG_INITRAMFS_SOURCE) )
+$(warning If you are using integration with the Sigma Designs MIPSutils      )
+$(warning rootfs package, please make sure you have sourced 'rootfs-path.env')
+$(warning in the rootfs package dir, or that you have adequately defined the )
+$(warning 'SMP86XX_ROOTFS_PATH' environment variable.                        )
+$(warning                                                                    )
+$(error   Error: $(CONFIG_INITRAMFS_SOURCE) not found.)
+endif
+endif
+ 
+is_ramfs_input_dir := $(shell if [ -d $(ramfs-input) ]; then echo yes; fi)
+ifeq '$(is_ramfs_input_dir)' 'yes'
+	initramfs_extra_list := usr/initramfs_default_node_list
+endif
+
 quiet_cmd_initfs = GEN     $@
-      cmd_initfs = $(initramfs) -o $@ $(ramfs-args) $(ramfs-input)
+      cmd_initfs = $(initramfs) -o $@ $(ramfs-args) $(ramfs-input) $(initramfs_extra_list)
 
 targets := initramfs_data.cpio.gz
 # do not try to update files included in initramfs
@@ -50,3 +74,17 @@ $(obj)/initramfs_data.cpio.gz: $(obj)/gen_init_cpio $(deps_initramfs) klibcdirs
 	$(Q)$(initramfs) -l $(ramfs-input) > $(obj)/.initramfs_data.cpio.gz.d
 	$(call if_changed,initfs)
 
+is_gawk_installed := $(shell if gawk --version > /dev/null 2>& 1; then echo yes; fi)
+ifneq '$(is_gawk_installed)' 'yes'
+$(warning The 'gawk' utility is not installed on your system\; however it is a )
+$(warning pre-requisite of the SMP86xx dev kit. Please install it before       )
+$(warning proceeding.                                                          )
+$(warning                                                                      )
+$(warning Depending on the specifics of your Linux distribution, you can       )
+$(warning consider the following ways of installing 'gawk' onto your system:   )
+$(warning  - use a package manager, such as apt-get (apt-get install gawk) or  )
+$(warning    yum (yum install gawk).                                           )
+$(warning  - google for the package in rpm form ('gawk rpm download').         )
+$(warning                                                                      )
+$(error Error: 'gawk' not installed.)
+endif
