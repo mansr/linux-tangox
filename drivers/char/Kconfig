@@ -466,6 +466,30 @@ config TANGOX_IR
        help
          Support Infra-Red remote controller interface for SMP86xx.
 
+config TANGOX_FIP
+       tristate "SMP86xx Front Panel support" 
+       depends on TANGOX
+       default m
+       help
+         Support Front Panel interface for SMP86xx.
+
+choice
+       prompt "SMP86xx reference platform"
+       depends on TANGOX_FIP
+       default TANGOX_FIP_REF1
+
+config TANGOX_FIP_REF1
+       bool "Ref1"
+       help
+         For reference platform 1.
+
+config TANGOX_FIP_REF2
+       bool "Ref2"
+       help
+         For reference platform 2.
+
+endchoice
+
 config UNIX98_PTYS
 	bool "Unix98 PTY support" if EMBEDDED
 	default y
