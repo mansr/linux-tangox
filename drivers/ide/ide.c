@@ -758,7 +758,6 @@ int ide_register_hw_with_fixup(hw_regs_t *hw, int initializing,
 {
 	int index, retry = 1;
 	ide_hwif_t *hwif;
-
 	do {
 		for (index = 0; index < MAX_HWIFS; ++index) {
 			hwif = &ide_hwifs[index];
@@ -778,8 +777,9 @@ int ide_register_hw_with_fixup(hw_regs_t *hw, int initializing,
 	} while (retry--);
 	return -1;
 found:
-	if (hwif->present)
+	if (hwif->present){
 		ide_unregister(index);
+	}
 	else if (!hwif->hold) {
 		init_hwif_data(hwif, index);
 		init_hwif_default(hwif, index);
@@ -800,7 +800,6 @@ found:
 
 	if (hwifp)
 		*hwifp = hwif;
-
 	return (initializing || hwif->present) ? index : -1;
 }
 
@@ -1668,6 +1667,18 @@ static void __init probe_for_hwifs (void)
 #ifdef CONFIG_H8300
 	h8300_ide_init();
 #endif
+#ifdef CONFIG_BLK_DEV_BMIDE_TANGOX
+	{
+		extern int __init tangox_bmide_init(void);
+		tangox_bmide_init();
+	}
+#endif
+#ifdef CONFIG_BLK_DEV_PBIDE_TANGOX
+	{
+		extern int __init tangox_pbide_init(void);
+		tangox_pbide_init();
+	}
+#endif
 }
 
 /*
@@ -1826,7 +1837,6 @@ static int __init ide_init(void)
 
 	/* Probe for special PCI and other "known" interface chipsets. */
 	probe_for_hwifs();
-
 	return 0;
 }
 

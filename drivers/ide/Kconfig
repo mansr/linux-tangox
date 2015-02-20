@@ -832,6 +832,87 @@ config BLK_DEV_IDE_AU1XXX_SEQTS_PER_RQ
        default "128"
        depends on BLK_DEV_IDE_AU1XXX
 
+config BLK_DEV_BMIDE_TANGOX
+       select IDE_GENERIC
+       tristate "BMIDE for SMP86xx"
+       depends on TANGOX
+       help
+         Enable the support for Bus Mastering IDE controller. 
+
+config BLK_DEV_BMIDE_TANGOX_DMA
+       select SD_CDROM_DMAPACKET if BLK_DEV_IDECD
+       bool "support BMIDE DMA operations"
+       default y
+       depends on BLK_DEV_BMIDE_TANGOX
+       help
+         Enable the DMA support for Bus Mastering IDE controller, which
+	 include support for MDMA and UDMA modes. 
+
+config BLK_DEV_PBIDE_TANGOX
+       select IDE_GENERIC
+       tristate "PBIDE for SMP863x"
+       depends on TANGO2
+       help
+         Enable the support for Peripheral Bus IDE controller. 
+
+config BLK_DEV_PBIDE_TANGOX_DMA
+       select SD_CDROM_DMAPACKET if BLK_DEV_IDECD
+       bool "support PBIDE DMA operations"
+       default y
+       depends on BLK_DEV_PBIDE_TANGOX
+       help
+         Enable the DMA support for Bus Mastering IDE controller, which
+	  include support for MDMA modes. 
+
+config SD_CDROM_MAXIMUM_SECTOR_RESTRICTION
+       bool "Limit CDROM maximum transfer sectors"
+       default n
+       depends on (BLK_DEV_BMIDE_TANGOX || BLK_DEV_PBIDE_TANGOX) && BLK_DEV_IDECD
+       help
+         Some CDROM has restriction on maximum tansfer sectors per request.
+
+config SD_CDROM_MAXIMUM_SECTORS
+       int "Maximum transfer sectors per request (in sectors)"
+       default 256
+       depends on SD_CDROM_MAXIMUM_SECTOR_RESTRICTION
+       help
+         How many maximum sectors can be tranferred per request.
+
+config SD_DIRECT_DMA
+       depends on (((BLK_DEV_BMIDE_TANGOX && BLK_DEV_BMIDE_TANGOX_DMA) || (BLK_DEV_PBIDE_TANGOX && BLK_DEV_PBIDE_TANGOX_DMA))) && EXPERIMENTAL
+       bool "Enabling DDMA support for TangoX platform (experimental)"
+       default n
+       help
+         Enable user level direct DMA transfer to speed up IDE I/O for TangoX chips.
+
+config SD_CDROM_WAIT
+       bool "enable CDROM wait for spin-up"
+       default y
+       depends on (BLK_DEV_BMIDE_TANGOX || BLK_DEV_PBIDE_TANGOX) && BLK_DEV_IDECD
+       help
+         Some CDROM implements spin-down control and hence will be spinned down after
+	 a period of inactivities. However, once the access started after spinned down,
+	 timeout may occured with I/O error. Enable this (and specify wait time) for
+	 your platform.
+
+config SD_CDROM_WAIT_TIME
+       int "CDROM spin-up wait time (in seconds)"
+       default 5
+       depends on SD_CDROM_WAIT
+       help
+         How long should the driver wait for CDROM spin-up.
+
+config SD_CDROM_KEEP_DMA
+       bool "Keep DMA mode even I/O failed on non-HDD"
+       default y
+       depends on ((BLK_DEV_BMIDE_TANGOX && BLK_DEV_BMIDE_TANGOX_DMA) || (BLK_DEV_PBIDE_TANGOX && BLK_DEV_PBIDE_TANGOX_DMA)) && BLK_DEV_IDECD 
+       help
+         Normally when DMA operation went bad, IDE layer may disable DMA and switch to
+	 PIO operation afterward. Enable this to keep DMA mode intact.
+
+config SD_CDROM_DMAPACKET
+	bool
+
 config IDE_ARM
 	def_bool ARM && (ARCH_A5K || ARCH_CLPS7500 || ARCH_RPC || ARCH_SHARK)
 
@@ -1054,7 +1135,7 @@ config BLK_DEV_UMC8672
 endif
 
 config BLK_DEV_IDEDMA
-	def_bool BLK_DEV_IDEDMA_PCI || BLK_DEV_IDEDMA_PMAC || BLK_DEV_IDEDMA_ICS || BLK_DEV_IDE_AU1XXX_MDMA2_DBDMA
+	def_bool BLK_DEV_IDEDMA_PCI || BLK_DEV_IDEDMA_PMAC || BLK_DEV_IDEDMA_ICS || BLK_DEV_IDE_AU1XXX_MDMA2_DBDMA || BLK_DEV_BMIDE_TANGOX_DMA || BLK_DEV_PBIDE_TANGOX_DMA
 
 config IDEDMA_IVB
 	bool "IGNORE word93 Validation BITS"

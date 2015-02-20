@@ -1057,8 +1057,16 @@ static void check_dma_crc(ide_drive_t *drive)
 		ide_set_xfer_rate(drive, ide_auto_reduce_xfer(drive));
 		if (drive->current_speed >= XFER_SW_DMA_0)
 			(void) HWIF(drive)->ide_dma_on(drive);
-	} else
-		ide_dma_off(drive);
+	} else 
+#ifdef CONFIG_SD_CDROM_KEEP_DMA
+                /* Turn off DMA only for HDD */
+                if (drive->media == ide_disk) {
+#endif
+			ide_dma_off(drive);
+#ifdef CONFIG_SD_CDROM_KEEP_DMA
+                }
+#endif
+
 #endif
 }
 
@@ -1227,6 +1235,9 @@ int ide_wait_not_busy(ide_hwif_t *hwif, unsigned long timeout)
 		 * about locking issues (2.5 work ?).
 		 */
 		mdelay(1);
+		if(!hwif){
+			return -ENODEV;
+		}
 		stat = hwif->INB(hwif->io_ports[IDE_STATUS_OFFSET]);
 		if ((stat & BUSY_STAT) == 0)
 			return 0;

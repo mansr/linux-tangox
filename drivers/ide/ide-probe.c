@@ -722,10 +722,8 @@ static void probe_hwif(ide_hwif_t *hwif, void (*fixup)(ide_hwif_t *hwif))
 	unsigned int unit;
 	unsigned long flags;
 	unsigned int irqd;
-
 	if (hwif->noprobe)
 		return;
-
 	if ((hwif->chipset != ide_4drives || !hwif->mate || !hwif->mate->present) &&
 	    (ide_hwif_request_regions(hwif))) {
 		u16 msgout = 0;
@@ -947,7 +945,11 @@ static int ide_init_queue(ide_drive_t *drive)
 {
 	request_queue_t *q;
 	ide_hwif_t *hwif = HWIF(drive);
+#ifndef MAX_KMALLOC_ORDER
 	int max_sectors = 256;
+#else
+	int max_sectors = (PAGE_SIZE<<MAX_KMALLOC_ORDER)>>9;
+#endif
 	int max_sg_entries = PRD_ENTRIES;
 
 	/*
@@ -963,7 +965,15 @@ static int ide_init_queue(ide_drive_t *drive)
 		return 1;
 
 	q->queuedata = drive;
+
+#if defined(CONFIG_BLK_DEV_BMIDE_TANGOX) || defined(CONFIG_BLK_DEV_PBIDE_TANGOX)
+	/* we  can handle  physical address  crossing  any boundaries,
+	 * this will make linux really merge all physically contiguous
+	 * bio */
+	blk_queue_segment_boundary(q, 0xffffffff);
+#else
 	blk_queue_segment_boundary(q, 0xffff);
+#endif
 
 	if (!hwif->rqsize) {
 		if (hwif->no_lba48 || hwif->no_lba48_dma)
@@ -971,8 +981,19 @@ static int ide_init_queue(ide_drive_t *drive)
 		else
 			hwif->rqsize = 65536;
 	}
-	if (hwif->rqsize < max_sectors)
+	if ((hwif->rqsize < max_sectors) && (drive->media == ide_disk))
 		max_sectors = hwif->rqsize;
+
+#ifdef CONFIG_SD_CDROM_MAXIMUM_SECTOR_RESTRICTION
+        /*
+         * limits the max_sectors for some CDROM drives
+         */
+        if ((drive->media == ide_cdrom)){
+                max_sectors = CONFIG_SD_CDROM_MAXIMUM_SECTORS;
+                printk("The CDROM maximum sectors is set to 0x%x\n", max_sectors);
+        }
+#endif
+
 	blk_queue_max_sectors(q, max_sectors);
 
 #ifdef CONFIG_PCI
@@ -1096,9 +1117,9 @@ static int init_irq (ide_hwif_t *hwif)
 	 */
 	if (!match || match->irq != hwif->irq) {
 		int sa = IRQF_DISABLED;
-#if defined(__mc68000__) || defined(CONFIG_APUS)
+#if defined(__mc68000__) || defined(CONFIG_APUS) || defined(CONFIG_TANGOX)
 		sa = IRQF_SHARED;
-#endif /* __mc68000__ || CONFIG_APUS */
+#endif /* __mc68000__ || CONFIG_APUS || CONFIG_TANGOX*/
 
 		if (IDE_CHIPSET_IS_PCI(hwif->chipset)) {
 			sa = IRQF_SHARED;

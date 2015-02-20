@@ -287,6 +287,10 @@ struct cdrom_generic_command
 	unsigned char		data_direction;
 	int			quiet;
 	int			timeout;
+#ifdef CONFIG_SD_CDROM_DMAPACKET
+	int                     do_dma;         /* Try to use DMA */
+	int                     dma_error;      /* A DMA_specific error occurred */
+#endif
 	void			__user *reserved[1];	/* unused, actually */
 };
 

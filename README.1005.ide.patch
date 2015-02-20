@@ -1,0 +1,22 @@
+Feature:
+--------
+Bus Mastering IDE and PB IDE controllers support for SMP86xx chips.
+Some common fixes for block device operations are included as well.
+
+Prerequisite patch numbers:
+---------------------------
+0000
+1000
+1002
+1004
+
+Primary author:
+---------------
+Craig Qu/YH Lin
+
+Related to which chip version SMP86xx xx=?
+-----------------------------------------
+Tango2 ES6/RevA or above, or Tango3 ES1 or above
+
+(linux patches) which CONFIG_... are provided:
+----------------------------------------------

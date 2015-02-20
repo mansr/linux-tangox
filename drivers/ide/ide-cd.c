@@ -324,6 +324,11 @@
 
 #include "ide-cd.h"
 
+#ifdef CONFIG_SD_CDROM_WAIT
+#define CONFIG_SD_CDROM_WAIT_TICKS     (CONFIG_SD_CDROM_WAIT_TIME * HZ)
+static unsigned long cdrom_wait = 0;
+#endif
+
 static DEFINE_MUTEX(idecd_ref_mutex);
 
 #define to_ide_cd(obj) container_of(obj, struct cdrom_info, kref) 
@@ -524,21 +529,15 @@ void cdrom_analyze_sense_data(ide_drive_t *drive,
 
 		if (failed_command != NULL) {
 
-			int lo=0, mid, hi= ARY_LEN (packet_command_texts);
+			int lo=0, hi= ARY_LEN (packet_command_texts);
 			s = NULL;
 
-			while (hi > lo) {
-				mid = (lo + hi) / 2;
-				if (packet_command_texts[mid].packet_command ==
+			for (lo = 0; lo < hi; lo++) {
+				if (packet_command_texts[lo].packet_command ==
 				    failed_command->cmd[0]) {
-					s = packet_command_texts[mid].text;
+					s = packet_command_texts[lo].text;
 					break;
 				}
-				if (packet_command_texts[mid].packet_command >
-				    failed_command->cmd[0])
-					hi = mid;
-				else
-					lo = mid+1;
 			}
 
 			printk (KERN_ERR "  The failed \"%s\" packet command was: \n  \"", s);
@@ -673,6 +672,11 @@ static void cdrom_end_request (ide_drive_t *drive, int uptodate)
 		nsectors = 1;
 
 	ide_end_request(drive, uptodate, nsectors);
+
+#ifdef CONFIG_SD_CDROM_WAIT
+        if (uptodate)
+		cdrom_wait = 0;
+#endif
 }
 
 static void ide_dump_status_no_sense(ide_drive_t *drive, const char *msg, u8 stat)
@@ -734,7 +738,9 @@ static int cdrom_decode_status(ide_drive_t *drive, int good_stat, int *stat_ret)
 			/* Check for media change. */
 			cdrom_saw_media_change (drive);
 			/*printk("%s: media changed\n",drive->name);*/
+#ifndef CONFIG_SD_CDROM_NEED_REQUEST_SENSE
 			return 0;
+#endif
  		} else if ((sense_key == ILLEGAL_REQUEST) &&
  			   (rq->cmd[0] == GPCMD_START_STOP_UNIT)) {
  			/*
@@ -815,8 +821,27 @@ static int cdrom_decode_status(ide_drive_t *drive, int good_stat, int *stat_ret)
 			   too many times. */
 			if (++rq->errors > ERROR_MAX)
 				do_end_request = 1;
-		} else if (sense_key == ILLEGAL_REQUEST ||
-			   sense_key == DATA_PROTECT) {
+		} else if (sense_key == ILLEGAL_REQUEST){
+#ifdef CONFIG_SD_CDROM_WAIT
+                        if (cdrom_wait == 0)
+                                cdrom_wait = jiffies;
+                        if (time_after(cdrom_wait + CONFIG_SD_CDROM_WAIT_TICKS, jiffies)) {
+                                printk("%s: retrying operation.\n", drive->name);
+                                do_end_request = 0;
+                        } else {
+                                /* No point in retrying after an illegal
+                                   request or data protect error.*/
+                                cdrom_wait = 0;
+                                ide_dump_status (drive, "command error", stat);
+                                do_end_request = 1;
+                        }
+#else
+                        /* No point in retrying after an illegal
+                           request or data protect error.*/
+                        ide_dump_status (drive, "command error", stat);
+                        do_end_request = 1;
+#endif
+		} else if (sense_key == DATA_PROTECT) {
 			/* No point in retrying after an illegal
 			   request or data protect error.*/
 			ide_dump_status_no_sense (drive, "command error", stat);
@@ -912,6 +937,16 @@ static ide_startstop_t cdrom_start_packet_command(ide_drive_t *drive,
 	ide_startstop_t startstop;
 	struct cdrom_info *info = drive->driver_data;
 	ide_hwif_t *hwif = drive->hwif;
+
+#ifdef CONFIG_SD_CDROM_DMAPACKET
+	struct request *rq = HWGROUP(drive)->rq;
+	if ((rq->cmd[0] != GPCMD_READ_10) &&
+			(rq->cmd[0] != GPCMD_READ_CD) &&
+			(rq->cmd[0] != GPCMD_WRITE_10) &&
+			(rq->cmd[0] != GPCMD_VERIFY_10) &&
+			(rq->cmd[0] != GPCMD_WRITE_AND_VERIFY_10))
+		info->dma = 0;
+#endif
 
 	/* Wait for the controller to be idle. */
 	if (ide_wait_stat(&startstop, drive, 0, BUSY_STAT, WAIT_READY))
@@ -1112,8 +1147,11 @@ static ide_startstop_t cdrom_read_intr (ide_drive_t *drive)
 	 */
 	if (dma) {
 		info->dma = 0;
-		if ((dma_error = HWIF(drive)->ide_dma_end(drive)))
+		if ((dma_error = HWIF(drive)->ide_dma_end(drive))) {
+#ifndef CONFIG_SD_CDROM_KEEP_DMA
 			ide_dma_off(drive);
+#endif
+		}
 	}
 
 	if (cdrom_decode_status(drive, 0, &stat))
@@ -1709,7 +1747,9 @@ static ide_startstop_t cdrom_newpc_intr(ide_drive_t *drive)
 	if (dma) {
 		if (dma_error) {
 			printk(KERN_ERR "ide-cd: dma error\n");
+#ifndef CONFIG_SD_CDROM_KEEP_DMA
 			ide_dma_off(drive);
+#endif
 			return ide_error(drive, "dma error", stat);
 		}
 
@@ -1835,7 +1875,9 @@ static ide_startstop_t cdrom_write_intr(ide_drive_t *drive)
 		info->dma = 0;
 		if ((dma_error = HWIF(drive)->ide_dma_end(drive))) {
 			printk(KERN_ERR "ide-cd: write dma error\n");
+#ifndef CONFIG_SD_CDROM_KEEP_DMA
 			ide_dma_off(drive);
+#endif
 		}
 	}
 
@@ -2297,7 +2339,7 @@ static int cdrom_read_toc(ide_drive_t *drive, struct request_sense *sense)
 	stat = cdrom_read_capacity(drive, &toc->capacity, &sectors_per_frame,
 				   sense);
 	if (stat)
-		toc->capacity = 0x1fffff;
+		toc->capacity = 0x1ffffff; 
 
 	set_capacity(info->disk, toc->capacity * sectors_per_frame);
 	/* Save a private copy of te TOC capacity for error handling */

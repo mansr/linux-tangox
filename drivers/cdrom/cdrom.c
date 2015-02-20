@@ -1109,6 +1109,8 @@ int open_for_data(struct cdrom_device_info * cdi)
 		}
 		else {
 		    cdinfo(CD_OPEN, "wrong media type, but CDO_CHECK_TYPE not set.\n");
+		    ret=-EMEDIUMTYPE;
+		    goto clean_up_and_return;
 		}
 	}
 
@@ -1452,10 +1454,12 @@ static void cdrom_count_tracks(struct cdrom_device_info *cdi, tracktype* tracks)
 	tracks->xa=0;
 	tracks->error=0;
 	cdinfo(CD_COUNT_TRACKS, "entering cdrom_count_tracks\n"); 
+#if 0
         if (!CDROM_CAN(CDC_PLAY_AUDIO)) { 
                 tracks->error=CDS_NO_INFO;
                 return;
         }        
+#endif
 	/* Grab the TOC header so we can see how many tracks there are */
 	if ((ret = cdi->ops->audio_ioctl(cdi, CDROMREADTOCHDR, &header))) {
 		if (ret == -ENOMEDIUM)

@@ -63,7 +63,7 @@ typedef unsigned char	byte;	/* used everywhere */
 /*
  * Probably not wise to fiddle with these
  */
-#define ERROR_MAX	8	/* Max read/write errors per sector */
+#define ERROR_MAX	4	/* Max read/write errors per sector */
 #define ERROR_RESET	3	/* Reset controller every 4th retry */
 #define ERROR_RECAL	1	/* Recalibrate every 2nd retry */
 

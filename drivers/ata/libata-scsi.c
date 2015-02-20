@@ -2325,7 +2325,11 @@ static void atapi_qc_complete(struct ata_queued_cmd *qc)
 	}
 
 	/* successful completion or old EH failure path */
+#ifdef CONFIG_SD_CDROM_NEED_REQUEST_SENSE
+	if (unlikely(err_mask)) {
+#else
 	if (unlikely(err_mask & AC_ERR_DEV)) {
+#endif
 		cmd->result = SAM_STAT_CHECK_CONDITION;
 		atapi_request_sense(qc);
 		return;
