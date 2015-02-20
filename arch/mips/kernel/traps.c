@@ -43,6 +43,16 @@
 #include <asm/types.h>
 #include <asm/stacktrace.h>
 
+#ifdef CONFIG_TANGO2
+#include <asm/tango2/emhwlib_registers_tango2.h>
+#include <asm/tango2/emhwlib_dram_tango2.h>
+#include <asm/tango2/hardware.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/emhwlib_registers_tango3.h>
+#include <asm/tango3/emhwlib_dram_tango3.h>
+#include <asm/tango3/hardware.h>
+#endif
+
 extern asmlinkage void handle_int(void);
 extern asmlinkage void handle_tlbm(void);
 extern asmlinkage void handle_tlbl(void);
@@ -1282,6 +1292,8 @@ void __init per_cpu_trap_init(void)
 	change_c0_status(ST0_CU|ST0_MX|ST0_RE|ST0_FR|ST0_BEV|ST0_TS|ST0_KX|ST0_SX|ST0_UX,
 			 status_set);
 
+	write_c0_ebase(ebase);
+
 #ifdef CONFIG_CPU_MIPSR2
 	if (cpu_has_mips_r2) {
 		unsigned int enable = 0x0000000f;
@@ -1372,7 +1384,6 @@ void __init set_uncached_handler (unsigned long offset, void *addr, unsigned lon
 #ifdef CONFIG_64BIT
 	unsigned long uncached_ebase = TO_UNCAC(ebase);
 #endif
-
 	memcpy((void *)(uncached_ebase + offset), addr, size);
 }
 
@@ -1394,7 +1405,15 @@ void __init trap_init(void)
 	if (cpu_has_veic || cpu_has_vint)
 		ebase = (unsigned long) alloc_bootmem_low_pages (0x200 + VECTORSPACING*64);
 	else
+#ifdef CONFIG_TANGOX
+#ifdef CONFIG_TANGO3
+		ebase = KSEG0ADDR(CPU_REMAP_SPACE);
+#else
+		ebase = KSEG0ADDR(MEM_BASE_dram_controller_0_alias + FM_RESERVED);
+#endif
+#else
 		ebase = CAC_BASE;
+#endif
 
 	per_cpu_trap_init();
 
@@ -1502,11 +1521,11 @@ void __init trap_init(void)
 
 	if (cpu_has_vce)
 		/* Special exception: R4[04]00 uses also the divec space. */
-		memcpy((void *)(CAC_BASE + 0x180), &except_vec3_r4000, 0x100);
+		memcpy((void *)(ebase + 0x180), &except_vec3_r4000, 0x100);
 	else if (cpu_has_4kex)
-		memcpy((void *)(CAC_BASE + 0x180), &except_vec3_generic, 0x80);
+		memcpy((void *)(ebase + 0x180), &except_vec3_generic, 0x80);
 	else
-		memcpy((void *)(CAC_BASE + 0x080), &except_vec3_generic, 0x80);
+		memcpy((void *)(ebase + 0x080), &except_vec3_generic, 0x80);
 
 	signal_init();
 #ifdef CONFIG_MIPS32_COMPAT

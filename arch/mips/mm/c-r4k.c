@@ -500,6 +500,14 @@ static void r4k_flush_cache_page(struct vm_area_struct *vma,
 	r4k_on_each_cpu(local_r4k_flush_cache_page, &args, 1, 1);
 }
 
+#ifdef CONFIG_TANGOX
+static void r4k_flush_icache_range(unsigned long start, unsigned long end);
+static void r4k_flush_icache_page(struct vm_area_struct *vma, struct page *page)
+{
+	r4k_flush_icache_range((unsigned long)page_address(page), (unsigned long)page_address(page) + PAGE_SIZE);
+}
+#endif
+
 static inline void local_r4k_flush_data_cache_page(void * addr)
 {
 	r4k_blast_dcache_page((unsigned long) addr);
@@ -560,6 +568,8 @@ static void r4k_dma_cache_wback_inv(unsigned long addr, unsigned long size)
 {
 	/* Catch bad driver code */
 	BUG_ON(size == 0);
+
+	iob();
 
 	if (cpu_has_inclusive_pcaches) {
 		if (size >= scache_size)
@@ -934,9 +944,10 @@ static void __init probe_pcache(void)
 	case CPU_R14000:
 	case CPU_SB1:
 		break;
+	case CPU_74K:
+		c->dcache.flags |= MIPS_CACHE_VTAG;
 	case CPU_24K:
 	case CPU_34K:
-	case CPU_74K:
 		if ((read_c0_config7() & (1 << 16))) {
 			/* effectively physically indexed dcache,
 			   thus no virtual aliases. */
@@ -966,13 +977,16 @@ static void __init probe_pcache(void)
 		break;
 	}
 
-	printk("Primary instruction cache %ldkB, %s, %s, linesize %d bytes.\n",
-	       icache_size >> 10,
-	       cpu_has_vtag_icache ? "virtually tagged" : "physically tagged",
-	       way_string[c->icache.ways], c->icache.linesz);
+	printk("Primary instruction cache %ldkB, %s, %s tagged, linesize %d bytes.\n",
+	       icache_size >> 10, way_string[c->icache.ways],
+	       cpu_has_vtag_icache ? "virtually" : "physically",
+	       c->icache.linesz);
 
-	printk("Primary data cache %ldkB, %s, linesize %d bytes.\n",
-	       dcache_size >> 10, way_string[c->dcache.ways], c->dcache.linesz);
+	printk("Primary data cache %ldkB, %s, %s tagged, %s aliases, linesize %d bytes\n",
+	       dcache_size >> 10, way_string[c->dcache.ways],
+	       (c->dcache.flags & MIPS_CACHE_PINDEX) ? "physically" : "virtually",
+	       (c->dcache.flags & MIPS_CACHE_ALIASES) ? "cache" : "no",
+	       c->dcache.linesz);
 }
 
 /*
@@ -1225,6 +1239,10 @@ void __init r4k_cache_init(void)
 	local_flush_data_cache_page	= local_r4k_flush_data_cache_page;
 	flush_data_cache_page	= r4k_flush_data_cache_page;
 	flush_icache_range	= r4k_flush_icache_range;
+
+#ifdef CONFIG_TANGOX
+	flush_icache_page	= r4k_flush_icache_page;
+#endif
 
 #ifdef CONFIG_DMA_NONCOHERENT
 	_dma_cache_wback_inv	= r4k_dma_cache_wback_inv;

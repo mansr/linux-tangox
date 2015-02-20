@@ -1219,6 +1219,7 @@ __alloc_pages(gfp_t gfp_mask, unsigned int order,
 	int do_retry;
 	int alloc_flags;
 	int did_some_progress;
+	int num_retries = 0;
 
 	might_sleep_if(wait);
 
@@ -1363,6 +1364,12 @@ nofail_alloc:
 
 nopage:
 	if (!(gfp_mask & __GFP_NOWARN) && printk_ratelimit()) {
+		if (++num_retries < 16) {
+			set_current_state(TASK_INTERRUPTIBLE);
+			schedule_timeout(HZ);
+			goto rebalance;
+		}
+
 		printk(KERN_WARNING "%s: page allocation failure."
 			" order:%d, mode:0x%x\n",
 			p->comm, order, gfp_mask);

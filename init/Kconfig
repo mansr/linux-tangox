@@ -95,6 +95,14 @@ config LOCALVERSION_AUTO
 
 	  which is done within the script "scripts/setlocalversion".)
 
+config IGNORE_COMPILE_INFO
+	bool "Ignore non constant compile time info"
+	default n
+	help
+	  This options makes  linux binary invariant across successive
+	  compilation by disabling inclusions of variant compile time
+	  data (build user, build_hostname, ...).
+
 config SWAP
 	bool "Support for paging of anonymous memory (swap)"
 	depends on MMU && BLOCK

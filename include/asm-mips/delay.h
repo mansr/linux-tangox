@@ -81,7 +81,12 @@ static inline void __udelay(unsigned long usecs, unsigned long lpj)
 
 #define __udelay_val cpu_data[raw_smp_processor_id()].udelay_val
 
+#ifdef CONFIG_TANGOX
+void tangox_udelay(unsigned usec);
+#define udelay(usecs) tangox_udelay(usecs)
+#else
 #define udelay(usecs) __udelay((usecs),__udelay_val)
+#endif
 
 /* make sure "usecs *= ..." in udelay do not overflow. */
 #if HZ >= 1000

@@ -2,7 +2,7 @@
 # Makefile for the Linux/MIPS-specific parts of the memory manager.
 #
 
-obj-y				+= cache.o dma-default.o extable.o fault.o \
+obj-y				+= cache.o extable.o fault.o \
 				   init.o pgtable.o tlbex.o tlbex-fault.o
 
 obj-$(CONFIG_32BIT)		+= ioremap.o pgtable-32.o
@@ -31,3 +31,8 @@ obj-$(CONFIG_IP22_CPU_SCACHE)	+= sc-ip22.o
 obj-$(CONFIG_R5000_CPU_SCACHE)  += sc-r5k.o
 obj-$(CONFIG_RM7000_CPU_SCACHE)	+= sc-rm7k.o
 obj-$(CONFIG_MIPS_CPU_SCACHE)	+= sc-mips.o
+ifdef CONFIG_DMA_TANGOX
+obj-y	+= dma-tangox.o
+else
+obj-y	+= dma-default.o
+endif

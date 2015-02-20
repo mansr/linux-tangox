@@ -1,0 +1,34 @@
+TARGET=$1
+ARCH=$2
+SMP=$3
+PREEMPT=$4
+CC=$5
+
+# Generate a temporary compile.h
+
+( echo /\* This file is auto generated \*/
+
+  echo \#define UTS_MACHINE \"$ARCH\"
+
+  echo \#define UTS_VERSION \"\"
+
+  echo \#define LINUX_COMPILE_TIME \"\"
+  echo \#define LINUX_COMPILE_BY \"\"
+  echo \#define LINUX_COMPILE_HOST \"\"
+
+  echo \#define LINUX_COMPILE_DOMAIN \"\"
+
+  echo \#define LINUX_COMPILER \"`$CC -v 2>&1 | tail -n 1`\"
+) > .tmpcompile
+
+# Only replace the real compile.h if the new one is different,
+# in order to preserve the timestamp and avoid unnecessary
+# recompilations.
+
+if [ -r $TARGET ] && cmp -s .tmpcompile $TARGET; then
+   rm -f .tmpcompile
+else
+   echo "  UPD     $TARGET"
+   mv -f .tmpcompile $TARGET
+fi
+rm -f .tmpver.1 .tmpver.2

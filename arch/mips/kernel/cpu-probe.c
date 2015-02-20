@@ -575,7 +575,9 @@ static inline unsigned int decode_config1(struct cpuinfo_mips *c)
 	if (config1 & MIPS_CONF1_EP)
 		c->options |= MIPS_CPU_EJTAG;
 	if (config1 & MIPS_CONF1_FP) {
+#ifndef CONFIG_TANGO3_DISABLE_HWFPU
 		c->options |= MIPS_CPU_FPU;
+#endif
 		c->options |= MIPS_CPU_32FPR;
 	}
 	if (cpu_has_tlb)

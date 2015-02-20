@@ -27,6 +27,10 @@ void (*flush_cache_page)(struct vm_area_struct *vma, unsigned long page,
 	unsigned long pfn);
 void (*flush_icache_range)(unsigned long start, unsigned long end);
 
+#ifdef CONFIG_TANGOX
+void (*flush_icache_page)(struct vm_area_struct *vma, struct page *page);
+#endif
+
 /* MIPS specific cache operations */
 void (*flush_cache_sigtramp)(unsigned long addr);
 void (*local_flush_data_cache_page)(void * addr);
@@ -53,6 +57,7 @@ EXPORT_SYMBOL(_dma_cache_inv);
  * We could optimize the case where the cache argument is not BCACHE but
  * that seems very atypical use ...
  */
+//#define FLUSH_FOR_REAL
 asmlinkage int sys_cacheflush(unsigned long addr,
 	unsigned long bytes, unsigned int cache)
 {
@@ -60,10 +65,28 @@ asmlinkage int sys_cacheflush(unsigned long addr,
 		return 0;
 	if (!access_ok(VERIFY_WRITE, (void __user *) addr, bytes))
 		return -EFAULT;
-
+	
+#ifdef FLUSH_FOR_REAL
+	if (cache & ICACHE)
+		flush_icache_range(addr, addr + bytes);
+	if (cache & DCACHE) {
+		unsigned long start_addr;
+		for (start_addr = addr; start_addr < (addr + bytes); start_addr += PAGE_SIZE)
+			flush_data_cache_page(start_addr);
+	}
+#else
 	flush_icache_range(addr, addr + bytes);
+#endif
 
 	return 0;
+}
+
+/* write-back and invalidate dcache */
+void flush_dcache_range(void __user *userbuf, unsigned int len)
+{
+	unsigned long start_addr, addr;
+	for (start_addr = addr = (unsigned long)userbuf; addr < (start_addr + len); addr += PAGE_SIZE)
+		flush_data_cache_page(addr);
 }
 
 void __flush_dcache_page(struct page *page)

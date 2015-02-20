@@ -103,8 +103,13 @@ static unsigned int __init probe_baud(struct uart_port *port)
 
 	lcr = serial_in(port, UART_LCR);
 	serial_out(port, UART_LCR, lcr | UART_LCR_DLAB);
+#ifdef CONFIG_TANGOX
+	dll = serial_in(port, UART_DL) & 0xff;
+	dlm = serial_in(port, UART_DL) >> 8;
+#else
 	dll = serial_in(port, UART_DLL);
 	dlm = serial_in(port, UART_DLM);
+#endif
 	serial_out(port, UART_LCR, lcr);
 
 	quot = (dlm << 8) | dll;
@@ -125,8 +130,12 @@ static void __init init_port(struct early_uart_device *device)
 	divisor = port->uartclk / (16 * device->baud);
 	c = serial_in(port, UART_LCR);
 	serial_out(port, UART_LCR, c | UART_LCR_DLAB);
+#ifdef CONFIG_TANGOX
+	serial_out(port, UART_DL, divisor & 0xffff);
+#else
 	serial_out(port, UART_DLL, divisor & 0xff);
 	serial_out(port, UART_DLM, (divisor >> 8) & 0xff);
+#endif
 	serial_out(port, UART_LCR, c & ~UART_LCR_DLAB);
 }
 

@@ -66,6 +66,13 @@ SECTIONS
 
     DATA_DATA
 
+    /* Align the initial ramdisk image (INITRD) on page boundaries. */
+    . = ALIGN(4096);
+    __rd_start = .;
+    *(.initrd)
+    . = ALIGN(4096);
+    __rd_end = .;
+
     CONSTRUCTORS
   }
   _gp = . + 0x8000;

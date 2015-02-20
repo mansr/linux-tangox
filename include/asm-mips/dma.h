@@ -84,14 +84,20 @@
  * Deskstations or Acer PICA but not the much more versatile DMA logic used
  * for the local devices on Acer PICA or Magnums.
  */
-#ifdef CONFIG_SGI_IP22
+#if defined(CONFIG_SGI_IP22)
 /* Horrible hack to have a correct DMA window on IP22 */
 #include <asm/sgi/mc.h>
 #define MAX_DMA_ADDRESS		(PAGE_OFFSET + SGIMC_SEG0_BADDR + 0x01000000)
+#elif defined(CONFIG_TANGOX)
+#define MAX_DMA_ADDRESS		(PAGE_OFFSET + 0x20000000)
 #else
 #define MAX_DMA_ADDRESS		(PAGE_OFFSET + 0x01000000)
 #endif
 #define MAX_DMA_PFN		PFN_DOWN(virt_to_phys((void *)MAX_DMA_ADDRESS))
+
+#if defined(CONFIG_TANGOX)
+#define HAVE_ARCH_PCI_SET_DMA_MASK
+#endif
 
 /* 8237 DMA controllers */
 #define IO_DMA1_BASE	0x00	/* 8 bit slave DMA, channels 0..3 */

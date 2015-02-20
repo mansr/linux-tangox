@@ -589,6 +589,106 @@ core-$(CONFIG_TOSHIBA_RBTX4938) += arch/mips/tx4938/toshiba_rbtx4938/
 core-$(CONFIG_TOSHIBA_RBTX4938) += arch/mips/tx4938/common/
 load-$(CONFIG_TOSHIBA_RBTX4938) += 0xffffffff80100000
 
+ifdef CONFIG_TANGO2
+#
+# Tango2 board
+#
+include include/asm-mips/tango2/emhwlib_registers_tango2.inc
+include include/asm-mips/tango2/emhwlib_dram_tango2.inc
+else
+ifdef CONFIG_TANGO3
+#
+# Tango3 board
+#
+include include/asm-mips/tango3/emhwlib_registers_tango3.inc
+include include/asm-mips/tango3/emhwlib_dram_tango3.inc
+endif
+endif
+
+ifneq ($(XSDK_DEFAULT_CPU_CERTID),)
+CERT_ID=$(XSDK_DEFAULT_CPU_CERTID)
+endif
+
+ifneq ($(XSDK_DEFAULT_KEY_DOMAIN),)
+CERT_TYPE=$(XSDK_DEFAULT_KEY_DOMAIN)
+endif
+
+ifneq ($(CERT_TYPE),)
+ifneq ($(CERT_ID),)
+CERT_SET=y
+endif
+endif
+
+ifneq ($(CERT_SET),y)
+ifdef CONFIG_TANGO2
+ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+CERT_ID=000c
+CERT_TYPE=8634_ES4_prod
+else
+CERT_ID=000b
+CERT_TYPE=8634_ES4_dev
+endif
+else
+ifdef CONFIG_TANGO3
+# Use 0001 for encrypted image (instead of signed-only image) 
+ifneq '$(filter -DWITH_PROD=1 -DWITH_FACSPROD=1, $(RMCFLAGS))' ''
+CERT_ID=000f
+CERT_TYPE=8644_ES1_prod
+else
+CERT_ID=000f
+CERT_TYPE=8644_ES1_dev
+endif
+endif
+endif
+endif
+
+internal_hex = 0x$(shell printf "%x" $$(($(1))))
+
+core-$(CONFIG_TANGOX)		+= arch/mips/tangox/
+
+ifdef CONFIG_TANGO2
+cflags-$(CONFIG_TANGO2)		+= -Iinclude/asm-mips/mach-tango2
+load-$(CONFIG_TANGO2)		:= $(call internal_hex,0x80000000+	\
+					$(MEM_BASE_dram_controller_0_alias)+	\
+					$(FM_linuxmips__ftext))
+#ifdef RMCFLAGS
+#cflags-$(CONFIG_TANGO2)		+= $(RMCFLAGS)
+#else
+cflags-$(CONFIG_TANGO2)		+= -DEM86XX_CHIP=EM86XX_CHIPID_TANGO2
+cflags-$(CONFIG_TANGO2_ES4)	+= -DEM86XX_REVISION=4
+cflags-$(CONFIG_TANGO2_ES5)	+= -DEM86XX_REVISION=5
+cflags-$(CONFIG_TANGO2_ES6)	+= -DEM86XX_REVISION=6
+#endif
+else
+ifdef CONFIG_TANGO3
+KERNEL_START_ADDRESS		:= $(CPU_remap2_address)
+cflags-$(CONFIG_TANGO3)		+= -Iinclude/asm-mips/mach-tango3
+load-$(CONFIG_TANGO3)		:= $(call internal_hex,0x80000000+	\
+					$(KERNEL_START_ADDRESS))
+#ifdef RMCFLAGS
+#cflags-$(CONFIG_TANGO3)		+= $(RMCFLAGS)
+#else
+cflags-$(CONFIG_TANGO3)		+= -DEM86XX_CHIP=EM86XX_CHIPID_TANGO3
+cflags-$(CONFIG_TANGO3_865X)	+= -DEM86XX_REVISION=3
+cflags-$(CONFIG_TANGO3_864X)	+= -DEM86XX_REVISION=3
+#endif
+cflags-$(CONFIG_TANGO3)		+= -DCPU_REMAP_SPACE=$(KERNEL_START_ADDRESS) 
+cflags-$(CONFIG_TANGO3_865X)	+= -mtune=24kf
+cflags-$(CONFIG_TANGO3_864X)	+= -mtune=24kf
+endif
+endif
+
+CLEAN_FILES += arch/mips/boot/vmlinux.gz \
+		arch/mips/boot/*.bin \
+		arch/mips/boot/*.xload \
+		arch/mips/boot/*.zbf \
+		arch/mips/boot/zbimage-linux-* 
+
+# ramdisk/initrd support
+# You may need a compressed ramdisk image, named ramdisk.gz in
+# arch/mips/ramdisk
+core-$(CONFIG_EMBEDDED_RAMDISK) += arch/mips/ramdisk/
+
 cflags-y			+= -Iinclude/asm-mips/mach-generic
 drivers-$(CONFIG_PCI)		+= arch/mips/pci/
 
@@ -660,7 +760,11 @@ vmlinux.32: vmlinux
 vmlinux.64: vmlinux
 	$(OBJCOPY) -O $(64bit-bfd) $(OBJCOPYFLAGS) $< $@
 
-makeboot =$(Q)$(MAKE) $(build)=arch/mips/boot VMLINUX=$(vmlinux-32) $(1)
+ifdef CONFIG_TANGOX
+makeboot =$(Q)$(MAKE) $(build)=arch/mips/boot VMLINUX=$(vmlinux-32) $(1) loadaddr=$(2) certtype=$(3) certid=$(4)
+else
+makeboot =$(Q)$(MAKE) $(build)=arch/mips/boot VMLINUX=$(vmlinux-32) $(1) 
+endif
 
 ifdef CONFIG_BOOT_ELF32
 all:	$(vmlinux-32)
@@ -699,6 +803,22 @@ vmlinux.ecoff: $(vmlinux-32)
 vmlinux.srec: $(vmlinux-32)
 	+@$(call makeboot,$@)
 
+ifdef CONFIG_TANGO2
+zbimage-linux-xrpc: vmlinux.bin
+	+@$(call makeboot,$@,$(load-y),$(CERT_TYPE),$(CERT_ID))
+
+zbimage-linux-enc: vmlinux.bin
+	+@$(call makeboot,$@,$(load-y),$(CERT_TYPE),$(CERT_ID))
+
+zbimage-linux-encs: vmlinux.bin
+	+@$(call makeboot,$@,$(load-y),$(CERT_TYPE),$(CERT_ID))
+endif
+
+ifdef CONFIG_TANGO3
+zbimage-linux-xload: vmlinux.bin
+	+@$(call makeboot,$@,$(load-y),$(CERT_TYPE),$(CERT_ID))
+endif
+
 CLEAN_FILES += vmlinux.ecoff \
 	       vmlinux.srec
 
@@ -713,8 +833,10 @@ ifdef CONFIG_MIPS32_O32
 endif
 
 archclean:
-	@$(MAKE) $(clean)=arch/mips/boot
-	@$(MAKE) $(clean)=arch/mips/lasat
+	$(Q)$(MAKE) $(clean)=arch/mips/boot
+	$(Q)$(MAKE) $(clean)=arch/mips/lasat
+	#@$(MAKE) $(clean)=arch/mips/boot
+	#@$(MAKE) $(clean)=arch/mips/lasat
 
 CLEAN_FILES += vmlinux.32 \
 	       vmlinux.64 \

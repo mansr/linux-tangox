@@ -9,6 +9,7 @@
  * Copyright (C) 1996 Stoned Elipot
  * Copyright (C) 1999 Silicon Graphics, Inc.
  * Copyright (C) 2000 2001, 2002  Maciej W. Rozycki
+ * Copyright (C) 2003-2007 Sigma Designs, Inc.
  */
 #include <linux/init.h>
 #include <linux/ioport.h>
@@ -28,6 +29,21 @@
 #include <asm/sections.h>
 #include <asm/setup.h>
 #include <asm/system.h>
+
+#ifdef CONFIG_TANGO2
+#include <asm/tango2/rmdefs.h>
+#include <asm/tango2/memcfg.h>
+#include <asm/tango2/tango2.h>
+#include <asm/tango2/hardware.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/rmdefs.h>
+#include <asm/tango3/memcfg.h>
+#include <asm/tango3/tango3.h>
+#include <asm/tango3/hardware.h>
+
+#include "../tangox/xenv.h"
+#include "../tangox/xenvkeys.h"
+#endif
 
 struct cpuinfo_mips cpu_data[NR_CPUS] __read_mostly;
 
@@ -73,6 +89,8 @@ EXPORT_SYMBOL(mips_io_port_base);
  */
 unsigned long isa_slot_offset;
 EXPORT_SYMBOL(isa_slot_offset);
+	
+extern void * __rd_start, * __rd_end;
 
 static struct resource code_resource = { .name = "Kernel code", };
 static struct resource data_resource = { .name = "Kernel data", };
@@ -168,6 +186,10 @@ static unsigned long __init init_initrd(void)
 	unsigned long end;
 	u32 *initrd_header;
 
+	if ((!initrd_start) && (&__rd_start != &__rd_end)) {
+        	initrd_start = (unsigned long)&__rd_start;
+	        initrd_end = (unsigned long)&__rd_end;
+	}
 	/*
 	 * Board specific code or command line parser should have
 	 * already set up initrd_start and initrd_end. In these cases
@@ -232,8 +254,6 @@ static void __init finalize_initrd(void)
 	}
 
 	reserve_bootmem(__pa(initrd_start), size);
-	initrd_below_start_ok = 1;
-
 	printk(KERN_INFO "Initial ramdisk at: 0x%lx (%lu bytes)\n",
 	       initrd_start, size);
 	return;
@@ -421,6 +441,16 @@ static int usermem __initdata = 0;
 static int __init early_parse_mem(char *p)
 {
 	unsigned long start, size;
+#ifdef CONFIG_TANGOX
+        extern unsigned long em8xxx_kmem_start;
+        extern unsigned long em8xxx_kmem_size;
+#ifdef CONFIG_TANGO3
+	extern unsigned long max_remap_size;
+	extern unsigned long phy_remap;
+	extern unsigned long em8xxx_max_dx_size;
+	void update_lrrw_kend(unsigned long kend);
+#endif
+#endif
 
 	/*
 	 * If a user specifies memory size, we
@@ -435,8 +465,72 @@ static int __init early_parse_mem(char *p)
 	size = memparse(p, &p);
 	if (*p == '@')
 		start = memparse(p + 1, &p);
+	else {
+#ifdef CONFIG_TANGOX
+		start = CPHYSADDR(em8xxx_kmem_start);
+#else
+		start = 0;
+#endif
+        }
 
+
+#ifdef CONFIG_TANGOX
+	if (start == CPHYSADDR(em8xxx_kmem_start)) {
+		unsigned long em8xxx_kmem_end;
+#ifdef CONFIG_TANGO3
+#define REMAP_IDX      (((CPU_REMAP_SPACE-CPU_remap2_address)/0x04000000)+2)
+#define MAX_KERNEL_MEMSIZE	(0x18000000-(((REMAP_IDX)-2)*0x04000000))
+		em8xxx_kmem_size = ((size + em8xxx_kmem_start) & 0xfff00000) - em8xxx_kmem_start;
+
+		if (em8xxx_kmem_size > max_remap_size) {
+			if (em8xxx_kmem_size > 0x18000000) /* Maximum 384MB */
+				em8xxx_kmem_size = max_remap_size;
+			else {
+				int i, remap_cnt = (max_remap_size / 0x04000000); /* 64MB per remap */
+				unsigned long newaddr = phy_remap + max_remap_size;
+				for (i = REMAP_IDX + remap_cnt; i < 8; i++) {
+					gbus_write_reg32(REG_BASE_cpu_block + CPU_remap + i * 4, newaddr);
+					iob();
+					max_remap_size += 0x04000000;
+					if (em8xxx_kmem_size <= max_remap_size)
+						break;
+					newaddr += 0x04000000;
+				}
+				if (em8xxx_kmem_size > max_remap_size)
+					em8xxx_kmem_size = max_remap_size;
+				printk("Modified physical map 0x%08lx to 0x%08lx, max remap/kernel size: 0x%08lx/0x%08lx.\n",
+						phy_remap, (unsigned long)CPU_REMAP_SPACE, max_remap_size, (unsigned long)MAX_KERNEL_MEMSIZE);
+			}
+		}
+
+#ifdef CONFIG_TANGOX_XENV_READ
+		if ((em8xxx_max_dx_size != 0) && (em8xxx_kmem_size > em8xxx_max_dx_size)) { /* don't push into RUAMM area */
+			em8xxx_kmem_size = em8xxx_max_dx_size;
+			printk("Maximum kernel memory size is 0x%08lx with RUAMM restriction.\n", em8xxx_kmem_size);
+		}
+#endif
+		em8xxx_kmem_end = KSEG1ADDR(em8xxx_kmem_start + em8xxx_kmem_size) - KSEG1ADDR(CPU_REMAP_SPACE);
+
+		/* Update information into LR_XENV2_RW */
+		update_lrrw_kend(em8xxx_kmem_end);
+		add_memory_region(start, em8xxx_kmem_size, BOOT_MEM_RAM);
+#else
+		memcfg_t *m = (memcfg_t *)KSEG1ADDR(MEM_BASE_dram_controller_0_alias + FM_MEMCFG);
+
+		em8xxx_kmem_size = ((size + em8xxx_kmem_start) & 0xfff00000) - em8xxx_kmem_start;
+		add_memory_region(start, em8xxx_kmem_size, BOOT_MEM_RAM);
+
+		em8xxx_kmem_end = KSEG1ADDR(em8xxx_kmem_start + em8xxx_kmem_size) - KSEG1ADDR(MEM_BASE_dram_controller_0_alias);
+		m->kernel_end = em8xxx_kmem_end;
+		gen_memcfg_checksum(m);
+#endif
+	} else {
+		/* We just add this blindly as the alignment can be wrong, use it as own risk */
+		add_memory_region(start, size, BOOT_MEM_RAM);
+	}
+#else
 	add_memory_region(start, size, BOOT_MEM_RAM);
+#endif
 	return 0;
 }
 early_param("mem", early_parse_mem);

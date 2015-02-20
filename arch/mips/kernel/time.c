@@ -2,6 +2,7 @@
  * Copyright 2001 MontaVista Software Inc.
  * Author: Jun Sun, jsun@mvista.com or jsun@junsun.net
  * Copyright (c) 2003, 2004  Maciej W. Rozycki
+ * Copyright (C) 2003-2007 Sigma Designs, Inc.
  *
  * Common time service routines for MIPS machines. See
  * Documentation/mips/time.README.
@@ -32,6 +33,29 @@
 #include <asm/div64.h>
 #include <asm/sections.h>
 #include <asm/time.h>
+   
+#ifdef CONFIG_TANGO2
+#include <asm/tango2/tango2.h>
+#include <asm/tango2/tango2_gbus.h>
+#include <asm/tango2/emhwlib_lram.h>
+#include <asm/tango2/emhwlib_registers_tango2.h>
+#elif defined(CONFIG_TANGO3)
+#include <asm/tango3/tango3.h>
+#include <asm/tango3/tango3_gbus.h>
+#include <asm/tango3/emhwlib_lram.h>
+#include <asm/tango3/emhwlib_registers_tango3.h>
+#endif
+
+#ifdef CONFIG_TANGOX
+void reset_timer(unsigned long cpu, unsigned long sys, unsigned long pll, unsigned long premux, unsigned long mux);
+extern unsigned long tangox_get_cpuclock(void);
+extern unsigned long tangox_get_sysclock(void);
+extern unsigned long em8xxx_cpu_frequency;
+extern unsigned long em8xxx_sys_frequency;
+extern unsigned long em8xxx_sys_clkgen_pll;
+extern unsigned long em8xxx_sys_premux;
+extern unsigned long em8xxx_sys_mux;
+#endif
 
 /*
  * The integer part of the number of usecs per jiffy is taken from tick,
@@ -139,7 +163,9 @@ static long last_rtc_update;
  */
 void local_timer_interrupt(int irq, void *dev_id)
 {
+#ifdef CONFIG_PROFILING
 	profile_tick(CPU_PROFILING);
+#endif
 	update_process_times(user_mode(get_irq_regs()));
 }
 
@@ -149,6 +175,30 @@ void local_timer_interrupt(int irq, void *dev_id)
  */
 irqreturn_t timer_interrupt(int irq, void *dev_id)
 {
+
+#ifdef CONFIG_TANGOX
+#ifndef CONFIG_TANGOX_FIXED_FREQUENCIES
+	unsigned long clkgen_pll = gbus_read_reg32(REG_BASE_system_block + SYS_clkgen_pll);
+	unsigned long premux = gbus_read_reg32(REG_BASE_system_block + SYS_sysclk_premux) & 0x3;
+	unsigned long mux = gbus_read_reg32(REG_BASE_system_block + SYS_sysclk_mux) & 0xf1;
+#endif
+
+        if ((jiffies % HZ) == 0) { /* Update CPU heart beat conunter per second */
+                gbus_write_reg32(REG_BASE_cpu_block + LR_HB_CPU,
+                                gbus_read_reg32(REG_BASE_cpu_block + LR_HB_CPU) + 1);
+#if defined(CONFIG_PRINTK_TIME)
+//		printk("*** time marker ***\n");
+#endif
+	}
+
+#ifndef CONFIG_TANGOX_FIXED_FREQUENCIES
+	if ((em8xxx_sys_clkgen_pll != clkgen_pll) || (em8xxx_sys_premux != premux) || (em8xxx_sys_mux != mux)) {
+		/* Detected potential CPU/System frequency change */
+		reset_timer(tangox_get_cpuclock(), tangox_get_sysclock(), clkgen_pll, premux, mux);
+        }
+#endif
+#endif
+
 	write_seqlock(&xtime_lock);
 
 	mips_timer_ack();
@@ -333,6 +383,7 @@ struct clocksource clocksource_mips = {
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
+#ifdef CONFIG_TANGOX_USE_CPU_CLOCK
 static void __init init_mips_clocksource(void)
 {
 	u64 temp;
@@ -355,6 +406,7 @@ static void __init init_mips_clocksource(void)
 
 	clocksource_register(&clocksource_mips);
 }
+#endif
 
 void __init time_init(void)
 {
@@ -371,14 +423,15 @@ void __init time_init(void)
 	                        -xtime.tv_sec, -xtime.tv_nsec);
 
 	/* Choose appropriate high precision timer routines.  */
-	if (!cpu_has_counter && !clocksource_mips.read)
+	if (!cpu_has_counter && !clocksource_mips.read) {
 		/* No high precision timer -- sorry.  */
 		clocksource_mips.read = null_hpt_read;
-	else if (!mips_hpt_frequency && !mips_timer_state) {
+	} else if (!mips_hpt_frequency && !mips_timer_state) {
 		/* A high precision timer of unknown frequency.  */
-		if (!clocksource_mips.read)
+		if (!clocksource_mips.read) {
 			/* No external high precision timer -- use R4k.  */
 			clocksource_mips.read = c0_hpt_read;
+		}
 	} else {
 		/* We know counter frequency.  Or we can get it.  */
 		if (!clocksource_mips.read) {
@@ -398,8 +451,10 @@ void __init time_init(void)
 				c0_hpt_timer_init();
 			}
 		}
-		if (!mips_hpt_frequency)
+
+		if (!mips_hpt_frequency) {
 			mips_hpt_frequency = calibrate_hpt();
+		}
 
 		/* Report the high precision timer rate for a reference.  */
 		printk("Using %u.%03u MHz high precision timer.\n",
@@ -424,7 +479,9 @@ void __init time_init(void)
 	 */
 	plat_timer_setup(&timer_irqaction);
 
+#ifdef CONFIG_TANGOX_USE_CPU_CLOCK
 	init_mips_clocksource();
+#endif
 }
 
 #define FEBRUARY		2
@@ -478,3 +535,25 @@ EXPORT_SYMBOL(rtc_lock);
 EXPORT_SYMBOL(to_tm);
 EXPORT_SYMBOL(rtc_mips_set_time);
 EXPORT_SYMBOL(rtc_mips_get_time);
+
+#if defined(CONFIG_TANGOX) 
+/* Called after PLL has been reset */
+void reset_timer(unsigned long cpuf, unsigned long sysf, unsigned long pll, unsigned long premux, unsigned long mux)
+{
+	em8xxx_sys_clkgen_pll = pll;
+	em8xxx_sys_premux = premux;
+	em8xxx_sys_mux = mux;
+        em8xxx_cpu_frequency = cpuf;
+        em8xxx_sys_frequency = sysf;
+
+        mips_hpt_frequency = em8xxx_cpu_frequency / 2;
+        cycles_per_jiffy = (mips_hpt_frequency + HZ / 2) / HZ;
+
+        /* Report the high precision timer rate for a reference.  */
+        printk("Using %u.%03u MHz high precision timer.\n",
+                        ((mips_hpt_frequency + 500) / 1000) / 1000,
+                        ((mips_hpt_frequency + 500) / 1000) % 1000);
+}
+EXPORT_SYMBOL(reset_timer);
+#endif /* CONFIG_TANGOX */
+

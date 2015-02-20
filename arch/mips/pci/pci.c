@@ -326,5 +326,17 @@ EXPORT_SYMBOL(PCIBIOS_MIN_MEM);
 
 char *pcibios_setup(char *str)
 {
+	extern int pci_enabled;
+
+	if (strcmp(str, "disabled") == 0) {
+		pci_enabled = 0;
+		return(NULL);
+	} else if (strcmp(str, "off") == 0) {
+		pci_enabled = 0;
+		return(NULL);
+	} else if (strcmp(str, "on") == 0) {
+		pci_enabled = 1;
+		return(NULL);
+	}
 	return str;
 }

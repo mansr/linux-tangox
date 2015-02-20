@@ -10,7 +10,7 @@
 #ifndef _ASM_ADDRSPACE_H
 #define _ASM_ADDRSPACE_H
 
-#include <spaces.h>
+/*#include <spaces.h> -- not used*/
 
 /*
  *  Configure language

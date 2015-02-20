@@ -406,6 +406,24 @@ config BLK_DEV_RAM_BLOCKSIZE
 	  setups function - apparently needed by the rd_load_image routine
 	  that supposes the filesystem in the image uses a 1024 blocksize.
 
+config EMBEDDED_RAMDISK
+        bool "Embedded ramdisk"
+        default y
+        depends on BLK_DEV_INITRD=y && MIPS=y
+        help
+          Select this option if you want to build the ramdisk image into the
+          the final kernel binary.
+
+config EMBEDDED_RAMDISK_IMAGE
+        string "File name of the ramdisk"
+        default ""
+        depends on EMBEDDED_RAMDISK=y
+        help
+          This is the filename of the ramdisk image to be built into the
+          kernel.  Relative pathnames are relative to arch/mips/ramdisk/.
+          The ramdisk image is not part of the kernel distribution; you must
+          provide one yourself.
+
 config CDROM_PKTCDVD
 	tristate "Packet writing on CD/DVD media"
 	depends on !UML

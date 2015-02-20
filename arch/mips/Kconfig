@@ -606,6 +606,48 @@ config SNI_RM
 	  Technology and now in turn merged with Fujitsu.  Say Y here to
 	  support this machine type.
 
+config TANGO2
+	bool "Support for SigmaDesigns Tango2 board"
+	select TANGOX
+	select TANGO2_SMP863X
+	select DMA_NONCOHERENT
+	select SYS_SUPPORTS_32BIT_KERNEL
+	select SYS_SUPPORTS_LITTLE_ENDIAN
+	select SYS_HAS_CPU_MIPS32_R1
+	select SYS_HAS_CPU_MIPS32_R2
+#	select SYS_HAS_EARLY_PRINTK
+	select IRQ_CPU
+#	select OWN_DMA
+	select ZONE_DMA
+	select DMA_TANGOX
+	select DMA_NONCOHERENT
+	select HW_HAS_PCI
+	select SD_IPFILTER
+	help
+	  Add support for Sigma Designs SMP863x board. Say Y here to
+	  support this machine type.
+
+config TANGO3
+	bool "Support for SigmaDesigns Tango3 board"
+	select TANGOX
+	select TANGO3_SMP86XX
+	select DMA_NONCOHERENT
+	select SYS_SUPPORTS_32BIT_KERNEL
+	select SYS_SUPPORTS_LITTLE_ENDIAN
+#	select SYS_HAS_EARLY_PRINTK
+	select SYS_HAS_CPU_MIPS32_R1
+	select SYS_HAS_CPU_MIPS32_R2
+	select IRQ_CPU
+#	select OWN_DMA
+	select ZONE_DMA
+	select DMA_TANGOX
+	select DMA_NONCOHERENT
+	select HW_HAS_PCI
+	select SD_IPFILTER
+	help
+	  Add support for Sigma Designs SMP864x/SMP865x board. Say Y here to
+	  support this machine type.
+
 config TOSHIBA_JMR3927
 	bool "Toshiba JMR-TX3927 board"
 	select DMA_NONCOHERENT
@@ -665,6 +707,7 @@ source "arch/mips/lasat/Kconfig"
 source "arch/mips/pmc-sierra/Kconfig"
 source "arch/mips/sgi-ip27/Kconfig"
 source "arch/mips/sibyte/Kconfig"
+source "arch/mips/tangox/Kconfig"
 source "arch/mips/tx4927/Kconfig"
 source "arch/mips/tx4938/Kconfig"
 source "arch/mips/vr41xx/Kconfig"
@@ -729,6 +772,16 @@ config DMA_IP27
 config DMA_IP32
 	bool
 	select DMA_NEED_PCI_MAP_STATE
+
+config TANGOX
+	bool 
+
+config DMA_TANGOX
+	bool
+	select DMA_NEED_PCI_MAP_STATE
+
+config SD_IPFILTER
+	bool
 
 config DMA_NONCOHERENT
 	bool
@@ -900,6 +953,8 @@ config BOOT_ELF32
 config MIPS_L1_CACHE_SHIFT
 	int
 	default "4" if MACH_DECSTATION || SNI_RM
+        default "4" if TANGO2
+        default "5" if TANGO3
 	default "7" if SGI_IP27
 	default "5"
 

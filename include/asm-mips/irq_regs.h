@@ -17,5 +17,9 @@ static inline struct pt_regs *get_irq_regs(void)
 {
 	return current_thread_info()->regs;
 }
+static inline void set_irq_regs(struct pt_regs *regs)
+{
+        current_thread_info()->regs = regs;
+}
 
 #endif /* __ASM_IRQ_REGS_H */

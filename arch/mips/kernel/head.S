@@ -129,23 +129,47 @@
 #endif
 	.endm
 
-	/*
-	 * Reserved space for exception handlers.
-	 * Necessary for machines which link their kernels at KSEG0.
-	 */
-	.fill	0x400
-
-EXPORT(stext)					# used for profiling
-EXPORT(_stext)
-
-#ifdef CONFIG_MIPS_SIM
+#if defined(CONFIG_TANGOX) 
 	/*
 	 * Give us a fighting chance of running if execution beings at the
 	 * kernel load address.  This is needed because this platform does
 	 * not have a ELF loader yet.
 	 */
 	j	kernel_entry
+	nop
+
+	/*
+	 * Reserved space for exception handlers.
+	 * Necessary for machines which link their kernels at KSEG0.
+	 */
+	.fill	0x400-0x8
+#else
+	/*
+	 * Reserved space for exception handlers.
+	 * Necessary for machines which link their kernels at KSEG0.
+	 */
+	.fill	0x400
 #endif
+
+#if defined(CONFIG_TANGO3)
+	/* Creating some buffer for power management purpose */
+	/* Mark 16KB off the starting point */
+	.org	0x4000
+#endif
+
+EXPORT(stext)					# used for profiling
+EXPORT(_stext)
+
+#if defined(CONFIG_MIPS_SIM) 
+	/*
+	 * Give us a fighting chance of running if execution beings at the
+	 * kernel load address.  This is needed because this platform does
+	 * not have a ELF loader yet.
+	 */
+	j	kernel_entry
+	nop
+#endif
+
 	__INIT
 
 NESTED(kernel_entry, 16, sp)			# kernel entry point

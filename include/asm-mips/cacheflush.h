@@ -57,10 +57,14 @@ static inline void flush_anon_page(struct vm_area_struct *vma,
 		__flush_anon_page(page, vmaddr);
 }
 
+#ifdef CONFIG_TANGOX
+extern void (*flush_icache_page)(struct vm_area_struct *vma, struct page *page);
+#else
 static inline void flush_icache_page(struct vm_area_struct *vma,
 	struct page *page)
 {
 }
+#endif
 
 extern void (*flush_icache_range)(unsigned long start, unsigned long end);
 #define flush_cache_vmap(start, end)		flush_cache_all()

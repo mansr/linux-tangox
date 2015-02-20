@@ -27,7 +27,10 @@ $(obj)/version.o: include/linux/compile.h
 # mkcompile_h will make sure to only update the
 # actual file if its content has changed.
 
+mkcompile-y := $(srctree)/scripts/mkcompile_h
+mkcompile-$(CONFIG_IGNORE_COMPILE_INFO) := $(srctree)/scripts/mkcompile_fixed_h
+
 include/linux/compile.h: FORCE
 	@echo '  CHK     $@'
-	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/mkcompile_h $@ \
+	$(Q)$(CONFIG_SHELL) $(mkcompile-y) $@ \
 	"$(UTS_MACHINE)" "$(CONFIG_SMP)" "$(CONFIG_PREEMPT)" "$(CC) $(CFLAGS)"

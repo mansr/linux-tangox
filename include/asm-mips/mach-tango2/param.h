@@ -1,0 +1,5 @@
+
+#ifndef __ASM_MACH_TANGO2_PARAM_H
+#define __ASM_MACH_TANGO2_PARAM_H
+
+#endif /* __ASM_MACH_TANGO2_PARAM_H */

@@ -134,7 +134,11 @@ static inline u64 get_jiffies_64(void)
  * Have the 32 bit jiffies value wrap 5 minutes after boot
  * so jiffies wrap bugs show up earlier.
  */
+#if defined(CONFIG_PRINTK_TIME)
+#define INITIAL_JIFFIES 0
+#else
 #define INITIAL_JIFFIES ((unsigned long)(unsigned int) (-300*HZ))
+#endif
 
 /*
  * Change timeval to jiffies, trying to avoid the

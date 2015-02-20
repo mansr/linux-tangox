@@ -15,12 +15,44 @@
 #define _LINUX_SERIAL_REG_H
 
 /*
- * DLAB=0
+ * smp863x has an 16550 uart, but registers have been messed up...
  */
+#ifdef CONFIG_TANGOX
+
+#define UART_RX		0	/* In:  Receive buffer */
+#define UART_TX		1	/* Out: Transmit buffer */
+#define UART_IER	2	/* Out: Interrupt Enable Register */
+#define UART_IIR	3	/* In:  Interrupt ID Register */
+#define UART_FCR	4	/* Out: FIFO Control Register */
+#define UART_LCR	5	/* Out: Line Control Register */
+#define UART_MCR	6	/* Out: Modem Control Register */
+#define UART_LSR	7	/* In:  Line Status Register */
+#define UART_MSR	8	/* In:  Modem Status Register */
+#define UART_SCR	9	/* I/O: Scratch Register */
+
+/* EFR does not exist on TANGOX,  we use a magic to catch accesses and
+ * make them nop */
+#define UART_EFR	42
+
+#else
+
 #define UART_RX		0	/* In:  Receive buffer */
 #define UART_TX		0	/* Out: Transmit buffer */
-
 #define UART_IER	1	/* Out: Interrupt Enable Register */
+#define UART_IIR	2	/* In:  Interrupt ID Register */
+#define UART_EFR	2	/* I/O: Extended Features Register */
+#define UART_FCR	2	/* Out: FIFO Control Register */
+#define UART_LCR	3	/* Out: Line Control Register */
+#define UART_MCR	4	/* Out: Modem Control Register */
+#define UART_LSR	5	/* In:  Line Status Register */
+#define UART_MSR	6	/* In:  Modem Status Register */
+#define UART_SCR	7	/* I/O: Scratch Register */
+
+#endif
+
+/*
+ * DLAB=0
+ */
 #define UART_IER_MSI		0x08 /* Enable Modem status interrupt */
 #define UART_IER_RLSI		0x04 /* Enable receiver line status interrupt */
 #define UART_IER_THRI		0x02 /* Enable Transmitter holding register int. */
@@ -30,7 +62,6 @@
  */
 #define UART_IERX_SLEEP		0x10 /* Enable sleep mode */
 
-#define UART_IIR	2	/* In:  Interrupt ID Register */
 #define UART_IIR_NO_INT		0x01 /* No interrupts pending */
 #define UART_IIR_ID		0x06 /* Mask for the interrupt ID */
 #define UART_IIR_MSI		0x00 /* Modem status interrupt */
@@ -40,7 +71,6 @@
 
 #define UART_IIR_BUSY		0x07 /* DesignWare APB Busy Detect */
 
-#define UART_FCR	2	/* Out: FIFO Control Register */
 #define UART_FCR_ENABLE_FIFO	0x01 /* Enable the FIFO */
 #define UART_FCR_CLEAR_RCVR	0x02 /* Clear the RCVR FIFO */
 #define UART_FCR_CLEAR_XMIT	0x04 /* Clear the XMIT FIFO */
@@ -83,7 +113,6 @@
 #define UART_FCR6_T_TRIGGER_30	0x30 /* Mask for transmit trigger set at 30 */
 #define UART_FCR7_64BYTE	0x20 /* Go into 64 byte mode (TI16C750) */
 
-#define UART_LCR	3	/* Out: Line Control Register */
 /*
  * Note: if the word length is 5 bits (UART_LCR_WLEN5), then setting 
  * UART_LCR_STOP will select 1.5 stop bits, not 2 stop bits.
@@ -99,7 +128,6 @@
 #define UART_LCR_WLEN7		0x02 /* Wordlength: 7 bits */
 #define UART_LCR_WLEN8		0x03 /* Wordlength: 8 bits */
 
-#define UART_MCR	4	/* Out: Modem Control Register */
 #define UART_MCR_CLKSEL		0x80 /* Divide clock by 4 (TI16C752, EFR[4]=1) */
 #define UART_MCR_TCRTLR		0x40 /* Access TCR/TLR (TI16C752, EFR[4]=1) */
 #define UART_MCR_XONANY		0x20 /* Enable Xon Any (TI16C752, EFR[4]=1) */
@@ -110,7 +138,6 @@
 #define UART_MCR_RTS		0x02 /* RTS complement */
 #define UART_MCR_DTR		0x01 /* DTR complement */
 
-#define UART_LSR	5	/* In:  Line Status Register */
 #define UART_LSR_TEMT		0x40 /* Transmitter empty */
 #define UART_LSR_THRE		0x20 /* Transmit-hold-register empty */
 #define UART_LSR_BI		0x10 /* Break interrupt indicator */
@@ -119,7 +146,6 @@
 #define UART_LSR_OE		0x02 /* Overrun error indicator */
 #define UART_LSR_DR		0x01 /* Receiver data ready */
 
-#define UART_MSR	6	/* In:  Modem Status Register */
 #define UART_MSR_DCD		0x80 /* Data Carrier Detect */
 #define UART_MSR_RI		0x40 /* Ring Indicator */
 #define UART_MSR_DSR		0x20 /* Data Set Ready */
@@ -130,18 +156,25 @@
 #define UART_MSR_DCTS		0x01 /* Delta CTS */
 #define UART_MSR_ANY_DELTA	0x0F /* Any of the delta bits! */
 
-#define UART_SCR	7	/* I/O: Scratch Register */
 
 /*
  * DLAB=1
  */
+
+/*
+ * smp863x has DLM and DLM in one register
+ */
+#ifdef CONFIG_TANGOX
+#define UART_DL		10
+#define UART_CLKSEL	11	/* Clock selection */
+#else
 #define UART_DLL	0	/* Out: Divisor Latch Low */
 #define UART_DLM	1	/* Out: Divisor Latch High */
+#endif
 
 /*
  * LCR=0xBF (or DLAB=1 for 16C660)
  */
-#define UART_EFR	2	/* I/O: Extended Features Register */
 #define UART_EFR_CTS		0x80 /* CTS flow control */
 #define UART_EFR_RTS		0x40 /* RTS flow control */
 #define UART_EFR_SCD		0x20 /* Special character detect */

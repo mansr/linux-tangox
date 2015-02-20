@@ -213,6 +213,12 @@
 #define MACH_GROUP_NEC_EMMA2RH 25	/* NEC EMMA2RH (was 23)		*/
 #define  MACH_NEC_MARKEINS	0	/* NEC EMMA2RH Mark-eins	*/
 
+/*
+ * Valid machtype for group SIGMADESIGNS
+ */
+#define MACH_GROUP_SIGMADESIGNS	23	/* For SigmaDesigns Tango2/Tango3 board */
+#define  MACH_TANGOX		 1	/* Tango2/Tango3 */
+
 #define CL_SIZE			COMMAND_LINE_SIZE
 
 const char *get_system_type(void);

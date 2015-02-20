@@ -490,7 +490,7 @@ sigill:
 
 asmlinkage void do_ade(struct pt_regs *regs)
 {
-	unsigned long *regptr, newval;
+	unsigned long *regptr, newval = 0;
 	extern int do_dsemulret(struct pt_regs *);
 	unsigned int __user *pc;
 	mm_segment_t seg;
