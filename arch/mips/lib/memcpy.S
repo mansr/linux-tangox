@@ -184,7 +184,11 @@
  * memcpy sets v0 to dst.
  */
 	.align	5
-LEAF(memcpy)					/* a0=dst a1=src a2=len */
+#ifdef CONFIG_TANGOX
+LEAF(memcpy_original)				/* a0=dst a1=src a2=len */
+#else
+LEAF(memcpy)				/* a0=dst a1=src a2=len */
+#endif
 	move	v0, dst				/* return value */
 __memcpy:
 FEXPORT(__copy_user)
@@ -407,7 +411,11 @@ EXC(	 sb	t0, NBYTES-2(dst), s_exc_p1)
 done:
 	jr	ra
 	 nop
+#ifdef CONFIG_TANGOX
+	END(memcpy_original)
+#else
 	END(memcpy)
+#endif
 
 l_exc_copy:
 	/*
