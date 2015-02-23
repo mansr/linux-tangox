@@ -180,6 +180,22 @@ struct clk *clk_register_mux(struct device *dev, const char *name,
 }
 EXPORT_SYMBOL_GPL(clk_register_mux);
 
+void clk_unregister_mux(struct clk *clk)
+{
+	struct clk_mux *mux;
+	struct clk_hw *hw;
+
+	hw = __clk_get_hw(clk);
+	if (!hw)
+		return;
+
+	mux = to_clk_mux(hw);
+
+	clk_unregister(clk);
+	kfree(mux);
+}
+EXPORT_SYMBOL_GPL(clk_unregister_mux);
+
 #ifdef CONFIG_OF
 static void __init of_mux_clk_setup(struct device_node *node)
 {
