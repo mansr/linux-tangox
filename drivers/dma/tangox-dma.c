@@ -392,12 +392,6 @@ static enum dma_status tangox_dma_tx_status(struct dma_chan *c,
 	return dma_cookie_status(c, cookie, state);
 }
 
-static int tangox_dma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
-	unsigned long arg)
-{
-	return -ENOSYS;
-}
-
 static int tangox_dma_alloc_chan_resources(struct dma_chan *c)
 {
 	return 0;
@@ -472,10 +466,10 @@ static int tangox_dma_probe(struct platform_device *pdev)
 
 	dd->dev = &pdev->dev;
 
+	dd->directions = 1 << DMA_MEM_TO_DEV | 1 << DMA_DEV_TO_MEM;
 	dd->device_alloc_chan_resources = tangox_dma_alloc_chan_resources;
 	dd->device_free_chan_resources = tangox_dma_free_chan_resources;
 	dd->device_prep_slave_sg = tangox_dma_prep_slave_sg;
-	dd->device_control = tangox_dma_control;
 	dd->device_tx_status = tangox_dma_tx_status;
 	dd->device_issue_pending = tangox_dma_issue_pending;
 
