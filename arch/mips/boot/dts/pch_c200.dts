@@ -27,6 +27,11 @@
 	};
 };
 
+&eth0 {
+	phy-connection-type = "rgmii";
+	max-speed = <1000>;
+};
+
 &i2c0 {
 	clock-frequency = <2250000>;
 

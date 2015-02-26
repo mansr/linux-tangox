@@ -380,7 +380,6 @@
 			compatible = "sigma,smp8640-emac";
 			reg = <0x26000 0x800>;
 			interrupts = <38>;
-			phy-connection-type = "rgmii";
 			clocks = <&sys_clk 0>;
 		};
 
@@ -388,7 +387,6 @@
 			compatible = "sigma,smp8640-emac";
 			reg = <0x26800 0x800>;
 			interrupts = <57>;
-			phy-connection-type = "rgmii";
 			clocks = <&sys_clk 0>;
 		};
 
