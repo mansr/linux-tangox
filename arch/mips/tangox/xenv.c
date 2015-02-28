@@ -40,29 +40,10 @@ static u32 enabled_devices =
 	ENABLED_BIT(USB,	USB)		|
 	ENABLED_BIT(SATA,	SATA);
 
-static u32 uart_baudrate = CONFIG_TANGOX_XENV_DEF_BAUDRATE;
-static u32 uart_baudrates[3] = {
-	CONFIG_TANGOX_XENV_DEF_BAUDRATE,
-	CONFIG_TANGOX_XENV_DEF_BAUDRATE,
-	CONFIG_TANGOX_XENV_DEF_BAUDRATE,
-};
-
-static u32 uart_used_ports =
-	IS_ENABLED(CONFIG_TANGOX_XENV_DEF_UART0) +
-	IS_ENABLED(CONFIG_TANGOX_XENV_DEF_UART1);
-
 static u32 sata_channel_cfg;
-
 static u8 mac_address[2][6];
 
-static char xenv_cmdline[COMMAND_LINE_SIZE] = { 0 };
-
-static u32 dram_size[2];
-
 #ifdef CONFIG_TANGOX_XENV_READ
-
-static u32 ruamm0;
-static u32 ruamm1;
 
 static u32 mac0_lo, mac0_hi;
 static u32 mac1_lo, mac1_hi;
@@ -81,22 +62,12 @@ struct xenv_key {
 
 static const struct xenv_key xenv_keys[] __initconst = {
 	XENV_KEY(XENV_KEY_ENABLED_DEVICES, enabled_devices),
-
-	XENV_KEY(XENV_KEY_DEF_BAUDRATE, uart_baudrate),
-	XENV_KEY_ARR(XENV_KEYS_UART_BAUDRATE, uart_baudrates),
-	XENV_KEY(XENV_KEY_UART_USED_PORTS, uart_used_ports),
-
 	XENV_KEY(XENV_KEY_SATA_CHANNEL_CFG, sata_channel_cfg),
-
-	XENV_KEY(XENV_KEY_LINUX_CMD, xenv_cmdline),
 
 	{ 0 }
 };
 
 static const struct xenv_key xenv2_keys[] __initconst = {
-	XENV_KEY(XENV_LRRW_RUAMM0_GA, ruamm0),
-	XENV_KEY(XENV_LRRW_RUAMM1_GA, ruamm1),
-
 	XENV_KEY(XENV_LRRW_ETH_MACL, mac0_lo),
 	XENV_KEY(XENV_LRRW_ETH_MACH, mac0_hi),
 
@@ -285,22 +256,6 @@ static int __init xenv_read_content(void)
 	xenv_parse(xenv, MAX_XENV_SIZE, xenv_keys);
 	xenv_parse(xenv2, MAX_LR_XENV2_RW, xenv2_keys);
 
-	if (ruamm0)
-		dram_size[0] = ruamm0 - DRAM0_MEM_BASE;
-	if (ruamm1)
-		dram_size[1] = ruamm1 - DRAM1_MEM_BASE;
-
-	if (uart_baudrate == 0)
-		uart_baudrate = 115200;
-	if (uart_baudrates[0] == 0)
-		uart_baudrates[0] = uart_baudrate;
-	if (uart_baudrates[1] == 0)
-		uart_baudrates[1] = uart_baudrate;
-	if (uart_baudrates[2] == 0)
-		uart_baudrates[2] = uart_baudrate;
-
-	xenv_cmdline[COMMAND_LINE_SIZE - 1] = 0;
-
 	if (mac0_lo && mac0_hi) {
 		mac_hi = cpu_to_be32(mac0_hi);
 		mac_lo = cpu_to_be32(mac0_lo);
@@ -376,30 +331,6 @@ int __init xenv_config(void)
 	return 0;
 }
 
-u32 tangox_dram_size(unsigned idx)
-{
-	if (idx < ARRAY_SIZE(dram_size))
-		return dram_size[idx];
-	return 0;
-}
-
-#define BUILD_ENABLED(name, shift)					\
-int tangox_##name##_enabled(void)					\
-{									\
-	return (enabled_devices >> shift) & 1;				\
-}
-
-BUILD_ENABLED(isaide, ISAIDE_SHIFT)
-BUILD_ENABLED(bmide, BMIDE_SHIFT)
-BUILD_ENABLED(ir, IR_SHIFT)
-BUILD_ENABLED(fip, FIP_SHIFT)
-BUILD_ENABLED(usb, USB_SHIFT)
-BUILD_ENABLED(i2cm, I2CM_SHIFT)
-BUILD_ENABLED(i2cs, I2CS_SHIFT)
-BUILD_ENABLED(pci_host, PCIHOST_SHIFT)
-BUILD_ENABLED(sata, SATA_SHIFT)
-BUILD_ENABLED(gnet, GNET_SHIFT)
-
 int tangox_ethernet_enabled(unsigned int i)
 {
 	switch (i) {
@@ -416,21 +347,6 @@ unsigned char *tangox_ethernet_getmac(unsigned int i)
 		return NULL;
 
 	return mac_address[i];
-}
-
-int tangox_uart_baudrate(int uart)
-{
-	return uart_baudrates[uart];
-}
-
-int tangox_uart_enabled(int uart)
-{
-	return uart_used_ports >> uart & 1;
-}
-
-const char *tangox_xenv_cmdline(void)
-{
-	return xenv_cmdline;
 }
 
 unsigned int tangox_sata_cfg(void)

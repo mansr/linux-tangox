@@ -35,14 +35,8 @@ unsigned long tangox_get_sysclock(void);
 unsigned long tangox_get_dspclock(void);
 
 int xenv_config(void);
-const char *tangox_xenv_cmdline(void);
-int tangox_sata_enabled(void);
 unsigned int tangox_sata_cfg(void);
-int tangox_usb_enabled(void);
 int tangox_ethernet_enabled(unsigned int i);
 unsigned char *tangox_ethernet_getmac(unsigned int i);
-u32 tangox_dram_size(unsigned int idx);
-int tangox_uart_console_port(void);
-int tangox_uart_baudrate(int uart);
 
 #endif
