@@ -1,0 +1,25 @@
+/dts-v1/;
+
+/include/ "smp8640.dtsi"
+
+/ {
+	compatible = "sigma,smp8640-ipu";
+	model = "SMP86xx IPU";
+
+	cpus {
+		cpu0: cpu@0 {
+			compatible = "mips,mips4KEc";
+			clocks = <&sys_clk 0>;
+		};
+	};
+
+	memory@10000000 {
+		device_type = "memory";
+		reg = <0x10000000 0x3ff0000>;
+	};
+};
+
+&cpublock {
+	reg = <0xf0000 0x10000>;
+	ranges = <0x0 0xf0000 0x10000>;
+};

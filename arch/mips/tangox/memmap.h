@@ -4,12 +4,20 @@
 #define SYS_BASE		0x10000
 #define HOST_BASE		0x20000
 #define CPU_BASE		0x60000
+#define IPU_BASE		0xf0000
 
 #define UART0_BASE		(CPU_BASE + 0xc100)
 #define UART1_BASE		(CPU_BASE + 0xc200)
 #define UART2_BASE		(CPU_BASE + 0xcd00)
 
-#define REMAP_CTL_BASE		(CPU_BASE + 0xf000)
+#define CPU_REMAP_CTL		(CPU_BASE + 0xf000)
+#define IPU_REMAP_CTL		(IPU_BASE + 0xf000)
+
+#ifdef CONFIG_TANGOX_CPU
+#define REMAP_CTL_BASE		CPU_REMAP_CTL
+#else
+#define REMAP_CTL_BASE		IPU_REMAP_CTL
+#endif
 
 #define REMAP0_BASE		0x1fc00000
 #define REMAP1_BASE		0x00000000

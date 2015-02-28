@@ -1,10 +1,26 @@
 if TANGOX
 
 choice
+	prompt "Processor core"
+
+config TANGOX_CPU
+	bool "CPU (74Kf)"
+
+config TANGOX_IPU
+	bool "IPU (4KEc)"
+
+endchoice
+
+choice
 	prompt	"Devicetree"
 
 config DTB_PCH_C200
 	bool "Popcorn Hour C-200"
+	depends on TANGOX_CPU
+
+config DTB_TANGOX_IPU
+	bool "SMP86xx IPU"
+	depends on TANGOX_IPU
 
 endchoice
 
