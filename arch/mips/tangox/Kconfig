@@ -8,6 +8,19 @@ config DTB_PCH_C200
 
 endchoice
 
+config TANGOX_REMAP
+	bool "Physical address remapping"
+	help
+	  The SMP86xx chips can remap a range of CPU physical
+	  addresses to different bus addresses. This can be used to
+	  access RAM above 512MB without highmem.
+
+	  Say y to retain the mapping configured by the boot loader.
+
+	  Say n to force an identity mapping and save a slight
+	  overhead in DMA setup. The kernel must be loaded to an
+	  identity-mapped region.
+
 config TANGOX_EARLY_CONSOLE_PORT
 	int "Early console port"
 	depends on EARLY_PRINTK

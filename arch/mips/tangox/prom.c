@@ -42,6 +42,11 @@ static void __init tangox_systype_init(void)
 
 #define REMAP_SIZE 0x04000000
 
+#ifdef CONFIG_TANGOX_REMAP
+u8 tangox_remap[64];
+u8 tangox_remap_inv[64];
+#endif
+
 static void __init tangox_remap_init(void)
 {
 	void __iomem *base;
@@ -52,10 +57,23 @@ static void __init tangox_remap_init(void)
 	writel(0x1fc00000, base);
 	writel(0, base + 4);
 
+#ifdef CONFIG_TANGOX_REMAP
+	for (i = 0; i < 64; i++)
+		tangox_remap[i] = tangox_remap_inv[i] = i;
+
+	for (i = 2; i < 8; i++) {
+		unsigned long addr = readl(base + i * 4);
+		tangox_remap[i - 1] = addr >> 26;
+		tangox_remap_inv[addr >> 26] = i - 1;
+	}
+#else
 	for (i = 0; i < 6; i++)
 		writel(REMAP2_BASE + i * REMAP_SIZE, base + 8 + 4 * i);
 
 	mb();
+#endif
+
+	iounmap(base);
 }
 
 static void __init tangox_cmdline_setup(void)
