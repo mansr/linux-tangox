@@ -22,6 +22,9 @@ static void __init pr_freq(char sep, unsigned int f)
 
 void __init plat_time_init(void)
 {
+	struct device_node *cpu;
+	struct clk *clk;
+	unsigned rate;
 	int ccres;
 	int i;
 
@@ -31,8 +34,18 @@ void __init plat_time_init(void)
 	for (i = 0; i < ARRAY_SIZE(sys_names); i++)
 		tangox_sysclk[i] = clk_get(NULL, sys_names[i]);
 
+	cpu = of_find_node_by_path("cpu0");
+	if (!cpu)
+		return;
+
+	clk = of_clk_get(cpu, 0);
+	if (IS_ERR(clk))
+		return;
+
+	rate = clk_get_rate(clk);
+
 	__asm__ ("rdhwr %0, $3" : "=r" (ccres));
-	mips_hpt_frequency = tangox_get_cpuclock() / ccres;
+	mips_hpt_frequency = rate / ccres;
 
 	pr_info("CPU/System/DSP clocks:");
 	pr_freq(' ', tangox_get_cpuclock());

@@ -5,6 +5,7 @@
 	#size-cells = <1>;
 
 	aliases {
+		cpu0 = &cpu0;
 		eth0 = &eth0;
 		eth1 = &eth1;
 		sata_phy = &sata_phy;
