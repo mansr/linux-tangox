@@ -167,24 +167,3 @@ static int __init plat_of_setup(void)
 				    NULL, NULL);
 }
 arch_initcall(plat_of_setup);
-
-#ifdef CONFIG_PROC_FS
-static int tangox_proc_cpuinfo(struct notifier_block *np, unsigned long action,
-			       void *data)
-{
-	struct proc_cpuinfo_notifier_args *args = data;
-	struct seq_file *m = args->m;
-
-	seq_printf(m, "System clock\t\t: %ld Hz\n", tangox_get_sysclock());
-	seq_printf(m, "CPU clock\t\t: %ld Hz\n", tangox_get_cpuclock());
-	seq_printf(m, "DSP clock\t\t: %ld Hz\n", tangox_get_dspclock());
-
-	return 0;
-}
-
-static int __init tangox_proc_cpuinfo_init(void)
-{
-	return proc_cpuinfo_notifier(tangox_proc_cpuinfo, 0);
-}
-subsys_initcall(tangox_proc_cpuinfo_init);
-#endif
