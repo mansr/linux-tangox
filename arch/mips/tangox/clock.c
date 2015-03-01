@@ -31,8 +31,8 @@ void __init plat_time_init(void)
 	for (i = 0; i < ARRAY_SIZE(sys_names); i++)
 		tangox_sysclk[i] = clk_get(NULL, sys_names[i]);
 
-	ccres = read_c0_hwrena() >> 3 & 1;
-	mips_hpt_frequency = tangox_get_cpuclock() >> ccres;
+	__asm__ ("rdhwr %0, $3" : "=r" (ccres));
+	mips_hpt_frequency = tangox_get_cpuclock() / ccres;
 
 	pr_info("CPU/System/DSP clocks:");
 	pr_freq(' ', tangox_get_cpuclock());
