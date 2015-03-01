@@ -1,0 +1,14 @@
+/include/ "smp8640.dtsi"
+
+/ {
+	cpus {
+		cpu0: cpu@0 {
+			compatible = "mips,mips74Kc";
+		};
+	};
+};
+
+&cpublock {
+	reg = <0x60000 0x10000>;
+	ranges = <0x0 0x60000 0x10000>;
+};

@@ -10,12 +10,6 @@
 		sata_phy = &sata_phy;
 	};
 
-	cpus {
-		cpu@0 {
-			compatible = "mips,mips74Kc";
-		};
-	};
-
 	cpuintc: cpu-intc@0 {
 		compatible = "mti,cpu-interrupt-controller";
 		#address-cells = <0>;
@@ -471,26 +465,34 @@
 				clock-mux-width = <1>;
 			};
 		};
+	};
 
-		timer0: timer@6c500 {
+
+	cpublock: cpublock {
+		compatible = "simple-bus";
+		interrupt-parent = <&irqintc>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		timer0: timer@c500 {
 			compatible = "sigma,smp8640-timer";
-			reg = <0x6c500 0x10>;
+			reg = <0xc500 0x10>;
 			interrupts = <5>;
 			clocks = <&sys_clk 0>;
 			label = "tangox_timer0";
 		};
 
-		timer1: timer@6c600 {
+		timer1: timer@c600 {
 			compatible = "sigma,smp8640-timer";
-			reg = <0x6c600 0x10>;
+			reg = <0xc600 0x10>;
 			interrupts = <6>;
 			clocks = <&xtal_in_clk>;
 			label = "tangox_timer1";
 		};
 
-		intc@6e000 {
-			reg = <0x6e000 0x1000>;
-			ranges = <0x0 0x6e000 0x1000>;
+		intc: intc@e000 {
+			reg = <0xe000 0x1000>;
+			ranges = <0x0 0xe000 0x1000>;
 			interrupt-parent = <&cpuintc>;
 
 			#address-cells = <1>;
