@@ -98,9 +98,9 @@ static void tangox_irq_handler(unsigned int irq, struct irq_desc *desc)
 		write_c0_status(sr);
 }
 
-static void __init tangox_irq_init(struct irq_chip_generic *gc,
-				   unsigned long ctl_offs,
-				   unsigned long edge_offs)
+static void __init tangox_irq_init_chip(struct irq_chip_generic *gc,
+					unsigned long ctl_offs,
+					unsigned long edge_offs)
 {
 	struct tangox_irq_chip *chip = gc->domain->host_data;
 	struct irq_chip_type *ct = gc->chip_types;
@@ -131,17 +131,16 @@ static void __init tangox_irq_domain_init(struct irq_domain *dom)
 
 	for (i = 0; i < 2; i++) {
 		gc = irq_get_domain_generic_chip(dom, i * 32);
-		tangox_irq_init(gc, i * IRQ_CTL_HI, i * EDGE_CTL_HI);
+		tangox_irq_init_chip(gc, i * IRQ_CTL_HI, i * EDGE_CTL_HI);
 	}
 }
 
-static int __init tangox_of_irq_init(struct device_node *node,
-				     struct device_node *parent)
+static int __init tangox_irq_init(void __iomem *base, struct device_node *node)
 {
 	struct tangox_irq_chip *chip;
 	struct irq_domain *dom;
-	struct resource res, ctlres;
 	const char *name;
+	u32 ctl;
 	int irq;
 	int err;
 	int i;
@@ -150,19 +149,16 @@ static int __init tangox_of_irq_init(struct device_node *node,
 	if (!irq)
 		panic("Failed to get IRQ");
 
-	if (of_address_to_resource(node->parent, 0, &res))
-		panic("%s: failed to get memory resource", node->parent->name);
-
-	if (of_address_to_resource(node, 0, &ctlres))
-		panic("%s: failed to get memory resource", node->name);
+	if (of_property_read_u32(node, "reg", &ctl))
+		panic("%s: failed to get reg base", node->name);
 
 	if (of_property_read_string(node, "label", &name))
 		name = node->name;
 
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
-	chip->ctl = ctlres.start - res.start;
+	chip->ctl = ctl;
 	chip->mask = ((1 << (irq - 2)) - 1) << STATUSB_IP2;
-	chip->base = ioremap(res.start, resource_size(&res));
+	chip->base = base;
 
 	dom = irq_domain_add_linear(node, 64, &irq_generic_chip_ops, chip);
 	if (!dom)
@@ -180,6 +176,20 @@ static int __init tangox_of_irq_init(struct device_node *node,
 
 	irq_set_chained_handler(irq, tangox_irq_handler);
 	irq_set_handler_data(irq, dom);
+
+	return 0;
+}
+
+static int __init tangox_of_irq_init(struct device_node *node,
+				     struct device_node *parent)
+{
+	struct device_node *c;
+	void __iomem *base;
+
+	base = of_iomap(node, 0);
+
+	for_each_child_of_node(node, c)
+		tangox_irq_init(base, c);
 
 	return 0;
 }

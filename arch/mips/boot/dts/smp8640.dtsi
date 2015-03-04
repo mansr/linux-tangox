@@ -492,35 +492,30 @@
 		};
 
 		intc: intc@e000 {
+			compatible = "sigma,smp8640-intc";
 			reg = <0xe000 0x1000>;
 			ranges = <0x0 0xe000 0x1000>;
 			interrupt-parent = <&cpuintc>;
-
+			interrupt-controller;
 			#address-cells = <1>;
 			#size-cells = <1>;
 
 			irqintc: irq@000 {
-				compatible = "sigma,smp8640-intc";
 				reg = <0x000 0x100>;
-				interrupt-controller;
 				#interrupt-cells = <1>;
 				interrupts = <2>;
 				label = "IRQ";
 			};
 
 			fiqintc: fiq@100 {
-				compatible = "sigma,smp8640-intc";
 				reg = <0x100 0x100>;
-				interrupt-controller;
 				#interrupt-cells = <1>;
 				interrupts = <3>;
 				label = "FIQ";
 			};
 
 			iiqintc: iiq@300 {
-				compatible = "sigma,smp8640-intc";
 				reg = <0x300 0x100>;
-				interrupt-controller;
 				#interrupt-cells = <1>;
 				interrupts = <4>;
 				label = "IIQ";
