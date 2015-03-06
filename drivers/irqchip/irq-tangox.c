@@ -96,6 +96,42 @@ static void tangox_irq_handler(unsigned int irq, struct irq_desc *desc)
 		write_c0_status(sr);
 }
 
+static int tangox_irq_set_type(struct irq_data *d, unsigned int flow_type)
+{
+	struct irq_chip_generic *gc = irq_data_get_irq_chip_data(d);
+	struct tangox_irq_chip *chip = gc->domain->host_data;
+	struct irq_chip_regs *regs = &gc->chip_types[0].regs;
+
+	switch (flow_type & IRQ_TYPE_SENSE_MASK) {
+	case IRQ_TYPE_EDGE_RISING:
+		intc_writel(chip, regs->type + EDGE_CFG_RISE_SET, d->mask);
+		intc_writel(chip, regs->type + EDGE_CFG_FALL_CLR, d->mask);
+		break;
+
+	case IRQ_TYPE_EDGE_FALLING:
+		intc_writel(chip, regs->type + EDGE_CFG_RISE_CLR, d->mask);
+		intc_writel(chip, regs->type + EDGE_CFG_FALL_SET, d->mask);
+		break;
+
+	case IRQ_TYPE_LEVEL_HIGH:
+		intc_writel(chip, regs->type + EDGE_CFG_RISE_CLR, d->mask);
+		intc_writel(chip, regs->type + EDGE_CFG_FALL_CLR, d->mask);
+		break;
+
+	case IRQ_TYPE_LEVEL_LOW:
+		intc_writel(chip, regs->type + EDGE_CFG_RISE_SET, d->mask);
+		intc_writel(chip, regs->type + EDGE_CFG_FALL_SET, d->mask);
+		break;
+
+	default:
+		pr_err("Invalid trigger mode %x for IRQ %d\n",
+		       flow_type, d->irq);
+		return -EINVAL;
+	}
+
+	return irq_setup_alt_chip(d, flow_type);
+}
+
 static void __init tangox_irq_init_chip(struct irq_chip_generic *gc,
 					unsigned long ctl_offs,
 					unsigned long edge_offs)
@@ -104,19 +140,30 @@ static void __init tangox_irq_init_chip(struct irq_chip_generic *gc,
 	struct irq_chip_type *ct = gc->chip_types;
 	unsigned long ctl_base = chip->ctl + ctl_offs;
 	unsigned long edge_base = EDGE_CTL_BASE + edge_offs;
+	int i;
 
 	gc->reg_base = chip->base;
 	gc->unused = 0;
 
-	ct->chip.irq_ack = irq_gc_ack_set_bit;
-	ct->chip.irq_mask = irq_gc_mask_disable_reg;
-	ct->chip.irq_mask_ack = irq_gc_mask_disable_reg_and_ack;
-	ct->chip.irq_unmask = irq_gc_unmask_enable_reg;
+	for (i = 0; i < 2; i++) {
+		ct[i].chip.irq_ack = irq_gc_ack_set_bit;
+		ct[i].chip.irq_mask = irq_gc_mask_disable_reg;
+		ct[i].chip.irq_mask_ack = irq_gc_mask_disable_reg_and_ack;
+		ct[i].chip.irq_unmask = irq_gc_unmask_enable_reg;
+		ct[i].chip.irq_set_type = tangox_irq_set_type;
+		ct[i].chip.name = gc->domain->name;
 
-	ct->regs.enable = ctl_base + IRQ_EN_SET;
-	ct->regs.disable = ctl_base + IRQ_EN_CLR;
-	ct->regs.ack = edge_base + EDGE_RAWSTAT;
-	ct->regs.eoi = ctl_base + IRQ_EN_SET;
+		ct[i].regs.enable = ctl_base + IRQ_EN_SET;
+		ct[i].regs.disable = ctl_base + IRQ_EN_CLR;
+		ct[i].regs.ack = edge_base + EDGE_RAWSTAT;
+		ct[i].regs.type = edge_base;
+	}
+
+	ct[0].type = IRQ_TYPE_LEVEL_MASK;
+	ct[0].handler = handle_level_irq;
+
+	ct[1].type = IRQ_TYPE_EDGE_BOTH;
+	ct[1].handler = handle_edge_irq;
 
 	intc_writel(chip, ct->regs.disable, 0xffffffff);
 	intc_writel(chip, ct->regs.ack, 0xffffffff);
@@ -162,7 +209,7 @@ static int __init tangox_irq_init(void __iomem *base, struct device_node *node)
 	if (!dom)
 		panic("Failed to create irqdomain");
 
-	err = irq_alloc_domain_generic_chips(dom, 32, 1, name, handle_level_irq,
+	err = irq_alloc_domain_generic_chips(dom, 32, 2, name, handle_level_irq,
 					     0, 0, 0);
 	if (err)
 		panic("Failed to allocate irqchip");

@@ -1,3 +1,5 @@
+#include <dt-bindings/interrupt-controller/irq.h>
+
 / {
 	compatible = "sigma,smp8640-soc";
 
@@ -284,7 +286,7 @@
 		i2c1: i2c@10400 {
 			compatible = "sigma,smp8640-i2c";
 			reg = <0x10400 0x2c>;
-			interrupts = <22>;
+			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sys_clk 0>;
 			clock-frequency = <100000>;
 			#address-cells = <1>;
@@ -294,7 +296,7 @@
 		i2c0: i2c@10480 {
 			compatible = "sigma,smp8640-i2c";
 			reg = <0x10480 0x2c>;
-			interrupts = <22>;
+			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sys_clk 0>;
 			clock-frequency = <100000>;
 			#address-cells = <1>;
@@ -312,7 +314,7 @@
 			compatible = "sigma,smp8640-ir";
 			reg = <0x10518 0x18
 			       0x105e0 0x1c>;
-			interrupts = <21>;
+			interrupts = <21 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&xtal_in_clk>;
 		};
 
@@ -325,7 +327,7 @@
 		usb0_ehci: usb@21400 {
 			compatible = "sigma,smp8640-ehci", "generic-ehci";
 			reg = <0x21400 0x100>;
-			interrupts = <40>;
+			interrupts = <40 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb0_phy>;
 			phy-names = "usb";
 		};
@@ -333,7 +335,7 @@
 		usb0_ohci: usb@21500 {
 			compatible = "sigma,smp8640-ohci", "generic-ohci";
 			reg = <0x21500 0x100>;
-			interrupts = <39>;
+			interrupts = <39 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb0_phy>;
 			phy-names = "usb";
 		};
@@ -348,7 +350,8 @@
 		sata0: sata@23000 {
 			compatible = "sigma,smp8640-sata";
 			reg = <0x23000 0x800 0x24000 0xc>;
-			interrupts = <41 42>;
+			interrupts = <41 IRQ_TYPE_LEVEL_HIGH
+				      42 IRQ_TYPE_LEVEL_HIGH>;
 			dmas = <&dma0 5>;
 			dma-names = "sata";
 			phys = <&sata_phy>;
@@ -358,7 +361,8 @@
 		sata1: sata@23800 {
 			compatible = "sigma,smp8640-sata";
 			reg = <0x23800 0x800 0x24040 0xc>;
-			interrupts = <54 55>;
+			interrupts = <54 IRQ_TYPE_LEVEL_HIGH
+				      55 IRQ_TYPE_LEVEL_HIGH>;
 			dmas = <&dma0 8>;
 			dma-names = "sata";
 			phys = <&sata_phy>;
@@ -374,14 +378,14 @@
 		eth0: emac@26000 {
 			compatible = "sigma,smp8640-emac";
 			reg = <0x26000 0x800>;
-			interrupts = <38>;
+			interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sys_clk 0>;
 		};
 
 		eth1: emac@26800 {
 			compatible = "sigma,smp8640-emac";
 			reg = <0x26800 0x800>;
-			interrupts = <57>;
+			interrupts = <57 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sys_clk 0>;
 		};
 
@@ -396,28 +400,28 @@
 
 			chan@000 {
 				reg = <0x000 0x10>;
-				interrupts = <9>;
+				interrupts = <9 IRQ_TYPE_EDGE_RISING>;
 				sigma,sbox-id = <1>;
 				sigma,dev-to-mem;
 			};
 
 			chan@080 {
 				reg = <0x080 0x10>;
-				interrupts = <11>;
+				interrupts = <11 IRQ_TYPE_EDGE_RISING>;
 				sigma,sbox-id = <1>;
 				sigma,mem-to-dev;
 			};
 
 			chan@100 {
 				reg = <0x100 0x10>;
-				interrupts = <58>;
+				interrupts = <58 IRQ_TYPE_EDGE_RISING>;
 				sigma,sbox-id = <9>;
 				sigma,dev-to-mem;
 			};
 
 			chan@140 {
 				reg = <0x140 0x10>;
-				interrupts = <59>;
+				interrupts = <59 IRQ_TYPE_EDGE_RISING>;
 				sigma,sbox-id = <9>;
 				sigma,mem-to-dev;
 			};
@@ -427,7 +431,7 @@
 			compatible = "sigma,smp8640-uart", "ralink,rt2880-uart";
 			reg = <0x6c100 0x100>;
 			ranges = <0x0 0x6c100 0x100>;
-			interrupts = <1>;
+			interrupts = <1 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&uart0_clk>;
 			reg-shift = <2>;
 
@@ -449,7 +453,7 @@
 			compatible = "sigma,smp8640-uart", "ralink,rt2880-uart";
 			reg = <0x6c200 0x100>;
 			ranges = <0x0 0x6c200 0x100>;
-			interrupts = <2>;
+			interrupts = <2 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&uart1_clk>;
 			reg-shift = <2>;
 
@@ -478,7 +482,7 @@
 		timer0: timer@c500 {
 			compatible = "sigma,smp8640-timer";
 			reg = <0xc500 0x10>;
-			interrupts = <5>;
+			interrupts = <5 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sys_clk 0>;
 			label = "tangox_timer0";
 		};
@@ -486,7 +490,7 @@
 		timer1: timer@c600 {
 			compatible = "sigma,smp8640-timer";
 			reg = <0xc600 0x10>;
-			interrupts = <6>;
+			interrupts = <6 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&xtal_in_clk>;
 			label = "tangox_timer1";
 		};
@@ -502,21 +506,21 @@
 
 			irqintc: irq@000 {
 				reg = <0x000 0x100>;
-				#interrupt-cells = <1>;
+				#interrupt-cells = <2>;
 				interrupts = <2>;
 				label = "IRQ";
 			};
 
 			fiqintc: fiq@100 {
 				reg = <0x100 0x100>;
-				#interrupt-cells = <1>;
+				#interrupt-cells = <2>;
 				interrupts = <3>;
 				label = "FIQ";
 			};
 
 			iiqintc: iiq@300 {
 				reg = <0x300 0x100>;
-				#interrupt-cells = <1>;
+				#interrupt-cells = <2>;
 				interrupts = <4>;
 				label = "IIQ";
 			};

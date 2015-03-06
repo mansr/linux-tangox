@@ -1,6 +1,7 @@
 /dts-v1/;
 
-/include/ "smp8640-cpu.dtsi"
+#include "smp8640.dtsi"
+#include "smp8640-cpu.dtsi"
 
 / {
 	compatible = "syabas,pch_c200", "sigma,smp8640-soc";

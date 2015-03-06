@@ -1,5 +1,3 @@
-/include/ "smp8640.dtsi"
-
 / {
 	cpus {
 		cpu0: cpu@0 {

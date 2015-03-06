@@ -1,6 +1,6 @@
 /dts-v1/;
 
-/include/ "smp8640.dtsi"
+#include "smp8640.dtsi"
 
 / {
 	compatible = "sigma,smp8640-ipu";
