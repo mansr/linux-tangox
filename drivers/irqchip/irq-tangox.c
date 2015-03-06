@@ -86,15 +86,13 @@ static void tangox_irq_handler(unsigned int irq, struct irq_desc *desc)
 		return;
 	}
 
-	if (chip->mask) {
-		sr = read_c0_status();
-		write_c0_status(sr & ~chip->mask);
-	}
+	if (chip->mask)
+		sr = clear_c0_status(chip->mask);
 
 	tangox_dispatch_irqs(dom, status, 0);
 	tangox_dispatch_irqs(dom, status_hi, 32);
 
-	if (sr)
+	if (chip->mask)
 		write_c0_status(sr);
 }
 
