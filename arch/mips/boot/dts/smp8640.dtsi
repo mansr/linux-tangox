@@ -262,9 +262,11 @@
 		};
 
 		uart_clk: uart_clk {
-			compatible = "fixed-clock";
+			compatible = "fixed-factor-clock";
 			#clock-cells = <0>;
-			clock-frequency = <7372800>;
+			clocks = <&xtal_in_clk>;
+			clock-mult = <512>;
+			clock-div = <1875>;
 			clock-output-names = "uart_clk";
 		};
 	};
