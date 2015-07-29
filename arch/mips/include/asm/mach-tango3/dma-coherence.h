@@ -75,4 +75,8 @@ static inline int plat_device_is_coherent(struct device *dev)
 	return 0;
 }
 
+static inline void plat_post_dma_flush(struct device *dev)
+{
+}
+
 #endif /* __ASM_MACH_TANGO3_DMA_COHERENCE_H */
