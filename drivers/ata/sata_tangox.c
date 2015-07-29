@@ -28,12 +28,12 @@
 #include <linux/module.h>
 #include <linux/dmaengine.h>
 #include <linux/phy/phy.h>
+#include <linux/scatterlist.h>
 #include <scsi/scsi_host.h>
 #include <scsi/scsi.h>
 #include <scsi/scsi_device.h>
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_tcq.h>
-#include <asm/scatterlist.h>
 
 #include "libata.h"
 
