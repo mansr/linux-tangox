@@ -508,6 +508,7 @@
 
 			irqintc: irq@000 {
 				reg = <0x000 0x100>;
+				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <2>;
 				label = "IRQ";
@@ -515,6 +516,7 @@
 
 			fiqintc: fiq@100 {
 				reg = <0x100 0x100>;
+				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <3>;
 				label = "FIQ";
@@ -522,6 +524,7 @@
 
 			iiqintc: iiq@300 {
 				reg = <0x300 0x100>;
+				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <4>;
 				label = "IIQ";
