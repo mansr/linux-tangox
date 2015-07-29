@@ -507,7 +507,7 @@ static void amg19264c_gpio_set(struct gpio_desc **gpio, int *data, int num,
 	}
 
 	if (n)
-		gpiod_set_raw_array_cansleep(n, g, d);
+		gpiod_set_raw_array_value_cansleep(n, g, d);
 }
 
 static void amg19264c_gpio_write(struct amg19264c *lcd, int cs, int rs,
