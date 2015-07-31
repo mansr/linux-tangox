@@ -9,7 +9,6 @@
 
 #include <linux/init.h>
 #include <linux/irqchip.h>
-#include <linux/of.h>
 #include <asm/irq.h>
 #include <asm/irq_cpu.h>
 
@@ -17,6 +16,3 @@ void __init arch_init_irq(void)
 {
 	irqchip_init();
 }
-
-OF_DECLARE_2(irqchip, mips_cpu, "mti,cpu-interrupt-controller",
-	     mips_cpu_irq_of_init);
