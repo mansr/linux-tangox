@@ -44,7 +44,6 @@
 struct tangox_irq_chip {
 	void __iomem *base;
 	unsigned long ctl;
-	unsigned int mask;
 };
 
 static inline u32 intc_readl(struct tangox_irq_chip *chip, int reg)
@@ -76,24 +75,12 @@ static void tangox_irq_handler(unsigned int irq, struct irq_desc *desc)
 	struct irq_domain *dom = irq_desc_get_handler_data(desc);
 	struct tangox_irq_chip *chip = dom->host_data;
 	unsigned int status, status_hi;
-	unsigned int sr = 0;
 
 	status = intc_readl(chip, chip->ctl + IRQ_STATUS);
 	status_hi = intc_readl(chip, chip->ctl + IRQ_CTL_HI + IRQ_STATUS);
 
-	if (!(status | status_hi)) {
-		spurious_interrupt();
-		return;
-	}
-
-	if (chip->mask)
-		sr = clear_c0_status(chip->mask);
-
 	tangox_dispatch_irqs(dom, status, 0);
 	tangox_dispatch_irqs(dom, status_hi, 32);
-
-	if (chip->mask)
-		write_c0_status(sr);
 }
 
 static int tangox_irq_set_type(struct irq_data *d, unsigned int flow_type)
@@ -202,7 +189,6 @@ static int __init tangox_irq_init(void __iomem *base, struct device_node *node)
 
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	chip->ctl = ctl;
-	chip->mask = ((1 << (irq - 2)) - 1) << STATUSB_IP2;
 	chip->base = base;
 
 	dom = irq_domain_add_linear(node, 64, &irq_generic_chip_ops, chip);
