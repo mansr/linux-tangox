@@ -9,13 +9,12 @@
 
 #include <linux/init.h>
 #include <linux/irq.h>
+#include <linux/irqchip.h>
 #include <linux/ioport.h>
 #include <linux/io.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/slab.h>
-
-#include "irqchip.h"
 
 #define IRQ_CTL_BASE		0x0000
 #define FIQ_CTL_BASE		0x0100
