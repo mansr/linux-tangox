@@ -410,7 +410,7 @@ static u8 tangox_clk_mux_get_parent(struct clk_hw *hw)
 	v = readl(m->reg) >> m->shift & 15;
 
 	if (m->table) {
-		nparents = __clk_get_num_parents(hw->clk);
+		nparents = clk_hw_get_num_parents(hw);
 
 		for (i = 0; i < nparents; i++)
 			if (m->table[i] == v)
