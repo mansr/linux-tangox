@@ -10,6 +10,7 @@
 #include <linux/init.h>
 #include <linux/irq.h>
 #include <linux/irqchip.h>
+#include <linux/irqchip/chained_irq.h>
 #include <linux/ioport.h>
 #include <linux/io.h>
 #include <linux/of_address.h>
@@ -72,14 +73,19 @@ static void tangox_dispatch_irqs(struct irq_domain *dom, unsigned int status,
 static void tangox_irq_handler(unsigned int irq, struct irq_desc *desc)
 {
 	struct irq_domain *dom = irq_desc_get_handler_data(desc);
+	struct irq_chip *host_chip = irq_desc_get_chip(desc);
 	struct tangox_irq_chip *chip = dom->host_data;
 	unsigned int status, status_hi;
+
+	chained_irq_enter(host_chip, desc);
 
 	status = intc_readl(chip, chip->ctl + IRQ_STATUS);
 	status_hi = intc_readl(chip, chip->ctl + IRQ_CTL_HI + IRQ_STATUS);
 
 	tangox_dispatch_irqs(dom, status, 0);
 	tangox_dispatch_irqs(dom, status_hi, 32);
+
+	chained_irq_exit(host_chip, desc);
 }
 
 static int tangox_irq_set_type(struct irq_data *d, unsigned int flow_type)
