@@ -86,26 +86,25 @@ static int tangox_timer_next_event(unsigned long evt,
 	return tangox_timer_start(tm, evt);
 }
 
-static void tangox_timer_set_mode(enum clock_event_mode mode,
-				  struct clock_event_device *dev)
+static int tangox_timer_set_periodic(struct clock_event_device *dev)
 {
 	struct tangox_timer *tm = to_tangox_timer(dev);
 
 	tangox_timer_stop(tm);
+	tm->periodic = 1;
+	tangox_timer_start(tm, tm->ticks_per_jiffy);
 
-	switch (mode) {
-	case CLOCK_EVT_MODE_PERIODIC:
-		tm->periodic = 1;
-		tangox_timer_start(tm, tm->ticks_per_jiffy);
-		break;
+	return 0;
+}
 
-	case CLOCK_EVT_MODE_ONESHOT:
-		tm->periodic = 0;
-		break;
+static int tangox_timer_set_oneshot(struct clock_event_device *dev)
+{
+	struct tangox_timer *tm = to_tangox_timer(dev);
 
-	default:
-		break;
-	}
+	tangox_timer_stop(tm);
+	tm->periodic = 0;
+
+	return 0;
 }
 
 static void __init tangox_timer_setup(struct device_node *node)
@@ -150,7 +149,8 @@ static void __init tangox_timer_setup(struct device_node *node)
 	tm->ticks_per_jiffy = DIV_ROUND_UP(rate, HZ);
 
 	tm->cevt.set_next_event = tangox_timer_next_event;
-	tm->cevt.set_mode = tangox_timer_set_mode;
+	tm->cevt.set_state_periodic = tangox_timer_set_periodic;
+	tm->cevt.set_state_oneshot = tangox_timer_set_oneshot;
 	tm->cevt.features = CLOCK_EVT_FEAT_ONESHOT;
 	tm->cevt.name = name;
 	tm->cevt.rating = 350;
