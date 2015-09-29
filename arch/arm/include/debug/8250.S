@@ -9,6 +9,18 @@
  */
 #include <linux/serial_reg.h>
 
+#ifdef CONFIG_DEBUG_UART_8250_PALMCHIP
+
+#undef UART_TX
+#undef UART_LSR
+#undef UART_MSR
+
+#define UART_TX 1
+#define UART_LSR 7
+#define UART_MSR 8
+
+#endif
+
 		.macro	addruart, rp, rv, tmp
 		ldr	\rp, =CONFIG_DEBUG_UART_PHYS
 		ldr	\rv, =CONFIG_DEBUG_UART_VIRT
