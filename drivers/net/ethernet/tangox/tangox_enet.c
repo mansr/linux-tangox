@@ -875,10 +875,10 @@ static void enet_hw_reset(struct net_device *dev)
 	struct tangox_enet_priv *priv = netdev_priv(dev);
 
 	/* software reset IP */
-	enet_writeb(priv, 0x424, 0);
+	enet_writeb(priv, ENET_SW_RESET, 0);
 	wmb();
 	udelay(10);
-	enet_writeb(priv, 0x424, 1);
+	enet_writeb(priv, ENET_SW_RESET, 1);
 	wmb();
 }
 
@@ -891,10 +891,10 @@ static int enet_hw_init(struct net_device *dev)
 	clkdiv = priv->gigabit ? 125000000 : 25000000;
 	itrmul = clk_get_rate(priv->sys_clk) / clkdiv + 2;
 
-	/* set or clear pad_mode */
-	val = enet_readb(priv, 0x400) & 0xf0;
+	val = enet_readb(priv, ENET_PAD_MODE) & 0x78;
 	if (priv->phydev->supported & PHY_1000BT_FEATURES)
-		enet_writeb(priv, 0x400, val | 0x01);
+		val |= 1;
+	enet_writeb(priv, ENET_PAD_MODE, val);
 
 	enet_writeb(priv, ENET_RANDOM_SEED, 0x08);
 
@@ -1020,7 +1020,7 @@ static int tangox_enet_probe(struct platform_device *pdev)
 	enet_hw_reset(dev);
 
 	clk_div = DIV_ROUND_UP(clk_get_rate(priv->sys_clk), 2 * MAX_MDC_CLOCK);
-	enet_writew(priv, 0x420, clk_div);
+	enet_writew(priv, ENET_MDIO_CLKDIV, clk_div);
 
 	bus = devm_mdiobus_alloc(&pdev->dev);
 	if (!bus) {

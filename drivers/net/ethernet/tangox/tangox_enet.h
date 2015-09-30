@@ -84,8 +84,8 @@
 #define ENET_MAC_MODE			0x44
 #define RGMII_MODE			(1 << 7)
 #define HALF_DUPLEX			(1 << 4)
-#define BST_EN				(1 << 3)
-#define LB_EN				(1 << 2)
+#define BURST_EN			(1 << 3)
+#define LOOPBACK_EN			(1 << 2)
 #define GMAC_MODE			(1 << 0)
 
 #define ENET_IC_THRESHOLD		0x50
@@ -182,6 +182,10 @@
 
 #define ENET_RX_FIFO_SR			0x214
 #define ENET_RX_ITR			0x218
+
+#define ENET_PAD_MODE			0x400
+#define ENET_MDIO_CLKDIV		0x420
+#define ENET_SW_RESET			0x424
 
 struct enet_desc {
 	unsigned long s_addr;
