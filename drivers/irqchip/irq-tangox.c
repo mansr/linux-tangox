@@ -17,10 +17,10 @@
 #include <linux/of_irq.h>
 #include <linux/slab.h>
 
-#define IRQ_CTL_BASE		0x0000
-#define FIQ_CTL_BASE		0x0100
+#define IRQ0_CTL_BASE		0x0000
+#define IRQ1_CTL_BASE		0x0100
 #define EDGE_CTL_BASE		0x0200
-#define IIQ_CTL_BASE		0x0300
+#define IRQ2_CTL_BASE		0x0300
 
 #define IRQ_CTL_HI		0x18
 #define EDGE_CTL_HI		0x20
@@ -75,14 +75,14 @@ static void tangox_irq_handler(struct irq_desc *desc)
 	struct irq_domain *dom = irq_desc_get_handler_data(desc);
 	struct irq_chip *host_chip = irq_desc_get_chip(desc);
 	struct tangox_irq_chip *chip = dom->host_data;
-	unsigned int status, status_hi;
+	unsigned int status_lo, status_hi;
 
 	chained_irq_enter(host_chip, desc);
 
-	status = intc_readl(chip, chip->ctl + IRQ_STATUS);
+	status_lo = intc_readl(chip, chip->ctl + IRQ_STATUS);
 	status_hi = intc_readl(chip, chip->ctl + IRQ_CTL_HI + IRQ_STATUS);
 
-	tangox_dispatch_irqs(dom, status, 0);
+	tangox_dispatch_irqs(dom, status_lo, 0);
 	tangox_dispatch_irqs(dom, status_hi, 32);
 
 	chained_irq_exit(host_chip, desc);
