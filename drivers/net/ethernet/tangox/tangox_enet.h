@@ -255,7 +255,7 @@ struct tangox_enet_priv {
 	dma_addr_t			tx_desc_dma;
 
 	int				gigabit;
-	struct clk			*sys_clk;
+	struct clk			*clk;
 };
 
 #endif /* __TANGOX_ENET_H */

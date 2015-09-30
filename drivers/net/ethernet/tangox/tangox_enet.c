@@ -889,7 +889,7 @@ static int enet_hw_init(struct net_device *dev)
 	int clkdiv, itrmul;
 
 	clkdiv = priv->gigabit ? 125000000 : 25000000;
-	itrmul = clk_get_rate(priv->sys_clk) / clkdiv + 2;
+	itrmul = clk_get_rate(priv->clk) / clkdiv + 2;
 
 	val = enet_readb(priv, ENET_PAD_MODE) & 0x78;
 	if (priv->phydev->supported & PHY_1000BT_FEATURES)
@@ -1010,22 +1010,26 @@ static int tangox_enet_probe(struct platform_device *pdev)
 		priv->tx_desc_count *= 2;
 	}
 
-	priv->sys_clk = devm_clk_get(&pdev->dev, NULL);
-	if (IS_ERR(priv->sys_clk)) {
-		dev_err(&pdev->dev, "failed to get sys_clk\n");
-		ret = PTR_ERR(priv->sys_clk);
+	priv->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(priv->clk)) {
+		dev_err(&pdev->dev, "failed to get clock\n");
+		ret = PTR_ERR(priv->clk);
 		goto err_free_dev;
 	}
 
+	ret = clk_prepare_enable(priv->clk);
+	if (ret)
+		goto err_free_dev;
+
 	enet_hw_reset(dev);
 
-	clk_div = DIV_ROUND_UP(clk_get_rate(priv->sys_clk), 2 * MAX_MDC_CLOCK);
+	clk_div = DIV_ROUND_UP(clk_get_rate(priv->clk), 2 * MAX_MDC_CLOCK);
 	enet_writew(priv, ENET_MDIO_CLKDIV, clk_div);
 
 	bus = devm_mdiobus_alloc(&pdev->dev);
 	if (!bus) {
 		ret = -ENOMEM;
-		goto err_free_dev;
+		goto err_disable_clk;
 	}
 
 	bus->name = "tangox-mii";
@@ -1038,7 +1042,7 @@ static int tangox_enet_probe(struct platform_device *pdev)
 	ret = mdiobus_register(bus);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register MII bus\n");
-		goto err_free_dev;
+		goto err_disable_clk;
 	}
 
 	phydev = phy_find_first(bus);
@@ -1110,6 +1114,8 @@ err_detach_phy:
 	phy_detach(priv->phydev);
 err_free_bus:
 	mdiobus_unregister(bus);
+err_disable_clk:
+	clk_disable_unprepare(priv->clk);
 err_free_dev:
 	free_netdev(dev);
 
@@ -1126,6 +1132,8 @@ static int tangox_enet_remove(struct platform_device *pdev)
 
 	phy_detach(priv->phydev);
 	mdiobus_unregister(priv->mii_bus);
+
+	clk_disable_unprepare(priv->clk);
 
 	enet_dma_free(ndev);
 	free_netdev(ndev);
