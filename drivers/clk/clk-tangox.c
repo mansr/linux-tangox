@@ -60,6 +60,7 @@ static void __init tangox_clk_pll_setup(struct device_node *node)
 	struct clk_mux *m;
 	const char *names[3];
 	const char **pnames = NULL;
+	int noutputs;
 	int nparents;
 	int table_len;
 	u32 n_bits;
@@ -68,8 +69,10 @@ static void __init tangox_clk_pll_setup(struct device_node *node)
 	u32 mn_bias;
 	int i;
 
-	if (of_property_read_string_array(node, "clock-output-names",
-					  names, 3) < 3)
+	noutputs = of_property_read_string_array(node, "clock-output-names",
+						 names, 3);
+
+	if (noutputs != 1 && noutputs != 3)
 		return;
 
 	nparents = of_clk_get_parent_count(node);
@@ -96,7 +99,7 @@ static void __init tangox_clk_pll_setup(struct device_node *node)
 	pc->k_mask = (1 << k_bits[0]) - 1;
 	pc->step = mn_bias;
 	spin_lock_init(&pc->lock);
-	pc->clk_data.clk_num = 3;
+	pc->clk_data.clk_num = noutputs;
 	pc->clk_data.clks = pc->clk;
 
 	m = &pc->mux;
@@ -128,13 +131,17 @@ static void __init tangox_clk_pll_setup(struct device_node *node)
 	if (IS_ERR(pc->clk[0]))
 		goto err;
 
-	pc->clk[1] = clk_register_divider(NULL, names[1], names[0], 0,
-					  pc->reg + 4, 0, 4,
-					  CLK_DIVIDER_ONE_BASED, &pc->lock);
+	if (noutputs > 1) {
+		pc->clk[1] = clk_register_divider(NULL, names[1], names[0], 0,
+						  pc->reg + 4, 0, 4,
+						  CLK_DIVIDER_ONE_BASED,
+						  &pc->lock);
 
-	pc->clk[2] = clk_register_divider(NULL, names[2], names[0], 0,
-					  pc->reg + 4, 8, 4,
-					  CLK_DIVIDER_ONE_BASED, &pc->lock);
+		pc->clk[2] = clk_register_divider(NULL, names[2], names[0], 0,
+						  pc->reg + 4, 8, 4,
+						  CLK_DIVIDER_ONE_BASED,
+						  &pc->lock);
+	}
 
 	of_clk_add_provider(node, of_clk_src_onecell_get, &pc->clk_data);
 
