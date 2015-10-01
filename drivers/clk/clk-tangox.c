@@ -219,7 +219,7 @@ err:
 CLK_OF_DECLARE(tangox_premux, "sigma,smp8640-premux-clk",
 	       tangox_clk_premux_setup);
 
-static void __init tangox_clk_div_setup(struct device_node *node)
+static void __init tangox_clk_sysmux_setup(struct device_node *node)
 {
 	struct clk_onecell_data *clk_data;
 	struct clk_divider *div = NULL;
@@ -297,7 +297,8 @@ static void __init tangox_clk_div_setup(struct device_node *node)
 
 	of_clk_add_provider(node, of_clk_src_onecell_get, clk_data);
 }
-CLK_OF_DECLARE(tangox_div, "sigma,smp8640-div-clk", tangox_clk_div_setup);
+CLK_OF_DECLARE(tangox_sysmux, "sigma,smp8640-sysmux-clk",
+	       tangox_clk_sysmux_setup);
 
 struct tangox_cd_clk {
 	struct clk_hw hw;
