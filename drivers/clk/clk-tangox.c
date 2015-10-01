@@ -516,3 +516,111 @@ err:
 	kfree(m);
 }
 CLK_OF_DECLARE(tangox_mux, "sigma,smp8640-mux-clk", tangox_clk_mux_setup);
+
+struct tangox_div_clk {
+	struct clk_hw hw;
+	void __iomem *reg;
+};
+
+#define to_tangox_div_clk(_hw) container_of(_hw, struct tangox_div_clk, hw)
+
+static u8 tangox_clk_div_get_parent(struct clk_hw *hw)
+{
+	struct tangox_div_clk *dc = to_tangox_div_clk(hw);
+	u32 ctrl;
+
+	ctrl = readl(dc->reg);
+
+	return ctrl >> 23 & 1;
+}
+
+static int tangox_clk_div_set_parent(struct clk_hw *hw, u8 parent)
+{
+	struct tangox_div_clk *dc = to_tangox_div_clk(hw);
+	u32 ctrl;
+
+	ctrl = readl(dc->reg);
+	ctrl &= ~(1 << 23);
+	ctrl |= parent << 23;
+	writel(ctrl, dc->reg);
+
+	return 0;
+}
+
+static unsigned long tangox_clk_div_recalc(struct clk_hw *hw,
+					   unsigned long prate)
+{
+	struct tangox_div_clk *dc = to_tangox_div_clk(hw);
+	u32 div, scale;
+	u32 i, f;
+	u32 ctrl;
+	u64 rate;
+
+	ctrl = readl(dc->reg);
+
+	if (ctrl & (1 << 23))
+		return prate;
+
+	f = ctrl & 0xf;
+	i = ctrl >> 8 & 0xff;
+
+	if (i == 0)
+		return 0;
+
+	if (i == 1)
+		scale = 32 - f;
+	else
+		scale = 16;
+
+	div = i * scale + f;
+	rate = (u64)prate * scale;
+	do_div(rate, div);
+
+	return rate;
+}
+
+static const struct clk_ops tangox_div_clk_ops = {
+	.get_parent	= tangox_clk_div_get_parent,
+	.set_parent	= tangox_clk_div_set_parent,
+	.recalc_rate	= tangox_clk_div_recalc,
+};
+
+static void __init tangox_clk_div_setup(struct device_node *node)
+{
+	struct tangox_div_clk *dc;
+	struct clk_init_data id;
+	struct clk *clk;
+	const char *pnames[2];
+	int i;
+
+	if (of_clk_get_parent_count(node) != 2)
+		return;
+
+	dc = kzalloc(sizeof(*dc), GFP_KERNEL);
+	if (!dc)
+		return;
+
+	for (i = 0; i < 2; i++)
+		pnames[i] = of_clk_get_parent_name(node, i);
+
+	if (of_property_read_string(node, "clock-output-names", &id.name))
+		id.name = node->name;
+	id.ops = &tangox_div_clk_ops;
+	id.parent_names = pnames;
+	id.num_parents = 2;
+	id.flags = 0;
+
+	dc->hw.init = &id;
+	dc->reg = of_iomap(node, 0);
+
+	clk = clk_register(NULL, &dc->hw);
+	if (IS_ERR(clk))
+		goto err;
+
+	of_clk_add_provider(node, of_clk_src_simple_get, clk);
+	return;
+
+err:
+	kfree(dc);
+}
+CLK_OF_DECLARE(tangox_div, "sigma,smp8750-div-clk", tangox_clk_div_setup);
