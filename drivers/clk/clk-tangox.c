@@ -167,30 +167,49 @@ static void __init tangox_clk_premux_setup(struct device_node *node)
 	const char *names[2];
 	const char **pnames = NULL;
 	void __iomem *reg;
+	u32 *sys_table = NULL;
+	u32 *cd_table = NULL;
 	int nparents;
+	int nsys;
+	int ncd;
 	int i;
+
+	nparents = of_clk_get_parent_count(node);
+	if (nparents <= 0)
+		return;
+
+	nsys = of_property_count_u32_elems(node, "sigma,sys-table");
+	ncd = of_property_count_u32_elems(node, "sigma,cd-table");
+
+	if (nsys + ncd != nparents)
+		return;
 
 	mc = kzalloc(sizeof(*mc), GFP_KERNEL);
 	if (!mc)
 		return;
 
-	nparents = of_clk_get_parent_count(node);
-	if (nparents <= 0)
-		goto err;
-
-	pnames = kzalloc(nparents * 3 / 2 * sizeof(*pnames), GFP_KERNEL);
+	pnames = kzalloc(nparents * sizeof(*pnames), GFP_KERNEL);
 	if (!pnames)
 		goto err;
 
 	for (i = 0; i < nparents; i++)
 		pnames[i] = of_clk_get_parent_name(node, i);
 
-	for (i = 0; i < nparents / 2; i++)
-		pnames[nparents + i] = pnames[2 * i];
-
 	if (of_property_read_string_array(node, "clock-output-names",
 					  names, 2) < 2)
 		goto err;
+
+	sys_table = kzalloc(nsys * sizeof(*sys_table), GFP_KERNEL);
+	if (!sys_table)
+		goto err;
+
+	of_property_read_u32_array(node, "sigma,sys-table", sys_table, nsys);
+
+	cd_table = kzalloc(ncd * sizeof(*cd_table), GFP_KERNEL);
+	if (!cd_table)
+		goto err;
+
+	of_property_read_u32_array(node, "sigma,cd-table", cd_table, ncd);
 
 	mc->clk_data.clks = mc->clks;
 	mc->clk_data.clk_num = 2;
@@ -200,12 +219,13 @@ static void __init tangox_clk_premux_setup(struct device_node *node)
 	if (!reg)
 		goto err;
 
-	mc->clks[0] = clk_register_mux(NULL, names[0], pnames + nparents,
-				       nparents / 2, 0, reg, 0, 2, 0,
-				       &mc->lock);
+	mc->clks[0] = clk_register_mux_table(NULL, names[0], pnames, nsys,
+					     0, reg, 0, 3, 0, sys_table,
+					     &mc->lock);
 
-	mc->clks[1] = clk_register_mux(NULL, names[1], pnames, nparents,
-				       0, reg, 8, 3, 0, &mc->lock);
+	mc->clks[1] = clk_register_mux_table(NULL, names[1], pnames + nsys, ncd,
+					     0, reg, 8, 7, 0, cd_table,
+					     &mc->lock);
 
 	of_clk_add_provider(node, of_clk_src_onecell_get, &mc->clk_data);
 
@@ -213,6 +233,8 @@ static void __init tangox_clk_premux_setup(struct device_node *node)
 	return;
 
 err:
+	kfree(sys_table);
+	kfree(cd_table);
 	kfree(pnames);
 	kfree(mc);
 }
