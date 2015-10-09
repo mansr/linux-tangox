@@ -426,7 +426,8 @@ CLK_OF_DECLARE(tangox_cd, "sigma,smp8640-cleandiv-clk",
 struct tangox_mux_clk {
 	struct clk_hw hw;
 	void __iomem *reg;
-	int shift;
+	u32 shift;
+	u32 mask;
 	u32 *table;
 };
 
@@ -439,7 +440,7 @@ static u8 tangox_clk_mux_get_parent(struct clk_hw *hw)
 	u32 v;
 	int i;
 
-	v = readl(m->reg) >> m->shift & 15;
+	v = readl(m->reg) >> m->shift & m->mask;
 
 	if (m->table) {
 		nparents = clk_hw_get_num_parents(hw);
@@ -451,22 +452,22 @@ static u8 tangox_clk_mux_get_parent(struct clk_hw *hw)
 		return -EINVAL;
 	}
 
-	return v;
+	return v - 1;
 }
 
 static int tangox_clk_mux_set_parent(struct clk_hw *hw, u8 index)
 {
 	struct tangox_mux_clk *m = to_tangox_mux_clk(hw);
-	u32 v;
 
 	if (m->table)
 		index = m->table[index];
+	else
+		index++;
 
 	if (!index)
 		return -EINVAL;
 
-	v = readl(m->reg);
-	writel(v | index << m->shift, m->reg);
+	writel(index << m->shift, m->reg);
 
 	return 0;
 }
@@ -484,6 +485,7 @@ static void __init tangox_clk_mux_setup(struct device_node *node)
 	const char **pnames = NULL;
 	int nparents;
 	int table_len;
+	u32 bits[2];
 	int i;
 
 	nparents = of_clk_get_parent_count(node);
@@ -514,6 +516,9 @@ static void __init tangox_clk_mux_setup(struct device_node *node)
 					   m->table, table_len);
 	}
 
+	if (of_property_read_u32_array(node, "sigma,bits", bits, 2))
+		goto err;
+
 	if (of_property_read_string(node, "clock-output-names", &id.name))
 		id.name = node->name;
 	id.ops = &tangox_mux_clk_ops;
@@ -523,7 +528,8 @@ static void __init tangox_clk_mux_setup(struct device_node *node)
 
 	m->hw.init = &id;
 	m->reg = of_iomap(node, 0);
-	of_property_read_u32(node, "sigma,shift", &m->shift);
+	m->shift = bits[0];
+	m->mask = (1 << bits[1]) - 1;
 
 	clk = clk_register(NULL, &m->hw);
 	if (IS_ERR(clk))
