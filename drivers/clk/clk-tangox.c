@@ -322,18 +322,19 @@ static void __init tangox_clk_sysmux_setup(struct device_node *node)
 CLK_OF_DECLARE(tangox_sysmux, "sigma,smp8640-sysmux-clk",
 	       tangox_clk_sysmux_setup);
 
-struct tangox_cd_clk {
+struct tangox_cleandiv_clk {
 	struct clk_hw hw;
 	void __iomem *reg;
 	struct clk *clk[3];
 	struct clk_onecell_data clk_data;
 };
 
-#define to_tangox_cd_clk(_hw) container_of(_hw, struct tangox_cd_clk, hw)
+#define to_tangox_cleandiv_clk(_hw) \
+	container_of(_hw, struct tangox_cleandiv_clk, hw)
 
-static int tangox_clk_cd_enable(struct clk_hw *hw)
+static int tangox_clk_cleandiv_enable(struct clk_hw *hw)
 {
-	struct tangox_cd_clk *cd = to_tangox_cd_clk(hw);
+	struct tangox_cleandiv_clk *cd = to_tangox_cleandiv_clk(hw);
 	u32 ctrl;
 
 	ctrl = readl(cd->reg + 4);
@@ -342,18 +343,18 @@ static int tangox_clk_cd_enable(struct clk_hw *hw)
 	return 0;
 }
 
-static void tangox_clk_cd_disable(struct clk_hw *hw)
+static void tangox_clk_cleandiv_disable(struct clk_hw *hw)
 {
-	struct tangox_cd_clk *cd = to_tangox_cd_clk(hw);
+	struct tangox_cleandiv_clk *cd = to_tangox_cleandiv_clk(hw);
 	u32 ctrl;
 
 	ctrl = readl(cd->reg + 4);
 	writel(ctrl | 1, cd->reg + 4);
 }
 
-static int tangox_clk_cd_is_enabled(struct clk_hw *hw)
+static int tangox_clk_cleandiv_is_enabled(struct clk_hw *hw)
 {
-	struct tangox_cd_clk *cd = to_tangox_cd_clk(hw);
+	struct tangox_cleandiv_clk *cd = to_tangox_cleandiv_clk(hw);
 	u32 ctrl;
 
 	ctrl = readl(cd->reg + 4);
@@ -361,10 +362,10 @@ static int tangox_clk_cd_is_enabled(struct clk_hw *hw)
 	return !(ctrl & 1);
 }
 
-static unsigned long tangox_clk_cd_recalc(struct clk_hw *hw,
+static unsigned long tangox_clk_cleandiv_recalc(struct clk_hw *hw,
 					  unsigned long prate)
 {
-	struct tangox_cd_clk *cd = to_tangox_cd_clk(hw);
+	struct tangox_cleandiv_clk *cd = to_tangox_cleandiv_clk(hw);
 	u64 rate;
 	u32 div;
 
@@ -376,16 +377,16 @@ static unsigned long tangox_clk_cd_recalc(struct clk_hw *hw,
 	return rate;
 }
 
-static const struct clk_ops tangox_cd_clk_ops = {
-	.enable		= tangox_clk_cd_enable,
-	.disable	= tangox_clk_cd_disable,
-	.is_enabled	= tangox_clk_cd_is_enabled,
-	.recalc_rate	= tangox_clk_cd_recalc,
+static const struct clk_ops tangox_cleandiv_clk_ops = {
+	.enable		= tangox_clk_cleandiv_enable,
+	.disable	= tangox_clk_cleandiv_disable,
+	.is_enabled	= tangox_clk_cleandiv_is_enabled,
+	.recalc_rate	= tangox_clk_cleandiv_recalc,
 };
 
-static void __init tangox_clk_cd_setup(struct device_node *node)
+static void __init tangox_clk_cleandiv_setup(struct device_node *node)
 {
-	struct tangox_cd_clk *cd;
+	struct tangox_cleandiv_clk *cd;
 	struct clk_init_data id;
 	const char *names[3];
 	const char *pname;
@@ -401,7 +402,7 @@ static void __init tangox_clk_cd_setup(struct device_node *node)
 		return;
 
 	id.name = names[0];
-	id.ops = &tangox_cd_clk_ops;
+	id.ops = &tangox_cleandiv_clk_ops;
 	id.parent_names = &pname;
 	id.num_parents = 1;
 	id.flags = 0;
@@ -419,7 +420,8 @@ static void __init tangox_clk_cd_setup(struct device_node *node)
 
 	of_clk_add_provider(node, of_clk_src_onecell_get, &cd->clk_data);
 }
-CLK_OF_DECLARE(tangox_cd, "sigma,smp8640-cd-clk", tangox_clk_cd_setup);
+CLK_OF_DECLARE(tangox_cd, "sigma,smp8640-cleandiv-clk",
+	       tangox_clk_cleandiv_setup);
 
 struct tangox_mux_clk {
 	struct clk_hw hw;
