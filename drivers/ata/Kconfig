@@ -382,7 +382,7 @@ config SATA_SVW
 
 config SATA_TANGOX
 	tristate "Sigma Designs SMP86xx SATA support"
-	depends on TANGOX
+	depends on ARCH_TANGOX
 	select DMA_ENGINE
 	select GENERIC_PHY
 	help

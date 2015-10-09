@@ -1,4 +1,4 @@
-if TANGOX
+if ARCH_TANGOX
 
 choice
 	prompt "Processor core"

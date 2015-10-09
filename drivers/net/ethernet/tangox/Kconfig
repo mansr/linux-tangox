@@ -1,6 +1,6 @@
 config TANGOX_ENET
 	tristate "SMP86xx Builtin Gigabit Ethernet support"
-	depends on TANGOX
+	depends on ARCH_TANGOX
 	select PHYLIB
 	help
 	 This option adds support for the SMP86xx integrated Gigabit Ethernet

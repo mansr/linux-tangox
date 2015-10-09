@@ -1339,7 +1339,7 @@ config RALINK_WDT
 config TANGOX_WDT
 	tristate "SMP86xx watchdog"
 	select WATCHDOG_CORE
-	depends on TANGOX
+	depends on ARCH_TANGOX
 	help
 	  Watchdog driver for Sigma Designs SMP86xx.
 

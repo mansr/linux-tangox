@@ -976,7 +976,7 @@ config I2C_RCAR
 
 config I2C_TANGOX
 	tristate "SMP86xx I2C bus support"
-	depends on TANGOX
+	depends on ARCH_TANGOX
 
 comment "External I2C/SMBus adapter drivers"
 

@@ -373,12 +373,12 @@ config PHY_BRCMSTB_SATA
 
 config PHY_TANGOX_USB
 	tristate "SMP86xx USB PHY driver"
-	depends on TANGOX
+	depends on ARCH_TANGOX
 	select GENERIC_PHY
 
 config PHY_TANGOX_SATA
 	tristate "SMP86xx SATA PHY driver"
-	depends on TANGOX
+	depends on ARCH_TANGOX
 	select GENERIC_PHY
 
 endmenu
