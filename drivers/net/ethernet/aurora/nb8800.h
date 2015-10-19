@@ -174,9 +174,10 @@
 #define NB8800_RX_FIFO_SR		0x214
 #define NB8800_RX_ITR			0x218
 
-#define NB8800_PAD_MODE			0x400
-#define NB8800_MDIO_CLKDIV		0x420
-#define NB8800_SW_RESET			0x424
+/* Sigma Designs SMP86xx additional registers */
+#define NB8800_TANGOX_PAD_MODE		0x400
+#define NB8800_TANGOX_MDIO_CLKDIV	0x420
+#define NB8800_TANGOX_RESET		0x424
 
 struct nb8800_dma_desc {
 	u32 s_addr;
@@ -247,6 +248,11 @@ struct nb8800_priv {
 
 	int				gigabit;
 	struct clk			*clk;
+};
+
+struct nb8800_ops {
+	void (*init)(struct net_device *dev);
+	void (*reset)(struct net_device *dev);
 };
 
 #endif /* _NB8800_H_ */

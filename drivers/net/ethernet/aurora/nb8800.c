@@ -31,6 +31,7 @@
 #include <linux/ethtool.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
+#include <linux/of_device.h>
 #include <linux/of_net.h>
 #include <linux/dma-mapping.h>
 #include <linux/phy.h>
@@ -883,17 +884,36 @@ static void nb8800_dma_free(struct net_device *dev)
 			kfree_skb(priv->tx_bufs[i].skb);
 }
 
-static void nb8800_hw_reset(struct net_device *dev)
+static void nb8800_tangox_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
+	u32 val;
 
-	/* software reset IP */
-	nb8800_writeb(priv, NB8800_SW_RESET, 0);
+	val = nb8800_readb(priv, NB8800_TANGOX_PAD_MODE) & 0x78;
+	if (priv->phydev->supported & PHY_1000BT_FEATURES)
+		val |= 1;
+	nb8800_writeb(priv, NB8800_TANGOX_PAD_MODE, val);
+}
+
+static void nb8800_tangox_reset(struct net_device *dev)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+	int clk_div;
+
+	nb8800_writeb(priv, NB8800_TANGOX_RESET, 0);
 	wmb();
 	udelay(10);
-	nb8800_writeb(priv, NB8800_SW_RESET, 1);
+	nb8800_writeb(priv, NB8800_TANGOX_RESET, 1);
 	wmb();
+
+	clk_div = DIV_ROUND_UP(clk_get_rate(priv->clk), 2 * MAX_MDC_CLOCK);
+	nb8800_writew(priv, NB8800_TANGOX_MDIO_CLKDIV, clk_div);
 }
+
+static const struct nb8800_ops nb8800_tangox_ops = {
+	.init	= nb8800_tangox_init,
+	.reset	= nb8800_tangox_reset,
+};
 
 static int nb8800_hw_init(struct net_device *dev)
 {
@@ -903,11 +923,6 @@ static int nb8800_hw_init(struct net_device *dev)
 
 	clkdiv = priv->gigabit ? 125000000 : 25000000;
 	itrmul = clk_get_rate(priv->clk) / clkdiv + 2;
-
-	val = nb8800_readb(priv, NB8800_PAD_MODE) & 0x78;
-	if (priv->phydev->supported & PHY_1000BT_FEATURES)
-		val |= 1;
-	nb8800_writeb(priv, NB8800_PAD_MODE, val);
 
 	nb8800_writeb(priv, NB8800_RANDOM_SEED, 0x08);
 
@@ -954,9 +969,21 @@ static int nb8800_hw_init(struct net_device *dev)
 	return 0;
 }
 
+static struct of_device_id nb8800_dt_ids[] = {
+	{
+		.compatible = "aurora,nb8800",
+	},
+	{
+		.compatible = "sigma,smp8642-ethernet",
+		.data = &nb8800_tangox_ops,
+	},
+	{ }
+};
 
 static int nb8800_probe(struct platform_device *pdev)
 {
+	const struct of_device_id *match;
+	const struct nb8800_ops *ops = NULL;
 	struct nb8800_priv *priv;
 	struct resource *res;
 	struct net_device *dev;
@@ -965,10 +992,13 @@ static int nb8800_probe(struct platform_device *pdev)
 	const unsigned char *mac;
 	void __iomem *base;
 	int phy_mode;
-	int clk_div;
 	u32 speed;
 	int irq;
 	int ret;
+
+	match = of_match_device(nb8800_dt_ids, &pdev->dev);
+	if (match)
+		ops = match->data;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -1023,10 +1053,8 @@ static int nb8800_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_dev;
 
-	nb8800_hw_reset(dev);
-
-	clk_div = DIV_ROUND_UP(clk_get_rate(priv->clk), 2 * MAX_MDC_CLOCK);
-	nb8800_writew(priv, NB8800_MDIO_CLKDIV, clk_div);
+	if (ops && ops->reset)
+		ops->reset(dev);
 
 	bus = devm_mdiobus_alloc(&pdev->dev);
 	if (!bus) {
@@ -1067,6 +1095,9 @@ static int nb8800_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "PHY: found %s at 0x%x\n",
 		 phydev->drv->name, phydev->addr);
+
+	if (ops && ops->init)
+		ops->init(dev);
 
 	ret = nb8800_hw_init(dev);
 	if (ret)
@@ -1144,11 +1175,6 @@ static int nb8800_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
-static struct of_device_id nb8800_dt_ids[] = {
-	{ .compatible = "sigma,smp8640-emac" },
-	{ }
-};
 
 static struct platform_driver nb8800_driver = {
 	.driver = {
