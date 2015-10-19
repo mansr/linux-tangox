@@ -1,11 +1,10 @@
-/*********************************************************************
- Copyright (C) 2001-2011
- Sigma Designs, Inc.
+/*
+ * Copyright (C) 2015 Mans Rullgard <mans@mansr.com>
+ *
+ * Mostly rewritten, based on driver from Sigma Designs.  Original
+ * copyright notice below.
+ */
 
- This program is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License version 2 as
- published by the Free Software Foundation.
- *********************************************************************/
 /*
  * Driver for tangox SMP864x/SMP865x/SMP867x/SMP868x builtin Ethernet Mac.
  *
@@ -40,58 +39,58 @@
 #include <asm/barrier.h>
 #include <asm/io.h>
 
-#include "tangox_enet.h"
+#include "nb8800.h"
 
-static void enet_tx_reclaim(unsigned long data);
+static void nb8800_tx_reclaim(unsigned long data);
 
-static inline u8 enet_readb(struct tangox_enet_priv *priv, int reg)
+static inline u8 nb8800_readb(struct nb8800_priv *priv, int reg)
 {
 	return readb(priv->base + reg);
 }
 
-static inline u32 enet_readl(struct tangox_enet_priv *priv, int reg)
+static inline u32 nb8800_readl(struct nb8800_priv *priv, int reg)
 {
 	return readl(priv->base + reg);
 }
 
-static inline void enet_writeb(struct tangox_enet_priv *priv, int reg, u8 val)
+static inline void nb8800_writeb(struct nb8800_priv *priv, int reg, u8 val)
 {
 	writeb(val, priv->base + reg);
 }
 
-static inline void enet_writew(struct tangox_enet_priv *priv, int reg, u16 val)
+static inline void nb8800_writew(struct nb8800_priv *priv, int reg, u16 val)
 {
 	writew(val, priv->base + reg);
 }
 
-static inline void enet_writel(struct tangox_enet_priv *priv, int reg, u32 val)
+static inline void nb8800_writel(struct nb8800_priv *priv, int reg, u32 val)
 {
 	writel(val, priv->base + reg);
 }
 
-#define enet_set_bits(sz, priv, reg, bits) do {				\
-		u32 __o = enet_read##sz(priv, reg);			\
+#define nb8800_set_bits(sz, priv, reg, bits) do {			\
+		u32 __o = nb8800_read##sz(priv, reg);			\
 		u32 __n = __o | (bits);					\
 		if (__n != __o)						\
-			enet_write##sz(priv, reg, __n);			\
+			nb8800_write##sz(priv, reg, __n);		\
 	} while (0)
 
-#define enet_clear_bits(sz, priv, reg, bits) do {			\
-		u32 __o = enet_read##sz(priv, reg);			\
+#define nb8800_clear_bits(sz, priv, reg, bits) do {			\
+		u32 __o = nb8800_read##sz(priv, reg);			\
 		u32 __n = __o & ~(bits);				\
 		if (__n != __o)						\
-			enet_write##sz(priv, reg, __n);			\
+			nb8800_write##sz(priv, reg, __n);		\
 	} while (0)
 
 #define MDIO_TIMEOUT	1000
 
-static int enet_mdio_wait(struct mii_bus *bus)
+static int nb8800_mdio_wait(struct mii_bus *bus)
 {
-	struct tangox_enet_priv *priv = bus->priv;
+	struct nb8800_priv *priv = bus->priv;
 	int tmo = MDIO_TIMEOUT;
 
 	while (--tmo) {
-		if (!(enet_readl(priv, ENET_MDIO_CMD) & MDIO_CMD_GO))
+		if (!(nb8800_readl(priv, NB8800_MDIO_CMD) & MDIO_CMD_GO))
 			break;
 		udelay(1);
 	}
@@ -99,92 +98,92 @@ static int enet_mdio_wait(struct mii_bus *bus)
 	return tmo;
 }
 
-static int enet_mdio_read(struct mii_bus *bus, int phy_id, int reg)
+static int nb8800_mdio_read(struct mii_bus *bus, int phy_id, int reg)
 {
-	struct tangox_enet_priv *priv = bus->priv;
+	struct nb8800_priv *priv = bus->priv;
 	int val;
 
-	if (!enet_mdio_wait(bus))
+	if (!nb8800_mdio_wait(bus))
 		return -ETIMEDOUT;
 
 	val = MIIAR_ADDR(phy_id) | MIIAR_REG(reg);
-	enet_writel(priv, ENET_MDIO_CMD, val);
+	nb8800_writel(priv, NB8800_MDIO_CMD, val);
 
 	udelay(10);
 
-	enet_writel(priv, ENET_MDIO_CMD, val | MDIO_CMD_GO);
+	nb8800_writel(priv, NB8800_MDIO_CMD, val | MDIO_CMD_GO);
 
-	if (!enet_mdio_wait(bus))
+	if (!nb8800_mdio_wait(bus))
 		return -ETIMEDOUT;
 
-	val = enet_readl(priv, ENET_MDIO_STS);
+	val = nb8800_readl(priv, NB8800_MDIO_STS);
 	if (val & MDIO_STS_ERR)
 		return 0xffff;
 
 	return val & 0xffff;
 }
 
-static int enet_mdio_write(struct mii_bus *bus, int phy_id, int reg, u16 val)
+static int nb8800_mdio_write(struct mii_bus *bus, int phy_id, int reg, u16 val)
 {
-	struct tangox_enet_priv *priv = bus->priv;
+	struct nb8800_priv *priv = bus->priv;
 	int tmp;
 
-	if (!enet_mdio_wait(bus))
+	if (!nb8800_mdio_wait(bus))
 		return -ETIMEDOUT;
 
 	tmp = MIIAR_DATA(val) | MIIAR_ADDR(phy_id) | MIIAR_REG(reg);
-	enet_writel(priv, ENET_MDIO_CMD, tmp);
+	nb8800_writel(priv, NB8800_MDIO_CMD, tmp);
 
 	udelay(10);
 
-	enet_writel(priv, ENET_MDIO_CMD, tmp | MDIO_CMD_WR);
+	nb8800_writel(priv, NB8800_MDIO_CMD, tmp | MDIO_CMD_WR);
 
 	udelay(10);
 
-	enet_writel(priv, ENET_MDIO_CMD, tmp | MDIO_CMD_WR | MDIO_CMD_GO);
+	nb8800_writel(priv, NB8800_MDIO_CMD, tmp | MDIO_CMD_WR | MDIO_CMD_GO);
 
-	if (!enet_mdio_wait(bus))
+	if (!nb8800_mdio_wait(bus))
 		return -ETIMEDOUT;
 
 	return 0;
 }
 
-static void enet_mac_tx(struct net_device *dev, int enable)
+static void nb8800_mac_tx(struct net_device *dev, int enable)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
-	while (enet_readl(priv, ENET_TXC_CR) & TCR_EN)
+	while (nb8800_readl(priv, NB8800_TXC_CR) & TCR_EN)
 		cpu_relax();
 
 	if (enable)
-		enet_set_bits(b, priv, ENET_TX_CTL1, TX_EN);
+		nb8800_set_bits(b, priv, NB8800_TX_CTL1, TX_EN);
 	else
-		enet_clear_bits(b, priv, ENET_TX_CTL1, TX_EN);
+		nb8800_clear_bits(b, priv, NB8800_TX_CTL1, TX_EN);
 }
 
-static void enet_mac_rx(struct net_device *dev, int enable)
+static void nb8800_mac_rx(struct net_device *dev, int enable)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	if (enable)
-		enet_set_bits(b, priv, ENET_RX_CTL, RX_EN);
+		nb8800_set_bits(b, priv, NB8800_RX_CTL, RX_EN);
 	else
-		enet_clear_bits(b, priv, ENET_RX_CTL, RX_EN);
+		nb8800_clear_bits(b, priv, NB8800_RX_CTL, RX_EN);
 }
 
-static void enet_mac_af(struct net_device *dev, int enable)
+static void nb8800_mac_af(struct net_device *dev, int enable)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	if (enable)
-		enet_set_bits(b, priv, ENET_RX_CTL, RX_AF_EN);
+		nb8800_set_bits(b, priv, NB8800_RX_CTL, RX_AF_EN);
 	else
-		enet_clear_bits(b, priv, ENET_RX_CTL, RX_AF_EN);
+		nb8800_clear_bits(b, priv, NB8800_RX_CTL, RX_AF_EN);
 }
 
-static void enet_stop_rx(struct net_device *dev)
+static void nb8800_stop_rx(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	int i;
 
 	for (i = 0; i < priv->rx_desc_count; i++)
@@ -192,21 +191,21 @@ static void enet_stop_rx(struct net_device *dev)
 
 	mb();
 
-	while (enet_readl(priv, ENET_RXC_CR) & RCR_EN)
+	while (nb8800_readl(priv, NB8800_RXC_CR) & RCR_EN)
 		udelay(1000);
 }
 
-static void enet_start_rx(struct net_device *dev)
+static void nb8800_start_rx(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
-	enet_set_bits(l, priv, ENET_RXC_CR, RCR_EN);
+	nb8800_set_bits(l, priv, NB8800_RXC_CR, RCR_EN);
 }
 
-static int enet_alloc_rx(struct net_device *dev, int i, int napi)
+static int nb8800_alloc_rx(struct net_device *dev, int i, int napi)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
-	struct enet_desc *rx = &priv->rx_descs[i];
+	struct nb8800_priv *priv = netdev_priv(dev);
+	struct nb8800_dma_desc *rx = &priv->rx_descs[i];
 	struct rx_buf *buf = &priv->rx_bufs[i];
 	int size = L1_CACHE_ALIGN(RX_BUF_SIZE);
 	void *data;
@@ -228,10 +227,10 @@ static int enet_alloc_rx(struct net_device *dev, int i, int napi)
 	return 0;
 }
 
-static void enet_receive(struct net_device *dev, int i, int len)
+static void nb8800_receive(struct net_device *dev, int i, int len)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
-	struct enet_desc *rx = &priv->rx_descs[i];
+	struct nb8800_priv *priv = netdev_priv(dev);
+	struct nb8800_dma_desc *rx = &priv->rx_descs[i];
 	struct page *page = priv->rx_bufs[i].page;
 	int offset = priv->rx_bufs[i].offset;
 	void *data = page_address(page) + offset;
@@ -264,9 +263,9 @@ static void enet_receive(struct net_device *dev, int i, int len)
 	priv->stats.rx_bytes += len;
 }
 
-static void enet_rx_error(struct net_device *dev, u32 report)
+static void nb8800_rx_error(struct net_device *dev, u32 report)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	int len = RX_BYTES_TRANSFERRED(report);
 
 	if (report & RX_FCS_ERR)
@@ -279,11 +278,11 @@ static void enet_rx_error(struct net_device *dev, u32 report)
 	priv->stats.rx_errors++;
 }
 
-static int enet_poll(struct napi_struct *napi, int budget)
+static int nb8800_poll(struct napi_struct *napi, int budget)
 {
 	struct net_device *dev = napi->dev;
-	struct tangox_enet_priv *priv = netdev_priv(dev);
-	struct enet_desc *rx;
+	struct nb8800_priv *priv = netdev_priv(dev);
+	struct nb8800_dma_desc *rx;
 	int work = 0;
 	int last = priv->rx_eoc;
 	int next;
@@ -303,15 +302,15 @@ static int enet_poll(struct napi_struct *napi, int budget)
 			break;
 
 		if (IS_RX_ERROR(report)) {
-			enet_rx_error(dev, report);
+			nb8800_rx_error(dev, report);
 		} else if (likely(rx_buf->page)) {
 			len = RX_BYTES_TRANSFERRED(report);
-			enet_receive(dev, next, len);
+			nb8800_receive(dev, next, len);
 		}
 
 		rx->report = 0;
 		if (!rx_buf->page)
-			enet_alloc_rx(dev, next, 1);
+			nb8800_alloc_rx(dev, next, 1);
 
 		last = next;
 		work++;
@@ -324,22 +323,22 @@ static int enet_poll(struct napi_struct *napi, int budget)
 		priv->rx_eoc = last;
 	}
 
-	enet_start_rx(dev);
+	nb8800_start_rx(dev);
 
 	if (work < budget)
 		napi_complete(napi);
 
-	enet_tx_reclaim((unsigned long)dev);
+	nb8800_tx_reclaim((unsigned long)dev);
 
 	return work;
 }
 
-static void enet_tx_dma_queue(struct net_device *dev, dma_addr_t data, int len,
-			      int flags)
+static void nb8800_tx_dma_queue(struct net_device *dev, dma_addr_t data,
+				int len, int flags)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	int next = priv->tx_next;
-	struct enet_desc *tx = &priv->tx_descs[next];
+	struct nb8800_dma_desc *tx = &priv->tx_descs[next];
 
 	tx->s_addr = data;
 	tx->config = DESC_BTS(2) | flags | len;
@@ -348,10 +347,10 @@ static void enet_tx_dma_queue(struct net_device *dev, dma_addr_t data, int len,
 	priv->tx_next = (next + 1) & (priv->tx_desc_count - 1);
 }
 
-static void enet_tx_dma_start(struct net_device *dev, int new)
+static void nb8800_tx_dma_start(struct net_device *dev, int new)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
-	struct enet_desc *tx;
+	struct nb8800_priv *priv = netdev_priv(dev);
+	struct nb8800_dma_desc *tx;
 	struct tx_buf *tx_buf;
 	u32 txc_cr;
 	int next;
@@ -362,7 +361,7 @@ static void enet_tx_dma_start(struct net_device *dev, int new)
 	if (next < 0)
 		goto end;
 
-	txc_cr = enet_readl(priv, ENET_TXC_CR) & 0xffff;
+	txc_cr = nb8800_readl(priv, NB8800_TXC_CR) & 0xffff;
 	if (txc_cr & TCR_EN)
 		goto end;
 
@@ -372,9 +371,9 @@ static void enet_tx_dma_start(struct net_device *dev, int new)
 	next = (next + tx_buf->frags) & (priv->tx_desc_count - 1);
 	priv->tx_reclaim_next = next;
 
-	enet_writel(priv, ENET_TX_DESC_ADDR, tx_buf->desc_dma);
+	nb8800_writel(priv, NB8800_TX_DESC_ADDR, tx_buf->desc_dma);
 	wmb();
-	enet_writel(priv, ENET_TXC_CR, txc_cr | TCR_EN);
+	nb8800_writel(priv, NB8800_TXC_CR, txc_cr | TCR_EN);
 
 	if (!priv->tx_bufs[next].frags)
 		next = -1;
@@ -383,9 +382,9 @@ end:
 	priv->tx_pending = next;
 }
 
-static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
+static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	struct tx_skb_data *skb_data;
 	struct tx_buf *tx_buf;
 	dma_addr_t dma_addr;
@@ -393,7 +392,7 @@ static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
 	int cpsz, next;
 	int frags;
 
-	if (atomic_read(&priv->tx_free) <= ENET_DESC_LOW) {
+	if (atomic_read(&priv->tx_free) <= NB8800_DESC_LOW) {
 		netif_stop_queue(dev);
 		return NETDEV_TX_BUSY;
 	}
@@ -411,13 +410,13 @@ static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
 	tx_buf = &priv->tx_bufs[next];
 
 	if (cpsz) {
-		dma_addr_t dma =
-			tx_buf->desc_dma + offsetof(struct enet_desc, buf);
+		dma_addr_t dma = tx_buf->desc_dma +
+			offsetof(struct nb8800_dma_desc, buf);
 		memcpy(priv->tx_descs[next].buf, skb->data, cpsz);
-		enet_tx_dma_queue(dev, dma, cpsz, 0);
+		nb8800_tx_dma_queue(dev, dma, cpsz, 0);
 	}
 
-	enet_tx_dma_queue(dev, dma_addr, dma_len, DESC_EOF | DESC_EOC);
+	nb8800_tx_dma_queue(dev, dma_addr, dma_len, DESC_EOF | DESC_EOC);
 	netdev_sent_queue(dev, skb->len);
 
 	tx_buf->skb = skb;
@@ -427,7 +426,7 @@ static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
 	skb_data->dma_addr = dma_addr;
 	skb_data->dma_len = dma_len;
 
-	enet_tx_dma_start(dev, next);
+	nb8800_tx_dma_start(dev, next);
 
 	if (!skb->xmit_more && !timer_pending(&priv->tx_reclaim_timer))
 		mod_timer(&priv->tx_reclaim_timer, jiffies + HZ / 20);
@@ -435,10 +434,10 @@ static int enet_xmit(struct sk_buff *skb, struct net_device *dev)
 	return NETDEV_TX_OK;
 }
 
-static void enet_tx_reclaim(unsigned long data)
+static void nb8800_tx_reclaim(unsigned long data)
 {
 	struct net_device *dev = (struct net_device *)data;
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	int packets = 0, bytes = 0;
 	int reclaimed = 0;
 	int dirty, limit;
@@ -452,7 +451,7 @@ static void enet_tx_reclaim(unsigned long data)
 		goto end;
 
 	while (dirty != limit) {
-		struct enet_desc *tx = &priv->tx_descs[dirty];
+		struct nb8800_dma_desc *tx = &priv->tx_descs[dirty];
 		struct tx_buf *tx_buf = &priv->tx_bufs[dirty];
 		struct sk_buff *skb = tx_buf->skb;
 		struct tx_skb_data *skb_data = (struct tx_skb_data *)skb->cb;
@@ -485,9 +484,9 @@ end:
 	priv->tx_dirty = dirty;
 }
 
-static void enet_tx_done(struct net_device *dev)
+static void nb8800_tx_done(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	struct tx_buf *tx_buf;
 	int tx_mask = (priv->tx_desc_count - 1);
 	int nr_dirty;
@@ -499,26 +498,26 @@ static void enet_tx_done(struct net_device *dev)
 
 	priv->tx_reclaim_limit = priv->tx_reclaim_next;
 
-	enet_tx_dma_start(dev, -1);
+	nb8800_tx_dma_start(dev, -1);
 
 	nr_dirty = (priv->tx_reclaim_limit - priv->tx_dirty) & tx_mask;
-	if (nr_dirty >= ENET_DESC_RECLAIM)
+	if (nr_dirty >= NB8800_DESC_RECLAIM)
 		tasklet_schedule(&priv->tx_reclaim_tasklet);
 }
 
-static irqreturn_t enet_isr(int irq, void *dev_id)
+static irqreturn_t nb8800_isr(int irq, void *dev_id)
 {
 	struct net_device *dev = dev_id;
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	unsigned long val;
 
 	/* tx interrupt */
-	val = enet_readl(priv, ENET_TXC_SR);
+	val = nb8800_readl(priv, NB8800_TXC_SR);
 	if (val) {
-		enet_writel(priv, ENET_TXC_SR, 0xf);
+		nb8800_writel(priv, NB8800_TXC_SR, 0xf);
 
 		if (likely(val & TSR_TI))
-			enet_tx_done(dev);
+			nb8800_tx_done(dev);
 
 		if (unlikely(val & TSR_DE))
 			netdev_err(dev, "TX DMA error\n");
@@ -527,9 +526,9 @@ static irqreturn_t enet_isr(int irq, void *dev_id)
 	}
 
 	/* rx interrupt */
-	val = enet_readl(priv, ENET_RXC_SR);
+	val = nb8800_readl(priv, NB8800_RXC_SR);
 	if (val) {
-		enet_writel(priv, ENET_RXC_SR, 0xf);
+		nb8800_writel(priv, NB8800_RXC_SR, 0xf);
 
 		if (likely(val & (RSR_RI | RSR_DI | RSR_DE | RSR_RO)))
 			napi_schedule(&priv->napi);
@@ -540,43 +539,45 @@ static irqreturn_t enet_isr(int irq, void *dev_id)
 			int i;
 			netdev_err(dev, "RX Status FIFO overflow\n");
 			for (i = 0; i < 4; i++)
-				enet_readl(priv, ENET_RX_FIFO_SR);
+				nb8800_readl(priv, NB8800_RX_FIFO_SR);
 		}
 	}
 
 	/* wake on lan */
-	val = enet_readb(priv, ENET_WAKEUP);
+	val = nb8800_readb(priv, NB8800_WAKEUP);
 	if (val == 1) {
-		enet_writeb(priv, ENET_SLEEP_MODE, 0);
-		enet_writeb(priv, ENET_WAKEUP, 0);
+		nb8800_writeb(priv, NB8800_SLEEP_MODE, 0);
+		nb8800_writeb(priv, NB8800_WAKEUP, 0);
 	}
 
 	return IRQ_HANDLED;
 }
 
-static void enet_mac_config(struct net_device *dev)
+static void nb8800_mac_config(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	if (priv->duplex)
-		enet_clear_bits(b, priv, ENET_MAC_MODE, HALF_DUPLEX);
+		nb8800_clear_bits(b, priv, NB8800_MAC_MODE, HALF_DUPLEX);
 	else
-		enet_set_bits(b, priv, ENET_MAC_MODE, HALF_DUPLEX);
+		nb8800_set_bits(b, priv, NB8800_MAC_MODE, HALF_DUPLEX);
 
 	if (priv->speed == SPEED_1000) {
-		enet_set_bits(b, priv, ENET_MAC_MODE, RGMII_MODE | GMAC_MODE);
-		enet_writeb(priv, ENET_IC_THRESHOLD, 3);
-		enet_writeb(priv, ENET_SLOT_TIME, 255);
+		nb8800_set_bits(b, priv, NB8800_MAC_MODE,
+				RGMII_MODE | GMAC_MODE);
+		nb8800_writeb(priv, NB8800_IC_THRESHOLD, 3);
+		nb8800_writeb(priv, NB8800_SLOT_TIME, 255);
 	} else {
-		enet_clear_bits(b, priv, ENET_MAC_MODE, RGMII_MODE | GMAC_MODE);
-		enet_writeb(priv, ENET_IC_THRESHOLD, 1);
-		enet_writeb(priv, ENET_SLOT_TIME, 127);
+		nb8800_clear_bits(b, priv, NB8800_MAC_MODE,
+				  RGMII_MODE | GMAC_MODE);
+		nb8800_writeb(priv, NB8800_IC_THRESHOLD, 1);
+		nb8800_writeb(priv, NB8800_SLOT_TIME, 127);
 	}
 }
 
-static void enet_link_reconfigure(struct net_device *dev)
+static void nb8800_link_reconfigure(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	struct phy_device *phydev = priv->phydev;
 
 	if (phydev->speed == priv->speed && phydev->duplex == priv->duplex &&
@@ -591,29 +592,29 @@ static void enet_link_reconfigure(struct net_device *dev)
 	priv->link = phydev->link;
 
 	if (priv->link)
-		enet_mac_config(dev);
+		nb8800_mac_config(dev);
 }
 
-static void enet_update_mac_addr(struct net_device *dev)
+static void nb8800_update_mac_addr(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
-	enet_writeb(priv, ENET_MAC_ADDR1, dev->dev_addr[0]);
-	enet_writeb(priv, ENET_MAC_ADDR2, dev->dev_addr[1]);
-	enet_writeb(priv, ENET_MAC_ADDR3, dev->dev_addr[2]);
-	enet_writeb(priv, ENET_MAC_ADDR4, dev->dev_addr[3]);
-	enet_writeb(priv, ENET_MAC_ADDR5, dev->dev_addr[4]);
-	enet_writeb(priv, ENET_MAC_ADDR6, dev->dev_addr[5]);
+	nb8800_writeb(priv, NB8800_MAC_ADDR1, dev->dev_addr[0]);
+	nb8800_writeb(priv, NB8800_MAC_ADDR2, dev->dev_addr[1]);
+	nb8800_writeb(priv, NB8800_MAC_ADDR3, dev->dev_addr[2]);
+	nb8800_writeb(priv, NB8800_MAC_ADDR4, dev->dev_addr[3]);
+	nb8800_writeb(priv, NB8800_MAC_ADDR5, dev->dev_addr[4]);
+	nb8800_writeb(priv, NB8800_MAC_ADDR6, dev->dev_addr[5]);
 
-	enet_writeb(priv, ENET_UC_ADDR1, dev->dev_addr[0]);
-	enet_writeb(priv, ENET_UC_ADDR2, dev->dev_addr[1]);
-	enet_writeb(priv, ENET_UC_ADDR3, dev->dev_addr[2]);
-	enet_writeb(priv, ENET_UC_ADDR4, dev->dev_addr[3]);
-	enet_writeb(priv, ENET_UC_ADDR5, dev->dev_addr[4]);
-	enet_writeb(priv, ENET_UC_ADDR6, dev->dev_addr[5]);
+	nb8800_writeb(priv, NB8800_UC_ADDR1, dev->dev_addr[0]);
+	nb8800_writeb(priv, NB8800_UC_ADDR2, dev->dev_addr[1]);
+	nb8800_writeb(priv, NB8800_UC_ADDR3, dev->dev_addr[2]);
+	nb8800_writeb(priv, NB8800_UC_ADDR4, dev->dev_addr[3]);
+	nb8800_writeb(priv, NB8800_UC_ADDR5, dev->dev_addr[4]);
+	nb8800_writeb(priv, NB8800_UC_ADDR6, dev->dev_addr[5]);
 }
 
-static int enet_set_mac_address(struct net_device *dev, void *addr)
+static int nb8800_set_mac_address(struct net_device *dev, void *addr)
 {
 	struct sockaddr *sock = addr;
 
@@ -621,23 +622,23 @@ static int enet_set_mac_address(struct net_device *dev, void *addr)
 		return -EBUSY;
 
 	memcpy(dev->dev_addr, sock->sa_data, ETH_ALEN);
-	enet_update_mac_addr(dev);
+	nb8800_update_mac_addr(dev);
 
 	return 0;
 }
 
-static void enet_mc_init(struct net_device *dev, int val)
+static void nb8800_mc_init(struct net_device *dev, int val)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
-	enet_writeb(priv, ENET_MC_INIT, val);
-	while (enet_readb(priv, ENET_MC_INIT))
+	nb8800_writeb(priv, NB8800_MC_INIT, val);
+	while (nb8800_readb(priv, NB8800_MC_INIT))
 		cpu_relax();
 }
 
-static void enet_set_rx_mode(struct net_device *dev)
+static void nb8800_set_rx_mode(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	struct netdev_hw_addr *ha;
 	int af_en;
 
@@ -647,31 +648,31 @@ static void enet_set_rx_mode(struct net_device *dev)
 	else
 		af_en = 1;
 
-	enet_mac_af(dev, af_en);
+	nb8800_mac_af(dev, af_en);
 
 	if (!af_en)
 		return;
 
-	enet_mc_init(dev, 0);
+	nb8800_mc_init(dev, 0);
 
 	netdev_for_each_mc_addr(ha, dev) {
 		char *addr = ha->addr;
 
-		enet_writeb(priv, ENET_MC_ADDR1, addr[0]);
-		enet_writeb(priv, ENET_MC_ADDR2, addr[1]);
-		enet_writeb(priv, ENET_MC_ADDR3, addr[2]);
-		enet_writeb(priv, ENET_MC_ADDR4, addr[3]);
-		enet_writeb(priv, ENET_MC_ADDR5, addr[4]);
-		enet_writeb(priv, ENET_MC_ADDR6, addr[5]);
+		nb8800_writeb(priv, NB8800_MC_ADDR1, addr[0]);
+		nb8800_writeb(priv, NB8800_MC_ADDR2, addr[1]);
+		nb8800_writeb(priv, NB8800_MC_ADDR3, addr[2]);
+		nb8800_writeb(priv, NB8800_MC_ADDR4, addr[3]);
+		nb8800_writeb(priv, NB8800_MC_ADDR5, addr[4]);
+		nb8800_writeb(priv, NB8800_MC_ADDR6, addr[5]);
 
-		enet_mc_init(dev, 0xff);
+		nb8800_mc_init(dev, 0xff);
 	}
 }
 
-static void enet_dma_reinit(struct net_device *dev)
+static void nb8800_dma_reinit(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
-	struct enet_desc *rx;
+	struct nb8800_priv *priv = netdev_priv(dev);
+	struct nb8800_dma_desc *rx;
 	int i;
 
 	priv->tx_pending = -1;
@@ -695,25 +696,25 @@ static void enet_dma_reinit(struct net_device *dev)
 
 	wmb();
 
-	enet_writel(priv, ENET_TX_DESC_ADDR, priv->tx_desc_dma);
-	enet_writel(priv, ENET_RX_DESC_ADDR, priv->rx_desc_dma);
+	nb8800_writel(priv, NB8800_TX_DESC_ADDR, priv->tx_desc_dma);
+	nb8800_writel(priv, NB8800_RX_DESC_ADDR, priv->rx_desc_dma);
 }
 
-static int enet_open(struct net_device *dev)
+static int nb8800_open(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	phy_resume(priv->phydev);
 	phy_start(priv->phydev);
 
-	enet_writel(priv, ENET_RXC_SR, 0xf);
-	enet_writel(priv, ENET_TXC_SR, 0xf);
+	nb8800_writel(priv, NB8800_RXC_SR, 0xf);
+	nb8800_writel(priv, NB8800_TXC_SR, 0xf);
 
-	enet_dma_reinit(dev);
-	enet_start_rx(dev);
+	nb8800_dma_reinit(dev);
+	nb8800_start_rx(dev);
 
-	enet_mac_rx(dev, 1);
-	enet_mac_tx(dev, 1);
+	nb8800_mac_rx(dev, 1);
+	nb8800_mac_tx(dev, 1);
 
 	mdelay(500);
 
@@ -723,17 +724,17 @@ static int enet_open(struct net_device *dev)
 	return 0;
 }
 
-static int enet_stop(struct net_device *dev)
+static int nb8800_stop(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	netif_stop_queue(dev);
 	napi_disable(&priv->napi);
 
-	enet_stop_rx(dev);
+	nb8800_stop_rx(dev);
 
-	enet_mac_rx(dev, 0);
-	enet_mac_tx(dev, 0);
+	nb8800_mac_rx(dev, 0);
+	nb8800_mac_tx(dev, 0);
 
 	phy_stop(priv->phydev);
 	phy_suspend(priv->phydev);
@@ -741,60 +742,60 @@ static int enet_stop(struct net_device *dev)
 	return 0;
 }
 
-static struct net_device_stats *enet_get_stats(struct net_device *dev)
+static struct net_device_stats *nb8800_get_stats(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	return &priv->stats;
 }
 
-static int enet_get_settings(struct net_device *dev, struct ethtool_cmd *cmd)
+static int nb8800_get_settings(struct net_device *dev, struct ethtool_cmd *cmd)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	return phy_ethtool_gset(priv->phydev, cmd);
 }
 
-static int enet_set_settings(struct net_device *dev, struct ethtool_cmd *cmd)
+static int nb8800_set_settings(struct net_device *dev, struct ethtool_cmd *cmd)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	return phy_ethtool_sset(priv->phydev, cmd);
 }
 
-static int enet_nway_reset(struct net_device *dev)
+static int nb8800_nway_reset(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	return genphy_restart_aneg(priv->phydev);
 }
 
-static u32 enet_get_link(struct net_device *dev)
+static u32 nb8800_get_link(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	phy_read_status(priv->phydev);
 
 	return priv->phydev->link;
 }
 
-static struct ethtool_ops enet_ethtool_ops = {
-	.get_settings		= enet_get_settings,
-	.set_settings		= enet_set_settings,
-	.nway_reset		= enet_nway_reset,
-	.get_link		= enet_get_link,
+static struct ethtool_ops nb8800_ethtool_ops = {
+	.get_settings		= nb8800_get_settings,
+	.set_settings		= nb8800_set_settings,
+	.nway_reset		= nb8800_nway_reset,
+	.get_link		= nb8800_get_link,
 };
 
-static int enet_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
+static int nb8800_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	return phy_mii_ioctl(priv->phydev, rq, cmd);
 }
 
-static int enet_dma_init(struct net_device *dev)
+static int nb8800_dma_init(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	int n_rx = priv->rx_desc_count;
 	int n_tx = priv->tx_desc_count;
 	int i;
@@ -811,15 +812,15 @@ static int enet_dma_init(struct net_device *dev)
 		return -ENOMEM;
 
 	for (i = 0; i < n_rx; i++) {
-		struct enet_desc *rx = &priv->rx_descs[i];
+		struct nb8800_dma_desc *rx = &priv->rx_descs[i];
 		dma_addr_t rx_dma;
 		int err;
 
-		rx_dma = priv->rx_desc_dma + i * sizeof(struct enet_desc);
-		rx->n_addr = rx_dma + sizeof(struct enet_desc);
-		rx->r_addr = rx_dma + offsetof(struct enet_desc, report);
+		rx_dma = priv->rx_desc_dma + i * sizeof(struct nb8800_dma_desc);
+		rx->n_addr = rx_dma + sizeof(struct nb8800_dma_desc);
+		rx->r_addr = rx_dma + offsetof(struct nb8800_dma_desc, report);
 
-		err = enet_alloc_rx(dev, i, 0);
+		err = nb8800_alloc_rx(dev, i, 0);
 		if (err)
 			return err;
 	}
@@ -838,26 +839,26 @@ static int enet_dma_init(struct net_device *dev)
 		return -ENOMEM;
 
 	for (i = 0; i < n_tx; i++) {
-		struct enet_desc *tx = &priv->tx_descs[i];
+		struct nb8800_dma_desc *tx = &priv->tx_descs[i];
 		dma_addr_t tx_dma;
 
-		tx_dma = priv->tx_desc_dma + i * sizeof(struct enet_desc);
-		tx->n_addr = tx_dma + sizeof(struct enet_desc);
-		tx->r_addr = tx_dma + offsetof(struct enet_desc, report);
+		tx_dma = priv->tx_desc_dma + i * sizeof(struct nb8800_dma_desc);
+		tx->n_addr = tx_dma + sizeof(struct nb8800_dma_desc);
+		tx->r_addr = tx_dma + offsetof(struct nb8800_dma_desc, report);
 
 		priv->tx_bufs[i].desc_dma = tx_dma;
 	}
 
 	priv->tx_descs[n_tx - 1].n_addr = priv->tx_desc_dma;
 
-	enet_dma_reinit(dev);
+	nb8800_dma_reinit(dev);
 
 	return 0;
 }
 
-static void enet_dma_free(struct net_device *dev)
+static void nb8800_dma_free(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	int i;
 
 	if (priv->rx_bufs)
@@ -870,92 +871,92 @@ static void enet_dma_free(struct net_device *dev)
 			kfree_skb(priv->tx_bufs[i].skb);
 }
 
-static void enet_hw_reset(struct net_device *dev)
+static void nb8800_hw_reset(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 
 	/* software reset IP */
-	enet_writeb(priv, ENET_SW_RESET, 0);
+	nb8800_writeb(priv, NB8800_SW_RESET, 0);
 	wmb();
 	udelay(10);
-	enet_writeb(priv, ENET_SW_RESET, 1);
+	nb8800_writeb(priv, NB8800_SW_RESET, 1);
 	wmb();
 }
 
-static int enet_hw_init(struct net_device *dev)
+static int nb8800_hw_init(struct net_device *dev)
 {
-	struct tangox_enet_priv *priv = netdev_priv(dev);
+	struct nb8800_priv *priv = netdev_priv(dev);
 	unsigned int val = 0;
 	int clkdiv, itrmul;
 
 	clkdiv = priv->gigabit ? 125000000 : 25000000;
 	itrmul = clk_get_rate(priv->clk) / clkdiv + 2;
 
-	val = enet_readb(priv, ENET_PAD_MODE) & 0x78;
+	val = nb8800_readb(priv, NB8800_PAD_MODE) & 0x78;
 	if (priv->phydev->supported & PHY_1000BT_FEATURES)
 		val |= 1;
-	enet_writeb(priv, ENET_PAD_MODE, val);
+	nb8800_writeb(priv, NB8800_PAD_MODE, val);
 
-	enet_writeb(priv, ENET_RANDOM_SEED, 0x08);
+	nb8800_writeb(priv, NB8800_RANDOM_SEED, 0x08);
 
 	/* TX single deferral params */
-	enet_writeb(priv, ENET_TX_SDP, 0xc);
+	nb8800_writeb(priv, NB8800_TX_SDP, 0xc);
 
 	/* Threshold for partial full */
-	enet_writeb(priv, ENET_PF_THRESHOLD, 0xff);
+	nb8800_writeb(priv, NB8800_PF_THRESHOLD, 0xff);
 
 	/* Pause Quanta */
-	enet_writeb(priv, ENET_PQ1, 0xff);
-	enet_writeb(priv, ENET_PQ2, 0xff);
+	nb8800_writeb(priv, NB8800_PQ1, 0xff);
+	nb8800_writeb(priv, NB8800_PQ2, 0xff);
 
 	/* configure TX DMA Channels */
 	val = TCR_DM | TCR_RS | TCR_LE | TCR_TFI(TFI) | TCR_BTS(2);
-	enet_writel(priv, ENET_TXC_CR, val);
+	nb8800_writel(priv, NB8800_TXC_CR, val);
 
 	/* TX Interrupt Time Register */
 	val = TFI * TX_BUF_SIZE * itrmul;
-	enet_writel(priv, ENET_TX_ITR, val);
+	nb8800_writel(priv, NB8800_TX_ITR, val);
 
 	/* configure RX DMA Channels */
 	val = RCR_DM | RCR_RS | RCR_LE | RCR_RFI(RFI) | RCR_DIE | RCR_BTS(2) |
 		RCR_FI;
-	enet_writel(priv, ENET_RXC_CR, val);
+	nb8800_writel(priv, NB8800_RXC_CR, val);
 
 	/* RX Interrupt Time Register */
 	val = RFI * RX_BUF_SIZE * itrmul;
-	enet_writel(priv, ENET_RX_ITR, val);
+	nb8800_writel(priv, NB8800_RX_ITR, val);
 
 	val = TX_RETRY_EN | TX_PAD_EN | TX_APPEND_FCS;
-	enet_writeb(priv, ENET_TX_CTL1, val);
+	nb8800_writeb(priv, NB8800_TX_CTL1, val);
 
 	/* collision retry count */
-	enet_writeb(priv, ENET_TX_CTL2, 5);
+	nb8800_writeb(priv, NB8800_TX_CTL2, 5);
 
 	val = RX_PAD_STRIP | RX_PAUSE_EN | RX_AF_EN | RX_RUNT;
-	enet_writeb(priv, ENET_RX_CTL, val);
+	nb8800_writeb(priv, NB8800_RX_CTL, val);
 
-	enet_mc_init(dev, 0);
+	nb8800_mc_init(dev, 0);
 
-	enet_writeb(priv, ENET_TX_BUFSIZE, 0xff);
+	nb8800_writeb(priv, NB8800_TX_BUFSIZE, 0xff);
 
 	return 0;
 }
 
-static const struct net_device_ops tangox_netdev_ops = {
-	.ndo_open		= enet_open,
-	.ndo_stop		= enet_stop,
-	.ndo_start_xmit		= enet_xmit,
-	.ndo_get_stats		= enet_get_stats,
-	.ndo_set_mac_address	= enet_set_mac_address,
-	.ndo_set_rx_mode	= enet_set_rx_mode,
-	.ndo_do_ioctl		= enet_ioctl,
+static const struct net_device_ops nb8800_netdev_ops = {
+	.ndo_open		= nb8800_open,
+	.ndo_stop		= nb8800_stop,
+	.ndo_start_xmit		= nb8800_xmit,
+	.ndo_get_stats		= nb8800_get_stats,
+	.ndo_set_mac_address	= nb8800_set_mac_address,
+	.ndo_set_rx_mode	= nb8800_set_rx_mode,
+	.ndo_do_ioctl		= nb8800_ioctl,
 	.ndo_change_mtu		= eth_change_mtu,
 	.ndo_validate_addr	= eth_validate_addr,
 };
 
-static int tangox_enet_probe(struct platform_device *pdev)
+static int nb8800_probe(struct platform_device *pdev)
 {
-	struct tangox_enet_priv *priv;
+	struct nb8800_priv *priv;
 	struct resource *res;
 	struct net_device *dev;
 	struct mii_bus *bus;
@@ -984,7 +985,7 @@ static int tangox_enet_probe(struct platform_device *pdev)
 	if (IS_ERR(base))
 		return PTR_ERR(base);
 
-	dev_info(&pdev->dev, "SMP86xx internal Ethernet at 0x%x\n", res->start);
+	dev_info(&pdev->dev, "AU-NB8800 Ethernet at 0x%x\n", res->start);
 
 	dev = alloc_etherdev(sizeof(*priv));
 	if (!dev)
@@ -1021,10 +1022,10 @@ static int tangox_enet_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_dev;
 
-	enet_hw_reset(dev);
+	nb8800_hw_reset(dev);
 
 	clk_div = DIV_ROUND_UP(clk_get_rate(priv->clk), 2 * MAX_MDC_CLOCK);
-	enet_writew(priv, ENET_MDIO_CLKDIV, clk_div);
+	nb8800_writew(priv, NB8800_MDIO_CLKDIV, clk_div);
 
 	bus = devm_mdiobus_alloc(&pdev->dev);
 	if (!bus) {
@@ -1032,11 +1033,12 @@ static int tangox_enet_probe(struct platform_device *pdev)
 		goto err_disable_clk;
 	}
 
-	bus->name = "tangox-mii";
-	bus->read = enet_mdio_read;
-	bus->write = enet_mdio_write;
+	bus->name = "nb8800-mii";
+	bus->read = nb8800_mdio_read;
+	bus->write = nb8800_mdio_write;
 	bus->parent = &pdev->dev;
-	snprintf(bus->id, MII_BUS_ID_SIZE, "%s-mii", pdev->name);
+	snprintf(bus->id, MII_BUS_ID_SIZE, "%.*s-mii", MII_BUS_ID_SIZE - 5,
+		 pdev->name);
 	bus->priv = priv;
 
 	ret = mdiobus_register(bus);
@@ -1057,27 +1059,28 @@ static int tangox_enet_probe(struct platform_device *pdev)
 
 	phydev->irq = PHY_POLL;
 
-	ret = phy_connect_direct(dev, phydev, enet_link_reconfigure, phy_mode);
+	ret = phy_connect_direct(dev, phydev, nb8800_link_reconfigure,
+				 phy_mode);
 	if (ret)
 		goto err_free_bus;
 
 	dev_info(&pdev->dev, "PHY: found %s at 0x%x\n",
 		 phydev->drv->name, phydev->addr);
 
-	ret = enet_hw_init(dev);
+	ret = nb8800_hw_init(dev);
 	if (ret)
 		goto err_detach_phy;
 
-	ret = enet_dma_init(dev);
+	ret = nb8800_dma_init(dev);
 	if (ret)
 		goto err_detach_phy;
 
-	ret = request_irq(irq, enet_isr, 0, dev_name(&pdev->dev), dev);
+	ret = request_irq(irq, nb8800_isr, 0, dev_name(&pdev->dev), dev);
 	if (ret)
 		goto err_free_dma;
 
-	dev->netdev_ops = &tangox_netdev_ops;
-	dev->ethtool_ops = &enet_ethtool_ops;
+	dev->netdev_ops = &nb8800_netdev_ops;
+	dev->ethtool_ops = &nb8800_ethtool_ops;
 	dev->tx_queue_len = priv->tx_desc_count;
 	dev->flags |= IFF_MULTICAST;
 	dev->irq = irq;
@@ -1089,11 +1092,11 @@ static int tangox_enet_probe(struct platform_device *pdev)
 	if (!is_valid_ether_addr(dev->dev_addr))
 		eth_hw_addr_random(dev);
 
-	enet_update_mac_addr(dev);
+	nb8800_update_mac_addr(dev);
 
-	tasklet_init(&priv->tx_reclaim_tasklet, enet_tx_reclaim,
+	tasklet_init(&priv->tx_reclaim_tasklet, nb8800_tx_reclaim,
 		     (unsigned long)dev);
-	setup_timer(&priv->tx_reclaim_timer, enet_tx_reclaim,
+	setup_timer(&priv->tx_reclaim_timer, nb8800_tx_reclaim,
 		    (unsigned long)dev);
 
 	ret = register_netdev(dev);
@@ -1102,14 +1105,14 @@ static int tangox_enet_probe(struct platform_device *pdev)
 		goto err_free_dma;
 	}
 
-	netif_napi_add(dev, &priv->napi, enet_poll, NAPI_POLL_WEIGHT);
+	netif_napi_add(dev, &priv->napi, nb8800_poll, NAPI_POLL_WEIGHT);
 
 	netdev_info(dev, "MAC address %pM\n", dev->dev_addr);
 
 	return 0;
 
 err_free_dma:
-	enet_dma_free(dev);
+	nb8800_dma_free(dev);
 err_detach_phy:
 	phy_detach(priv->phydev);
 err_free_bus:
@@ -1122,10 +1125,10 @@ err_free_dev:
 	return ret;
 }
 
-static int tangox_enet_remove(struct platform_device *pdev)
+static int nb8800_remove(struct platform_device *pdev)
 {
 	struct net_device *ndev = platform_get_drvdata(pdev);
-	struct tangox_enet_priv *priv = netdev_priv(ndev);
+	struct nb8800_priv *priv = netdev_priv(ndev);
 
 	unregister_netdev(ndev);
 	free_irq(ndev->irq, ndev);
@@ -1135,27 +1138,27 @@ static int tangox_enet_remove(struct platform_device *pdev)
 
 	clk_disable_unprepare(priv->clk);
 
-	enet_dma_free(ndev);
+	nb8800_dma_free(ndev);
 	free_netdev(ndev);
 
 	return 0;
 }
 
-static struct of_device_id tangox_enet_dt_ids[] = {
+static struct of_device_id nb8800_dt_ids[] = {
 	{ .compatible = "sigma,smp8640-emac" },
 	{ }
 };
 
-static struct platform_driver tangox_enet_driver = {
+static struct platform_driver nb8800_driver = {
 	.driver = {
-		.name		= "tangox-enet",
-		.of_match_table	= tangox_enet_dt_ids,
+		.name		= "nb8800",
+		.of_match_table	= nb8800_dt_ids,
 	},
-	.probe	= tangox_enet_probe,
-	.remove	= tangox_enet_remove,
+	.probe	= nb8800_probe,
+	.remove	= nb8800_remove,
 };
 
-module_platform_driver(tangox_enet_driver);
+module_platform_driver(nb8800_driver);
 
-MODULE_DESCRIPTION("SMP86xx internal Ethernet driver");
+MODULE_DESCRIPTION("Aurora AU-NB8800 Ethernet driver");
 MODULE_LICENSE("GPL");

@@ -1,14 +1,5 @@
-/*********************************************************************
- Copyright (C) 2001-2009
- Sigma Designs, Inc.
-
- This program is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License version 2 as
- published by the Free Software Foundation.
- *********************************************************************/
-
-#ifndef __TANGOX_ENET_H
-#define __TANGOX_ENET_H
+#ifndef _NB8800_H_
+#define _NB8800_H_
 
 #include <linux/types.h>
 #include <linux/skbuff.h>
@@ -19,8 +10,8 @@
 #define DEF_RX_DESC_COUNT		512
 #define DEF_TX_DESC_COUNT		128
 
-#define ENET_DESC_LOW			16
-#define ENET_DESC_RECLAIM		64
+#define NB8800_DESC_LOW			16
+#define NB8800_DESC_RECLAIM		64
 
 #define RX_BUF_SIZE			1552
 #define TX_BUF_SIZE			1552
@@ -33,16 +24,16 @@
 #define MAX_MDC_CLOCK			2500000
 
 /* register offsets */
-#define ENET_TX_CTL1			0x00
+#define NB8800_TX_CTL1			0x00
 #define TX_TPD				(1 << 5)
 #define TX_APPEND_FCS			(1 << 4)
 #define TX_PAD_EN			(1 << 3)
 #define TX_RETRY_EN			(1 << 2)
 #define TX_EN				(1 << 0)
 
-#define ENET_TX_CTL2			0x01
+#define NB8800_TX_CTL2			0x01
 
-#define ENET_RX_CTL			0x04
+#define NB8800_RX_CTL			0x04
 #define RX_BC_DISABLE			(1 << 7)
 #define RX_RUNT				(1 << 6)
 #define RX_AF_EN			(1 << 5)
@@ -51,70 +42,70 @@
 #define RX_PAD_STRIP			(1 << 1)
 #define RX_EN				(1 << 0)
 
-#define ENET_RANDOM_SEED		0x8
-#define ENET_TX_SDP			0x14
-#define ENET_TX_TPDP1			0x18
-#define ENET_TX_TPDP2			0x19
-#define ENET_SLOT_TIME			0x1c
+#define NB8800_RANDOM_SEED		0x8
+#define NB8800_TX_SDP			0x14
+#define NB8800_TX_TPDP1			0x18
+#define NB8800_TX_TPDP2			0x19
+#define NB8800_SLOT_TIME		0x1c
 
-#define ENET_MDIO_CMD			0x20
+#define NB8800_MDIO_CMD			0x20
 #define MIIAR_ADDR(x)			((x) << 21)
 #define MIIAR_REG(x)			((x) << 16)
 #define MIIAR_DATA(x)			((x) <<	 0)
 #define MDIO_CMD_GO			(1 << 31)
 #define MDIO_CMD_WR			(1 << 26)
 
-#define ENET_MDIO_STS			0x24
+#define NB8800_MDIO_STS			0x24
 #define MDIO_STS_ERR			(1 << 31)
 
-#define ENET_MC_ADDR1			0x28
-#define ENET_MC_ADDR2			0x29
-#define ENET_MC_ADDR3			0x2a
-#define ENET_MC_ADDR4			0x2b
-#define ENET_MC_ADDR5			0x2c
-#define ENET_MC_ADDR6			0x2d
-#define ENET_MC_INIT			0x2e
-#define ENET_UC_ADDR1			0x3c
-#define ENET_UC_ADDR2			0x3d
-#define ENET_UC_ADDR3			0x3e
-#define ENET_UC_ADDR4			0x3f
-#define ENET_UC_ADDR5			0x40
-#define ENET_UC_ADDR6			0x41
+#define NB8800_MC_ADDR1			0x28
+#define NB8800_MC_ADDR2			0x29
+#define NB8800_MC_ADDR3			0x2a
+#define NB8800_MC_ADDR4			0x2b
+#define NB8800_MC_ADDR5			0x2c
+#define NB8800_MC_ADDR6			0x2d
+#define NB8800_MC_INIT			0x2e
+#define NB8800_UC_ADDR1			0x3c
+#define NB8800_UC_ADDR2			0x3d
+#define NB8800_UC_ADDR3			0x3e
+#define NB8800_UC_ADDR4			0x3f
+#define NB8800_UC_ADDR5			0x40
+#define NB8800_UC_ADDR6			0x41
 
-#define ENET_MAC_MODE			0x44
+#define NB8800_MAC_MODE			0x44
 #define RGMII_MODE			(1 << 7)
 #define HALF_DUPLEX			(1 << 4)
 #define BURST_EN			(1 << 3)
 #define LOOPBACK_EN			(1 << 2)
 #define GMAC_MODE			(1 << 0)
 
-#define ENET_IC_THRESHOLD		0x50
-#define ENET_PE_THRESHOLD		0x51
-#define ENET_PF_THRESHOLD		0x52
-#define ENET_TX_BUFSIZE			0x54
-#define ENET_FIFO_CTL			0x56
-#define ENET_PQ1			0x60
-#define ENET_PQ2			0x61
-#define ENET_MAC_ADDR1			0x6a
-#define ENET_MAC_ADDR2			0x6b
-#define ENET_MAC_ADDR3			0x6c
-#define ENET_MAC_ADDR4			0x6d
-#define ENET_MAC_ADDR5			0x6e
-#define ENET_MAC_ADDR6			0x6f
-#define ENET_STAT_DATA1			0x78
-#define ENET_STAT_DATA2			0x79
-#define ENET_STAT_DATA3			0x7a
-#define ENET_STAT_DATA4			0x7b
-#define ENET_STAT_INDEX			0x7c
-#define ENET_STAT_CLEAR			0x7d
+#define NB8800_IC_THRESHOLD		0x50
+#define NB8800_PE_THRESHOLD		0x51
+#define NB8800_PF_THRESHOLD		0x52
+#define NB8800_TX_BUFSIZE		0x54
+#define NB8800_FIFO_CTL			0x56
+#define NB8800_PQ1			0x60
+#define NB8800_PQ2			0x61
+#define NB8800_MAC_ADDR1		0x6a
+#define NB8800_MAC_ADDR2		0x6b
+#define NB8800_MAC_ADDR3		0x6c
+#define NB8800_MAC_ADDR4		0x6d
+#define NB8800_MAC_ADDR5		0x6e
+#define NB8800_MAC_ADDR6		0x6f
+#define NB8800_STAT_DATA1		0x78
+#define NB8800_STAT_DATA2		0x79
+#define NB8800_STAT_DATA3		0x7a
+#define NB8800_STAT_DATA4		0x7b
+#define NB8800_STAT_INDEX		0x7c
+#define NB8800_STAT_CLEAR		0x7d
 
-#define ENET_SLEEP_MODE			0x7e
+#define NB8800_SLEEP_MODE		0x7e
 #define SLEEP_MODE			(1 << 0)
 
-#define ENET_WAKEUP			0x7f
+#define NB8800_WAKEUP			0x7f
 #define WAKEUP				(1 << 0)
 
-#define ENET_TXC_CR			0x100
+#define NB8800_TXC_CR			0x100
 #define TCR_LK				(1 << 12)
 #define TCR_DS				(1 << 11)
 #define TCR_BTS(x)			(((x) & 0x7) << 8)
@@ -125,16 +116,16 @@
 #define TCR_DM				(1 << 1)
 #define TCR_EN				(1 << 0)
 
-#define ENET_TXC_SR			0x104
+#define NB8800_TXC_SR			0x104
 #define TSR_DE				(1 << 3)
 #define TSR_DI				(1 << 2)
 #define TSR_TO				(1 << 1)
 #define TSR_TI				(1 << 0)
 
-#define ENET_TX_SAR			0x108
-#define ENET_TX_DESC_ADDR		0x10c
+#define NB8800_TX_SAR			0x108
+#define NB8800_TX_DESC_ADDR		0x10c
 
-#define ENET_TX_REPORT_ADDR		0x110
+#define NB8800_TX_REPORT_ADDR		0x110
 #define TX_BYTES_TRASFERRED(x)		(((x) >> 16) & 0xffff)
 #define TX_FIRST_DEFERRAL		(1 << 7)
 #define TX_EARLY_COLLISIONS(x)		(((x) >> 3) & 0xf)
@@ -143,10 +134,10 @@
 #define TX_FIFO_UNDERRUN		(1 << 0)
 #define IS_TX_ERROR(r)			((r) & 0x87)
 
-#define ENET_TX_FIFO_SR			0x114
-#define ENET_TX_ITR			0x118
+#define NB8800_TX_FIFO_SR		0x114
+#define NB8800_TX_ITR			0x118
 
-#define ENET_RXC_CR			0x200
+#define NB8800_RXC_CR			0x200
 #define RCR_FI				(1 << 13)
 #define RCR_LK				(1 << 12)
 #define RCR_DS				(1 << 11)
@@ -158,16 +149,16 @@
 #define RCR_DM				(1 << 1)
 #define RCR_EN				(1 << 0)
 
-#define ENET_RXC_SR			0x204
+#define NB8800_RXC_SR			0x204
 #define RSR_DE				(1 << 3)
 #define RSR_DI				(1 << 2)
 #define RSR_RO				(1 << 1)
 #define RSR_RI				(1 << 0)
 
-#define ENET_RX_SAR			0x208
-#define ENET_RX_DESC_ADDR		0x20c
+#define NB8800_RX_SAR			0x208
+#define NB8800_RX_DESC_ADDR		0x20c
 
-#define ENET_RX_REPORT_ADDR		0x210
+#define NB8800_RX_REPORT_ADDR		0x210
 #define RX_BYTES_TRANSFERRED(x)		(((x) >> 16) & 0xFFFF)
 #define RX_MULTICAST_PKT		(1 << 9)
 #define RX_BROADCAST_PKT		(1 << 8)
@@ -180,20 +171,20 @@
 #define RX_ERROR_MASK			0xfc
 #define IS_RX_ERROR(r)			((r) & RX_ERROR_MASK)
 
-#define ENET_RX_FIFO_SR			0x214
-#define ENET_RX_ITR			0x218
+#define NB8800_RX_FIFO_SR		0x214
+#define NB8800_RX_ITR			0x218
 
-#define ENET_PAD_MODE			0x400
-#define ENET_MDIO_CLKDIV		0x420
-#define ENET_SW_RESET			0x424
+#define NB8800_PAD_MODE			0x400
+#define NB8800_MDIO_CLKDIV		0x420
+#define NB8800_SW_RESET			0x424
 
-struct enet_desc {
-	unsigned long s_addr;
-	unsigned long n_addr;
-	unsigned long r_addr;
-	unsigned long config;
-	unsigned char buf[12];
-	unsigned long report;
+struct nb8800_dma_desc {
+	u32 s_addr;
+	u32 n_addr;
+	u32 r_addr;
+	u32 config;
+	u8  buf[12];
+	u32 report;
 };
 
 #define DESC_ID				(1 << 23)
@@ -219,17 +210,17 @@ struct tx_skb_data {
 	unsigned int dma_len;
 };
 
-struct tangox_enet_priv {
+struct nb8800_priv {
 	struct napi_struct		napi;
 
 	void __iomem			*base;
 
-	struct enet_desc		*rx_descs;
+	struct nb8800_dma_desc		*rx_descs;
 	struct rx_buf			*rx_bufs;
 	u16				rx_desc_count;
 	u16				rx_eoc;
 
-	struct enet_desc		*tx_descs;
+	struct nb8800_dma_desc		*tx_descs;
 	struct tx_buf			*tx_bufs;
 	atomic_t			tx_free;
 	u16				tx_desc_count;
@@ -258,4 +249,4 @@ struct tangox_enet_priv {
 	struct clk			*clk;
 };
 
-#endif /* __TANGOX_ENET_H */
+#endif /* _NB8800_H_ */
