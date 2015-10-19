@@ -749,6 +749,25 @@ static struct net_device_stats *nb8800_get_stats(struct net_device *dev)
 	return &priv->stats;
 }
 
+static int nb8800_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+
+	return phy_mii_ioctl(priv->phydev, rq, cmd);
+}
+
+static const struct net_device_ops nb8800_netdev_ops = {
+	.ndo_open		= nb8800_open,
+	.ndo_stop		= nb8800_stop,
+	.ndo_start_xmit		= nb8800_xmit,
+	.ndo_get_stats		= nb8800_get_stats,
+	.ndo_set_mac_address	= nb8800_set_mac_address,
+	.ndo_set_rx_mode	= nb8800_set_rx_mode,
+	.ndo_do_ioctl		= nb8800_ioctl,
+	.ndo_change_mtu		= eth_change_mtu,
+	.ndo_validate_addr	= eth_validate_addr,
+};
+
 static int nb8800_get_settings(struct net_device *dev, struct ethtool_cmd *cmd)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
@@ -785,13 +804,6 @@ static struct ethtool_ops nb8800_ethtool_ops = {
 	.nway_reset		= nb8800_nway_reset,
 	.get_link		= nb8800_get_link,
 };
-
-static int nb8800_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
-{
-	struct nb8800_priv *priv = netdev_priv(dev);
-
-	return phy_mii_ioctl(priv->phydev, rq, cmd);
-}
 
 static int nb8800_dma_init(struct net_device *dev)
 {
@@ -942,17 +954,6 @@ static int nb8800_hw_init(struct net_device *dev)
 	return 0;
 }
 
-static const struct net_device_ops nb8800_netdev_ops = {
-	.ndo_open		= nb8800_open,
-	.ndo_stop		= nb8800_stop,
-	.ndo_start_xmit		= nb8800_xmit,
-	.ndo_get_stats		= nb8800_get_stats,
-	.ndo_set_mac_address	= nb8800_set_mac_address,
-	.ndo_set_rx_mode	= nb8800_set_rx_mode,
-	.ndo_do_ioctl		= nb8800_ioctl,
-	.ndo_change_mtu		= eth_change_mtu,
-	.ndo_validate_addr	= eth_validate_addr,
-};
 
 static int nb8800_probe(struct platform_device *pdev)
 {
