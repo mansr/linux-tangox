@@ -317,9 +317,8 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 		wmb();
 		priv->rx_descs[priv->rx_eoc].config &= ~DESC_EOC;
 		priv->rx_eoc = last;
+		nb8800_start_rx(dev);
 	}
-
-	nb8800_start_rx(dev);
 
 	if (work < budget)
 		napi_complete_done(napi, work);
