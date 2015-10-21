@@ -427,6 +427,9 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	if (!skb->xmit_more && !timer_pending(&priv->tx_reclaim_timer))
 		mod_timer(&priv->tx_reclaim_timer, jiffies + HZ / 20);
 
+	if (atomic_read(&priv->tx_free) <= NB8800_DESC_LOW)
+		netif_stop_queue(dev);
+
 	return NETDEV_TX_OK;
 }
 
