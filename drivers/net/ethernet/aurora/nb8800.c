@@ -322,7 +322,7 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 	nb8800_start_rx(dev);
 
 	if (work < budget)
-		napi_complete(napi);
+		napi_complete_done(napi, work);
 
 	nb8800_tx_reclaim((unsigned long)dev);
 
