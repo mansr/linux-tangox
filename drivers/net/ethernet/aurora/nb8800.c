@@ -869,7 +869,7 @@ static void nb8800_dma_free(struct net_device *dev)
 
 	if (priv->rx_bufs)
 		for (i = 0; i < RX_DESC_COUNT; i++)
-			if (!priv->rx_bufs[i].page)
+			if (priv->rx_bufs[i].page)
 				put_page(priv->rx_bufs[i].page);
 
 	if (priv->tx_bufs)
