@@ -529,7 +529,7 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 	if (val) {
 		nb8800_writel(priv, NB8800_RXC_SR, val);
 
-		if (likely(val & (RSR_RI | RSR_DI | RSR_DE | RSR_RO)))
+		if (likely(val & RSR_RI))
 			napi_schedule(&priv->napi);
 
 		if (unlikely(val & RSR_DE))
