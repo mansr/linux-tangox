@@ -530,7 +530,7 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 		nb8800_writel(priv, NB8800_RXC_SR, val);
 
 		if (likely(val & RSR_RI))
-			napi_schedule(&priv->napi);
+			napi_schedule_irqoff(&priv->napi);
 
 		if (unlikely(val & RSR_DE))
 			netdev_err(dev, "RX DMA error\n");
