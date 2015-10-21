@@ -4,7 +4,7 @@
 #include "smp8640-cpu.dtsi"
 
 / {
-	compatible = "syabas,pch_c200", "sigma,smp8640-soc";
+	compatible = "syabas,pch-c200", "sigma,smp8640-soc";
 	model = "Popcorn Hour C-200";
 
 	memory@10000000 {
@@ -30,7 +30,13 @@
 
 &eth0 {
 	phy-connection-type = "rgmii";
-	max-speed = <1000>;
+	phy-handle = <&eth0_phy>;
+
+	eth0_phy: ethernet-phy@1 {
+		compatible = "ethernet-phy-id0007.0421",
+			     "ethernet-phy-ieee802.3-c22";
+		reg = <1>;
+	};
 };
 
 &i2c0 {

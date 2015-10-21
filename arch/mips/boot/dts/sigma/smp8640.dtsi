@@ -13,7 +13,7 @@
 		sata_phy = &sata_phy;
 	};
 
-	cpuintc: cpu-intc@0 {
+	cpuintc: interrupt-controller@0 {
 		compatible = "mti,cpu-interrupt-controller";
 		#address-cells = <0>;
 		interrupt-controller;
@@ -88,14 +88,16 @@
 			compatible = "sigma,smp8640-premux-clk";
 			reg = <0x10034 0x4>;
 			#clock-cells = <1>;
-			clocks = <&pll0_clk 0>, <&pll0_clk 1>,
+			clocks = <&pll1_clk 0>,
 				 <&pll1_clk 0>, <&pll1_clk 1>,
 				 <&pll2_clk 0>, <&pll2_clk 1>;
 			clock-output-names = "pll_sys_clk", "cd_clk";
+			sigma,sys-table = <1>;
+			sigma,cd-table = <2 3 4 5>;
 		};
 
 		sys_clk: div@1003c {
-			compatible = "sigma,smp8640-div-clk";
+			compatible = "sigma,smp8640-sysmux-clk";
 			reg = <0x1003c 0x4>;
 			#clock-cells = <1>;
 			clocks = <&xtal_in_clk>, <&premux_clk 0>;
@@ -106,7 +108,7 @@
 		};
 
 		cd0_clk: clk@10080 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x10080 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -116,7 +118,7 @@
 		};
 
 		cd1_clk: clk@10088 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x10088 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -126,7 +128,7 @@
 		};
 
 		cd2_clk: clk@10090 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x10090 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -136,7 +138,7 @@
 		};
 
 		cd3_clk: clk@10098 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x10098 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -146,7 +148,7 @@
 		};
 
 		cd4_clk: clk@100a0 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x100a0 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -156,7 +158,7 @@
 		};
 
 		cd5_clk: clk@100a8 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x100a8 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -166,7 +168,7 @@
 		};
 
 		cd6_clk: clk@100b0 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x100b0 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -176,7 +178,7 @@
 		};
 
 		cd7_clk: clk@100b8 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x100b8 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -186,7 +188,7 @@
 		};
 
 		cd8_clk: clk@100c0 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x100c0 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -196,7 +198,7 @@
 		};
 
 		cd9_clk: clk@100c8 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x100c8 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -206,7 +208,7 @@
 		};
 
 		cd10_clk: clk@100d0 {
-			compatible = "sigma,smp8640-cd-clk";
+			compatible = "sigma,smp8640-cleandiv-clk";
 			reg = <0x100d0 0x8>;
 			#clock-cells = <1>;
 			clocks = <&premux_clk 1>;
@@ -219,46 +221,43 @@
 			compatible = "sigma,smp8640-mux-clk";
 			reg = <0x10030 0x4>;
 			#clock-cells = <0>;
-			clocks = <&xtal_in_clk>, <&cd3_clk 0>,
-				 <&pll2_clk 2>, <&rclk0_in_clk>;
+			clocks = <&cd3_clk 0>, <&pll2_clk 2>, <&rclk0_in_clk>;
 			clock-output-names = "sata_clk";
-			sigma,shift = <4>;
+			sigma,bits = <4 4>;
 		};
 
 		usb_clk: usb_clk {
 			compatible = "sigma,smp8640-mux-clk";
 			reg = <0x10030 0x4>;
 			#clock-cells = <0>;
-			clocks = <&xtal_in_clk>, <&cd2_clk 1>,
-				 <&pll2_clk 1>, <&rclk0_in_clk>;
+			clocks = <&cd2_clk 1>, <&pll2_clk 1>, <&rclk0_in_clk>;
 			clock-output-names = "usb_clk";
-			sigma,shift = <8>;
+			sigma,bits = <8 4>;
 		};
 
 		vo0_clk: vo0_clk {
 			compatible = "sigma,smp8640-mux-clk";
 			reg = <0x10038 0x4>;
 			#clock-cells = <0>;
-			clocks = <&xtal_in_clk>, <&cd8_clk 0>, <&cd8_clk 1>,
-				 <&cd8_clk 2>, <&cd8_clk 1>, <&cd8_clk 2>,
+			clocks = <&cd8_clk 0>, <&cd8_clk 1>, <&cd8_clk 2>,
+				 <&cd8_clk 1>, <&cd8_clk 2>,
 				 <&pll1_clk 1>, <&pll1_clk 2>, <&pll2_clk 1>;
 			clock-output-names = "vo0_clk";
-			sigma,shift = <0>;
-			sigma,mux-table = <0 1 2 3 4 5 10 11 12>;
+			sigma,bits = <0 4>;
+			sigma,mux-table = <1 2 3 4 5 10 11 12>;
 		};
 
 		vo1_clk: vo1_clk {
 			compatible = "sigma,smp8640-mux-clk";
 			reg = <0x10038 0x4>;
 			#clock-cells = <0>;
-			clocks = <&xtal_in_clk>,
-				 <&cd8_clk 0>, <&cd8_clk 1>, <&cd8_clk 2>,
+			clocks = <&cd8_clk 0>, <&cd8_clk 1>, <&cd8_clk 2>,
 				 <&cd9_clk 0>, <&cd9_clk 1>, <&cd9_clk 2>,
 				 <&cd10_clk 0>, <&cd10_clk 1>, <&cd10_clk 2>,
 				 <&pll1_clk 1>, <&pll1_clk 2>, <&pll2_clk 1>,
 				 <&pll1_clk 0>, <&rclk0_in_clk>;
 			clock-output-names = "vo1_clk";
-			sigma,shift = <4>;
+			sigma,bits = <4 4>;
 		};
 
 		uart_clk: uart_clk {
@@ -273,7 +272,7 @@
 
 	soc {
 		compatible = "simple-bus";
-		interrupt-parent = <&irqintc>;
+		interrupt-parent = <&irq0>;
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
@@ -282,7 +281,7 @@
 			compatible = "sigma,smp8640-csrc";
 			reg = <0x10048 4>;
 			clocks = <&xtal_in_clk>;
-			label = "TANGOX";
+			label = "xtal_in";
 		};
 
 		i2c1: i2c@10400 {
@@ -377,18 +376,22 @@
 			#phy-cells = <0>;
 		};
 
-		eth0: emac@26000 {
-			compatible = "sigma,smp8640-emac";
+		eth0: ethernet@26000 {
+			compatible = "sigma,smp8642-ethernet";
 			reg = <0x26000 0x800>;
 			interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sys_clk 0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 		};
 
-		eth1: emac@26800 {
-			compatible = "sigma,smp8640-emac";
+		eth1: ethernet@26800 {
+			compatible = "sigma,smp8642-ethernet";
 			reg = <0x26800 0x800>;
 			interrupts = <57 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sys_clk 0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 		};
 
 		dma0: dma@290a0 {
@@ -477,7 +480,7 @@
 
 	cpublock: cpublock {
 		compatible = "simple-bus";
-		interrupt-parent = <&irqintc>;
+		interrupt-parent = <&irq0>;
 		#address-cells = <1>;
 		#size-cells = <1>;
 
@@ -497,7 +500,7 @@
 			label = "tangox_timer1";
 		};
 
-		intc: intc@e000 {
+		intc: interrupt-controller@e000 {
 			compatible = "sigma,smp8640-intc";
 			reg = <0xe000 0x1000>;
 			ranges = <0x0 0xe000 0x1000>;
@@ -506,28 +509,28 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			irqintc: irq@000 {
+			irq0: interrupt-controller@000 {
 				reg = <0x000 0x100>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <2>;
-				label = "IRQ";
+				label = "IRQ0";
 			};
 
-			fiqintc: fiq@100 {
+			irq1: interrupt-controller@100 {
 				reg = <0x100 0x100>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <3>;
-				label = "FIQ";
+				label = "IRQ1";
 			};
 
-			iiqintc: iiq@300 {
+			irq2: interrupt-controller@300 {
 				reg = <0x300 0x100>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <4>;
-				label = "IIQ";
+				label = "IRQ2";
 			};
 		};
 	};
