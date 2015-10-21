@@ -10,7 +10,7 @@
 #define RX_DESC_COUNT			256
 #define TX_DESC_COUNT			256
 
-#define NB8800_DESC_LOW			16
+#define NB8800_DESC_LOW			4
 #define NB8800_DESC_RECLAIM		64
 
 #define RX_BUF_SIZE			1552
