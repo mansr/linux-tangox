@@ -108,10 +108,9 @@ static int nb8800_mdio_read(struct mii_bus *bus, int phy_id, int reg)
 		return -ETIMEDOUT;
 
 	val = MIIAR_ADDR(phy_id) | MIIAR_REG(reg);
+
 	nb8800_writel(priv, NB8800_MDIO_CMD, val);
-
 	udelay(10);
-
 	nb8800_writel(priv, NB8800_MDIO_CMD, val | MDIO_CMD_GO);
 
 	if (!nb8800_mdio_wait(bus))
@@ -132,16 +131,12 @@ static int nb8800_mdio_write(struct mii_bus *bus, int phy_id, int reg, u16 val)
 	if (!nb8800_mdio_wait(bus))
 		return -ETIMEDOUT;
 
-	tmp = MIIAR_DATA(val) | MIIAR_ADDR(phy_id) | MIIAR_REG(reg);
+	tmp = MIIAR_DATA(val) | MIIAR_ADDR(phy_id) | MIIAR_REG(reg) |
+		MDIO_CMD_WR;
+
 	nb8800_writel(priv, NB8800_MDIO_CMD, tmp);
-
 	udelay(10);
-
-	nb8800_writel(priv, NB8800_MDIO_CMD, tmp | MDIO_CMD_WR);
-
-	udelay(10);
-
-	nb8800_writel(priv, NB8800_MDIO_CMD, tmp | MDIO_CMD_WR | MDIO_CMD_GO);
+	nb8800_writel(priv, NB8800_MDIO_CMD, tmp | MDIO_CMD_GO);
 
 	if (!nb8800_mdio_wait(bus))
 		return -ETIMEDOUT;
