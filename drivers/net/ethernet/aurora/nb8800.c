@@ -218,7 +218,7 @@ static int nb8800_alloc_rx(struct net_device *dev, int i, int napi)
 
 	rx->s_addr = dma_map_page(&dev->dev, buf->page, buf->offset,
 				  RX_BUF_SIZE, DMA_FROM_DEVICE);
-	rx->config = RX_BUF_SIZE | DESC_BTS(2) | DESC_EOF;
+	rx->config = RX_BUF_SIZE | DESC_BTS(2) | DESC_DS | DESC_EOF;
 
 	return 0;
 }
@@ -336,7 +336,7 @@ static void nb8800_tx_dma_queue(struct net_device *dev, dma_addr_t data,
 	struct nb8800_dma_desc *tx = &priv->tx_descs[next];
 
 	tx->s_addr = data;
-	tx->config = DESC_BTS(2) | flags | len;
+	tx->config = DESC_BTS(2) | DESC_DS | flags | len;
 	tx->report = 0;
 
 	priv->tx_next = (next + 1) & (TX_DESC_COUNT - 1);
