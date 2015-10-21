@@ -505,12 +505,12 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 {
 	struct net_device *dev = dev_id;
 	struct nb8800_priv *priv = netdev_priv(dev);
-	unsigned long val;
+	u32 val;
 
 	/* tx interrupt */
 	val = nb8800_readl(priv, NB8800_TXC_SR);
 	if (val) {
-		nb8800_writel(priv, NB8800_TXC_SR, 0xf);
+		nb8800_writel(priv, NB8800_TXC_SR, val);
 
 		if (likely(val & TSR_TI))
 			nb8800_tx_done(dev);
@@ -518,13 +518,13 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 		if (unlikely(val & TSR_DE))
 			netdev_err(dev, "TX DMA error\n");
 		if (unlikely(val & TSR_TO))
-			netdev_err(dev, "TX FIFO overflow\n");
+			netdev_err(dev, "TX Status FIFO overflow\n");
 	}
 
 	/* rx interrupt */
 	val = nb8800_readl(priv, NB8800_RXC_SR);
 	if (val) {
-		nb8800_writel(priv, NB8800_RXC_SR, 0xf);
+		nb8800_writel(priv, NB8800_RXC_SR, val);
 
 		if (likely(val & (RSR_RI | RSR_DI | RSR_DE | RSR_RO)))
 			napi_schedule(&priv->napi);
