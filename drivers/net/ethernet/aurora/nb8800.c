@@ -1117,6 +1117,8 @@ static int nb8800_probe(struct platform_device *pdev)
 	setup_timer(&priv->tx_reclaim_timer, nb8800_tx_reclaim,
 		    (unsigned long)dev);
 
+	netif_carrier_off(dev);
+
 	ret = register_netdev(dev);
 	if (ret) {
 		netdev_err(dev, "failed to register netdev\n");
