@@ -930,7 +930,9 @@ static int nb8800_hw_init(struct net_device *dev)
 	nb8800_writeb(priv, NB8800_PQ2, 0xff);
 
 	/* configure TX DMA Channels */
-	val = TCR_DM | TCR_RS | TCR_LE | TCR_TFI(TFI) | TCR_BTS(2);
+	val = nb8800_readl(priv, NB8800_TXC_CR);
+	val &= TCR_LE;
+	val |= TCR_DM | TCR_RS | TCR_TFI(TFI) | TCR_BTS(2);
 	nb8800_writel(priv, NB8800_TXC_CR, val);
 
 	/* TX Interrupt Time Register */
@@ -938,8 +940,9 @@ static int nb8800_hw_init(struct net_device *dev)
 	nb8800_writel(priv, NB8800_TX_ITR, val);
 
 	/* configure RX DMA Channels */
-	val = RCR_DM | RCR_RS | RCR_LE | RCR_RFI(RFI) | RCR_DIE | RCR_BTS(2) |
-		RCR_FI;
+	val = nb8800_readl(priv, NB8800_RXC_CR);
+	val &= RCR_LE;
+	val |= RCR_DM | RCR_RS | RCR_RFI(RFI) | RCR_BTS(2) | RCR_FL;
 	nb8800_writel(priv, NB8800_RXC_CR, val);
 
 	/* RX Interrupt Time Register */

@@ -138,7 +138,7 @@
 #define NB8800_TX_ITR			0x118
 
 #define NB8800_RXC_CR			0x200
-#define RCR_FI				(1 << 13)
+#define RCR_FL				(1 << 13)
 #define RCR_LK				(1 << 12)
 #define RCR_DS				(1 << 11)
 #define RCR_BTS(x)			(((x) & 7) << 8)
