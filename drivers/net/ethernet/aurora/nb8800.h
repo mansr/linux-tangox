@@ -7,8 +7,8 @@
 #include <linux/clk.h>
 #include <linux/timer.h>
 
-#define DEF_RX_DESC_COUNT		512
-#define DEF_TX_DESC_COUNT		128
+#define RX_DESC_COUNT			256
+#define TX_DESC_COUNT			256
 
 #define NB8800_DESC_LOW			16
 #define NB8800_DESC_RECLAIM		64
@@ -218,18 +218,16 @@ struct nb8800_priv {
 
 	struct nb8800_dma_desc		*rx_descs;
 	struct rx_buf			*rx_bufs;
-	u16				rx_desc_count;
 	u16				rx_eoc;
 
 	struct nb8800_dma_desc		*tx_descs;
 	struct tx_buf			*tx_bufs;
 	atomic_t			tx_free;
-	u16				tx_desc_count;
-	u16				tx_next;
 	u32 				tx_pending;
+	u32				tx_dirty;
+	u16				tx_next;
 	u16				tx_reclaim_next;
 	u16 				tx_reclaim_limit;
-	u32				tx_dirty;
 	u16				tx_done;
 
 	struct tasklet_struct		tx_reclaim_tasklet;

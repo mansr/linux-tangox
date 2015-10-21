@@ -182,7 +182,7 @@ static void nb8800_stop_rx(struct net_device *dev)
 	struct nb8800_priv *priv = netdev_priv(dev);
 	int i;
 
-	for (i = 0; i < priv->rx_desc_count; i++)
+	for (i = 0; i < RX_DESC_COUNT; i++)
 		priv->rx_descs[i].config |= DESC_EOC;
 
 	mb();
@@ -288,7 +288,7 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 		u32 report;
 		int len;
 
-		next = (last + 1) & (priv->rx_desc_count - 1);
+		next = (last + 1) & (RX_DESC_COUNT - 1);
 
 		rx_buf = &priv->rx_bufs[next];
 		rx = &priv->rx_descs[next];
@@ -340,7 +340,7 @@ static void nb8800_tx_dma_queue(struct net_device *dev, dma_addr_t data,
 	tx->config = DESC_BTS(2) | flags | len;
 	tx->report = 0;
 
-	priv->tx_next = (next + 1) & (priv->tx_desc_count - 1);
+	priv->tx_next = (next + 1) & (TX_DESC_COUNT - 1);
 }
 
 static void nb8800_tx_dma_start(struct net_device *dev, int new)
@@ -364,7 +364,7 @@ static void nb8800_tx_dma_start(struct net_device *dev, int new)
 	tx = &priv->tx_descs[next];
 	tx_buf = &priv->tx_bufs[next];
 
-	next = (next + tx_buf->frags) & (priv->tx_desc_count - 1);
+	next = (next + tx_buf->frags) & (TX_DESC_COUNT - 1);
 	priv->tx_reclaim_next = next;
 
 	nb8800_writel(priv, NB8800_TX_DESC_ADDR, tx_buf->desc_dma);
@@ -464,7 +464,7 @@ static void nb8800_tx_reclaim(unsigned long data)
 		tx_buf->skb = NULL;
 		tx_buf->frags = 0;
 
-		dirty = (dirty + frags) & (priv->tx_desc_count - 1);
+		dirty = (dirty + frags) & (TX_DESC_COUNT - 1);
 		reclaimed += frags;
 	}
 
@@ -484,7 +484,7 @@ static void nb8800_tx_done(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct tx_buf *tx_buf;
-	int tx_mask = (priv->tx_desc_count - 1);
+	int tx_mask = (TX_DESC_COUNT - 1);
 	int nr_dirty;
 
 	tx_buf = &priv->tx_bufs[priv->tx_done];
@@ -676,11 +676,11 @@ static void nb8800_dma_reinit(struct net_device *dev)
 	priv->tx_dirty = 0;
 	priv->tx_next = 0;
 	priv->tx_done = 0;
-	atomic_set(&priv->tx_free, priv->tx_desc_count);
+	atomic_set(&priv->tx_free, TX_DESC_COUNT);
 
-	priv->rx_eoc = priv->rx_desc_count - 1;
+	priv->rx_eoc = RX_DESC_COUNT - 1;
 
-	for (i = 0; i < priv->rx_desc_count - 1; i++) {
+	for (i = 0; i < RX_DESC_COUNT - 1; i++) {
 		rx = &priv->rx_descs[i];
 		rx->report = 0;
 		rx->config &= ~DESC_EOC;
@@ -802,8 +802,8 @@ static struct ethtool_ops nb8800_ethtool_ops = {
 static int nb8800_dma_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
-	int n_rx = priv->rx_desc_count;
-	int n_tx = priv->tx_desc_count;
+	int n_rx = RX_DESC_COUNT;
+	int n_tx = TX_DESC_COUNT;
 	int i;
 
 	priv->rx_descs = dmam_alloc_coherent(dev->dev.parent,
@@ -868,12 +868,12 @@ static void nb8800_dma_free(struct net_device *dev)
 	int i;
 
 	if (priv->rx_bufs)
-		for (i = 0; i < priv->rx_desc_count; i++)
+		for (i = 0; i < RX_DESC_COUNT; i++)
 			if (!priv->rx_bufs[i].page)
 				put_page(priv->rx_bufs[i].page);
 
 	if (priv->tx_bufs)
-		for (i = 0; i < priv->tx_desc_count; i++)
+		for (i = 0; i < TX_DESC_COUNT; i++)
 			kfree_skb(priv->tx_bufs[i].skb);
 }
 
@@ -1020,8 +1020,6 @@ static int nb8800_probe(struct platform_device *pdev)
 
 	priv = netdev_priv(dev);
 	priv->base = base;
-	priv->rx_desc_count = DEF_RX_DESC_COUNT;
-	priv->tx_desc_count = DEF_TX_DESC_COUNT;
 
 	if (!of_property_read_u32(pdev->dev.of_node, "max-speed", &speed))
 		priv->gigabit = speed >= 1000;
@@ -1029,11 +1027,6 @@ static int nb8800_probe(struct platform_device *pdev)
 	phy_mode = of_get_phy_mode(pdev->dev.of_node);
 	if (phy_mode < 0)
 		phy_mode = PHY_INTERFACE_MODE_RGMII;
-
-	if (priv->gigabit) {
-		priv->rx_desc_count *= 2;
-		priv->tx_desc_count *= 2;
-	}
 
 	priv->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(priv->clk)) {
@@ -1106,7 +1099,7 @@ static int nb8800_probe(struct platform_device *pdev)
 
 	dev->netdev_ops = &nb8800_netdev_ops;
 	dev->ethtool_ops = &nb8800_ethtool_ops;
-	dev->tx_queue_len = priv->tx_desc_count;
+	dev->tx_queue_len = TX_DESC_COUNT;
 	dev->flags |= IFF_MULTICAST;
 	dev->irq = irq;
 
