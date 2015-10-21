@@ -717,8 +717,6 @@ static int nb8800_open(struct net_device *dev)
 	nb8800_mac_rx(dev, 1);
 	nb8800_mac_tx(dev, 1);
 
-	mdelay(500);
-
 	napi_enable(&priv->napi);
 	netif_start_queue(dev);
 
