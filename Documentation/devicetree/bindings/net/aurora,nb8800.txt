@@ -1,0 +1,37 @@
+* Aurora VLSI AU-NB8800 Ethernet controller
+
+Required properties:
+- compatible: Should be "sigma,<chip>-ethernet", "aurora,nb8800"
+- reg: Should be MMIO address space of the device
+- interrupts: Should contain the interrupt specifier for the device
+- interrupt-parent: Should be a phandle for the interrupt controller
+- clocks: Should be a phandle for the clock for the device
+- #address-cells: Should be <1>
+- #size-cells: Should be <0>
+
+Common properties described in ethernet.txt:
+- local-mac-address
+- mac-address
+- phy-handle
+- phy-mode
+
+The attached PHY should be specified in a child node as per phy.txt.
+
+Example:
+
+ethernet@26000 {
+	compatible = "sigma,smp8642-ethernet", "aurora,nb8800";
+	reg = <0x26000 0x800>;
+	interrupts = <38>;
+	clocks = <&sys_clk>;
+	max-speed = <1000>;
+	phy-connection-type = "rgmii";
+        phy-handle = <&eth0_phy>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	eth0_phy: ethernet-phy@1 {
+		compatible = "ethernet-phy-ieee802.3-c22";
+		reg = <1>;
+	};
+};
