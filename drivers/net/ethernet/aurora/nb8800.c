@@ -618,7 +618,7 @@ static int nb8800_set_mac_address(struct net_device *dev, void *addr)
 	if (netif_running(dev))
 		return -EBUSY;
 
-	memcpy(dev->dev_addr, sock->sa_data, ETH_ALEN);
+	ether_addr_copy(dev->dev_addr, sock->sa_data);
 	nb8800_update_mac_addr(dev);
 
 	return 0;
@@ -1109,7 +1109,7 @@ static int nb8800_probe(struct platform_device *pdev)
 
 	mac = of_get_mac_address(pdev->dev.of_node);
 	if (mac)
-		memcpy(dev->dev_addr, mac, ETH_ALEN);
+		ether_addr_copy(dev->dev_addr, mac);
 
 	if (!is_valid_ether_addr(dev->dev_addr))
 		eth_hw_addr_random(dev);
