@@ -32,8 +32,8 @@
 #include <linux/phy.h>
 #include <linux/cache.h>
 #include <linux/jiffies.h>
+#include <linux/io.h>
 #include <asm/barrier.h>
-#include <asm/io.h>
 
 #include "nb8800.h"
 
@@ -180,10 +180,8 @@ static void nb8800_stop_rx(struct net_device *dev)
 	for (i = 0; i < RX_DESC_COUNT; i++)
 		priv->rx_descs[i].config |= DESC_EOC;
 
-	mb();
-
 	while (nb8800_readl(priv, NB8800_RXC_CR) & RCR_EN)
-		udelay(1000);
+		usleep_range(1000, 10000);
 }
 
 static void nb8800_start_rx(struct net_device *dev)
@@ -691,8 +689,6 @@ static void nb8800_dma_reinit(struct net_device *dev)
 	rx->report = 0;
 	rx->config |= DESC_EOC;
 
-	wmb();
-
 	nb8800_writel(priv, NB8800_TX_DESC_ADDR, priv->tx_desc_dma);
 	nb8800_writel(priv, NB8800_RX_DESC_ADDR, priv->rx_desc_dma);
 }
@@ -895,9 +891,9 @@ static void nb8800_tangox_reset(struct net_device *dev)
 	int clk_div;
 
 	nb8800_writeb(priv, NB8800_TANGOX_RESET, 0);
-	wmb();
-	udelay(10);
+	usleep_range(1000, 10000);
 	nb8800_writeb(priv, NB8800_TANGOX_RESET, 1);
+
 	wmb();
 
 	clk_div = DIV_ROUND_UP(clk_get_rate(priv->clk), 2 * MAX_MDC_CLOCK);
@@ -966,7 +962,7 @@ static int nb8800_hw_init(struct net_device *dev)
 	return 0;
 }
 
-static struct of_device_id nb8800_dt_ids[] = {
+static const struct of_device_id nb8800_dt_ids[] = {
 	{
 		.compatible = "aurora,nb8800",
 	},
