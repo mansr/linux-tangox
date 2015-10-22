@@ -385,7 +385,7 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 		return NETDEV_TX_BUSY;
 	}
 
-	cpsz = (8 - (u32)skb->data) & 7;
+	cpsz = (8 - (uintptr_t)skb->data) & 7;
 
 	frags = cpsz ? 2 : 1;
 	atomic_sub(frags, &priv->tx_free);
@@ -1010,7 +1010,7 @@ static int nb8800_probe(struct platform_device *pdev)
 	if (IS_ERR(base))
 		return PTR_ERR(base);
 
-	dev_info(&pdev->dev, "AU-NB8800 Ethernet at 0x%x\n", res->start);
+	dev_info(&pdev->dev, "AU-NB8800 Ethernet at %pa\n", &res->start);
 
 	dev = alloc_etherdev(sizeof(*priv));
 	if (!dev)
