@@ -193,7 +193,7 @@ struct nb8800_dma_desc {
 #define DESC_EOF			(1 << 21)
 #define DESC_LK				(1 << 20)
 #define DESC_DS				(1 << 19)
-#define DESC_BTS(x)			(((x) & 0x7) <<16)
+#define DESC_BTS(x)			(((x) & 0x7) << 16)
 
 struct rx_buf {
 	struct page *page;
@@ -223,11 +223,11 @@ struct nb8800_priv {
 	struct nb8800_dma_desc		*tx_descs;
 	struct tx_buf			*tx_bufs;
 	atomic_t			tx_free;
-	u32 				tx_pending;
+	u32				tx_pending;
 	u32				tx_dirty;
 	u16				tx_next;
 	u16				tx_reclaim_next;
-	u16 				tx_reclaim_limit;
+	u16				tx_reclaim_limit;
 	u16				tx_done;
 
 	struct tasklet_struct		tx_reclaim_tasklet;

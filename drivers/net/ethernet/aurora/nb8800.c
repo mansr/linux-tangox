@@ -3,9 +3,8 @@
  *
  * Mostly rewritten, based on driver from Sigma Designs.  Original
  * copyright notice below.
- */
-
-/*
+ *
+ *
  * Driver for tangox SMP864x/SMP865x/SMP867x/SMP868x builtin Ethernet Mac.
  *
  * Copyright (C) 2005 Maxime Bizon <mbizon@freebox.fr>
@@ -19,10 +18,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #include <linux/module.h>
@@ -519,6 +514,7 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 
 		if (unlikely(val & TSR_DE))
 			netdev_err(dev, "TX DMA error\n");
+
 		if (unlikely(val & TSR_TO))
 			netdev_err(dev, "TX Status FIFO overflow\n");
 	}
@@ -533,9 +529,12 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 
 		if (unlikely(val & RSR_DE))
 			netdev_err(dev, "RX DMA error\n");
+
 		if (unlikely(val & RSR_RO)) {
 			int i;
+
 			netdev_err(dev, "RX Status FIFO overflow\n");
+
 			for (i = 0; i < 4; i++)
 				nb8800_readl(priv, NB8800_RX_FIFO_SR);
 		}
