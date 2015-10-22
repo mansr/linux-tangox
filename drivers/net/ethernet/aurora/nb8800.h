@@ -6,6 +6,7 @@
 #include <linux/phy.h>
 #include <linux/clk.h>
 #include <linux/timer.h>
+#include <linux/bitops.h>
 
 #define RX_DESC_COUNT			256
 #define TX_DESC_COUNT			256
@@ -25,22 +26,22 @@
 
 /* register offsets */
 #define NB8800_TX_CTL1			0x00
-#define TX_TPD				(1 << 5)
-#define TX_APPEND_FCS			(1 << 4)
-#define TX_PAD_EN			(1 << 3)
-#define TX_RETRY_EN			(1 << 2)
-#define TX_EN				(1 << 0)
+#define TX_TPD				BIT(5)
+#define TX_APPEND_FCS			BIT(4)
+#define TX_PAD_EN			BIT(3)
+#define TX_RETRY_EN			BIT(2)
+#define TX_EN				BIT(0)
 
 #define NB8800_TX_CTL2			0x01
 
 #define NB8800_RX_CTL			0x04
-#define RX_BC_DISABLE			(1 << 7)
-#define RX_RUNT				(1 << 6)
-#define RX_AF_EN			(1 << 5)
-#define RX_PAUSE_EN			(1 << 3)
-#define RX_SEND_CRC			(1 << 2)
-#define RX_PAD_STRIP			(1 << 1)
-#define RX_EN				(1 << 0)
+#define RX_BC_DISABLE			BIT(7)
+#define RX_RUNT				BIT(6)
+#define RX_AF_EN			BIT(5)
+#define RX_PAUSE_EN			BIT(3)
+#define RX_SEND_CRC			BIT(2)
+#define RX_PAD_STRIP			BIT(1)
+#define RX_EN				BIT(0)
 
 #define NB8800_RANDOM_SEED		0x8
 #define NB8800_TX_SDP			0x14
@@ -52,11 +53,11 @@
 #define MIIAR_ADDR(x)			((x) << 21)
 #define MIIAR_REG(x)			((x) << 16)
 #define MIIAR_DATA(x)			((x) <<	 0)
-#define MDIO_CMD_GO			(1 << 31)
-#define MDIO_CMD_WR			(1 << 26)
+#define MDIO_CMD_GO			BIT(31)
+#define MDIO_CMD_WR			BIT(26)
 
 #define NB8800_MDIO_STS			0x24
-#define MDIO_STS_ERR			(1 << 31)
+#define MDIO_STS_ERR			BIT(31)
 
 #define NB8800_MC_ADDR1			0x28
 #define NB8800_MC_ADDR2			0x29
@@ -73,11 +74,11 @@
 #define NB8800_UC_ADDR6			0x41
 
 #define NB8800_MAC_MODE			0x44
-#define RGMII_MODE			(1 << 7)
-#define HALF_DUPLEX			(1 << 4)
-#define BURST_EN			(1 << 3)
-#define LOOPBACK_EN			(1 << 2)
-#define GMAC_MODE			(1 << 0)
+#define RGMII_MODE			BIT(7)
+#define HALF_DUPLEX			BIT(4)
+#define BURST_EN			BIT(3)
+#define LOOPBACK_EN			BIT(2)
+#define GMAC_MODE			BIT(0)
 
 #define NB8800_IC_THRESHOLD		0x50
 #define NB8800_PE_THRESHOLD		0x51
@@ -100,74 +101,74 @@
 #define NB8800_STAT_CLEAR		0x7d
 
 #define NB8800_SLEEP_MODE		0x7e
-#define SLEEP_MODE			(1 << 0)
+#define SLEEP_MODE			BIT(0)
 
 #define NB8800_WAKEUP			0x7f
-#define WAKEUP				(1 << 0)
+#define WAKEUP				BIT(0)
 
 #define NB8800_TXC_CR			0x100
-#define TCR_LK				(1 << 12)
-#define TCR_DS				(1 << 11)
+#define TCR_LK				BIT(12)
+#define TCR_DS				BIT(11)
 #define TCR_BTS(x)			(((x) & 0x7) << 8)
-#define TCR_DIE				(1 << 7)
+#define TCR_DIE				BIT(7)
 #define TCR_TFI(x)			(((x) & 0x7) << 4)
-#define TCR_LE				(1 << 3)
-#define TCR_RS				(1 << 2)
-#define TCR_DM				(1 << 1)
-#define TCR_EN				(1 << 0)
+#define TCR_LE				BIT(3)
+#define TCR_RS				BIT(2)
+#define TCR_DM				BIT(1)
+#define TCR_EN				BIT(0)
 
 #define NB8800_TXC_SR			0x104
-#define TSR_DE				(1 << 3)
-#define TSR_DI				(1 << 2)
-#define TSR_TO				(1 << 1)
-#define TSR_TI				(1 << 0)
+#define TSR_DE				BIT(3)
+#define TSR_DI				BIT(2)
+#define TSR_TO				BIT(1)
+#define TSR_TI				BIT(0)
 
 #define NB8800_TX_SAR			0x108
 #define NB8800_TX_DESC_ADDR		0x10c
 
 #define NB8800_TX_REPORT_ADDR		0x110
 #define TX_BYTES_TRASFERRED(x)		(((x) >> 16) & 0xffff)
-#define TX_FIRST_DEFERRAL		(1 << 7)
+#define TX_FIRST_DEFERRAL		BIT(7)
 #define TX_EARLY_COLLISIONS(x)		(((x) >> 3) & 0xf)
-#define TX_LATE_COLLISION		(1 << 2)
-#define TX_PACKET_DROPPED		(1 << 1)
-#define TX_FIFO_UNDERRUN		(1 << 0)
+#define TX_LATE_COLLISION		BIT(2)
+#define TX_PACKET_DROPPED		BIT(1)
+#define TX_FIFO_UNDERRUN		BIT(0)
 #define IS_TX_ERROR(r)			((r) & 0x87)
 
 #define NB8800_TX_FIFO_SR		0x114
 #define NB8800_TX_ITR			0x118
 
 #define NB8800_RXC_CR			0x200
-#define RCR_FL				(1 << 13)
-#define RCR_LK				(1 << 12)
-#define RCR_DS				(1 << 11)
+#define RCR_FL				BIT(13)
+#define RCR_LK				BIT(12)
+#define RCR_DS				BIT(11)
 #define RCR_BTS(x)			(((x) & 7) << 8)
-#define RCR_DIE				(1 << 7)
+#define RCR_DIE				BIT(7)
 #define RCR_RFI(x)			(((x) & 7) << 4)
-#define RCR_LE				(1 << 3)
-#define RCR_RS				(1 << 2)
-#define RCR_DM				(1 << 1)
-#define RCR_EN				(1 << 0)
+#define RCR_LE				BIT(3)
+#define RCR_RS				BIT(2)
+#define RCR_DM				BIT(1)
+#define RCR_EN				BIT(0)
 
 #define NB8800_RXC_SR			0x204
-#define RSR_DE				(1 << 3)
-#define RSR_DI				(1 << 2)
-#define RSR_RO				(1 << 1)
-#define RSR_RI				(1 << 0)
+#define RSR_DE				BIT(3)
+#define RSR_DI				BIT(2)
+#define RSR_RO				BIT(1)
+#define RSR_RI				BIT(0)
 
 #define NB8800_RX_SAR			0x208
 #define NB8800_RX_DESC_ADDR		0x20c
 
 #define NB8800_RX_REPORT_ADDR		0x210
 #define RX_BYTES_TRANSFERRED(x)		(((x) >> 16) & 0xFFFF)
-#define RX_MULTICAST_PKT		(1 << 9)
-#define RX_BROADCAST_PKT		(1 << 8)
-#define RX_LENGTH_ERR			(1 << 7)
-#define RX_FCS_ERR			(1 << 6)
-#define RX_RUNT_PKT			(1 << 5)
-#define RX_FIFO_OVERRUN			(1 << 4)
-#define RX_LATE_COLLISION		(1 << 3)
-#define RX_FRAME_LEN_ERROR		(1 << 2)
+#define RX_MULTICAST_PKT		BIT(9)
+#define RX_BROADCAST_PKT		BIT(8)
+#define RX_LENGTH_ERR			BIT(7)
+#define RX_FCS_ERR			BIT(6)
+#define RX_RUNT_PKT			BIT(5)
+#define RX_FIFO_OVERRUN			BIT(4)
+#define RX_LATE_COLLISION		BIT(3)
+#define RX_FRAME_LEN_ERROR		BIT(2)
 #define RX_ERROR_MASK			0xfc
 #define IS_RX_ERROR(r)			((r) & RX_ERROR_MASK)
 
@@ -188,11 +189,11 @@ struct nb8800_dma_desc {
 	u32 report;
 };
 
-#define DESC_ID				(1 << 23)
-#define DESC_EOC			(1 << 22)
-#define DESC_EOF			(1 << 21)
-#define DESC_LK				(1 << 20)
-#define DESC_DS				(1 << 19)
+#define DESC_ID				BIT(23)
+#define DESC_EOC			BIT(22)
+#define DESC_EOF			BIT(21)
+#define DESC_LK				BIT(20)
+#define DESC_DS				BIT(19)
 #define DESC_BTS(x)			(((x) & 0x7) << 16)
 
 struct rx_buf {
