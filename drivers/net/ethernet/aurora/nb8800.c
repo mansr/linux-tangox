@@ -307,7 +307,7 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 
 	if (work) {
 		priv->rx_descs[last].config |= DESC_EOC;
-		wmb();
+		wmb();	/* ensure new EOC is written before clearing old */
 		priv->rx_descs[priv->rx_eoc].config &= ~DESC_EOC;
 		priv->rx_eoc = last;
 		nb8800_start_rx(dev);
@@ -360,7 +360,7 @@ static void nb8800_tx_dma_start(struct net_device *dev, int new)
 	priv->tx_reclaim_next = next;
 
 	nb8800_writel(priv, NB8800_TX_DESC_ADDR, tx_buf->desc_dma);
-	wmb();
+	wmb();		/* ensure desc addr is written before starting DMA */
 	nb8800_writel(priv, NB8800_TXC_CR, txc_cr | TCR_EN);
 
 	if (!priv->tx_bufs[next].frags)
@@ -704,6 +704,7 @@ static int nb8800_open(struct net_device *dev)
 	nb8800_writel(priv, NB8800_TXC_SR, 0xf);
 
 	nb8800_dma_reinit(dev);
+	wmb();		/* ensure all setup is written before starting */
 	nb8800_start_rx(dev);
 
 	nb8800_mac_rx(dev, 1);
@@ -894,7 +895,7 @@ static void nb8800_tangox_reset(struct net_device *dev)
 	usleep_range(1000, 10000);
 	nb8800_writeb(priv, NB8800_TANGOX_RESET, 1);
 
-	wmb();
+	wmb();		/* ensure reset is cleared before proceeding */
 
 	clk_div = DIV_ROUND_UP(clk_get_rate(priv->clk), 2 * MAX_MDC_CLOCK);
 	nb8800_writew(priv, NB8800_TANGOX_MDIO_CLKDIV, clk_div);
