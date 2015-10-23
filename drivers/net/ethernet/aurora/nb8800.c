@@ -202,16 +202,23 @@ static int nb8800_alloc_rx(struct net_device *dev, int i, int napi)
 	data = napi ? napi_alloc_frag(size) : netdev_alloc_frag(size);
 	if (!data) {
 		buf->page = NULL;
-		rx->config = DESC_BTS(2) | DESC_EOF;
+		rx->config = DESC_EOF;
 		return -ENOMEM;
 	}
 
 	buf->page = virt_to_head_page(data);
 	buf->offset = data - page_address(buf->page);
 
+	rx->config = RX_BUF_SIZE | DESC_BTS(2) | DESC_DS | DESC_EOF;
 	rx->s_addr = dma_map_page(&dev->dev, buf->page, buf->offset,
 				  RX_BUF_SIZE, DMA_FROM_DEVICE);
-	rx->config = RX_BUF_SIZE | DESC_BTS(2) | DESC_DS | DESC_EOF;
+
+	if (dma_mapping_error(&dev->dev, rx->s_addr)) {
+		skb_free_frag(data);
+		buf->page = NULL;
+		rx->config = DESC_EOF;
+		return -ENOMEM;
+	}
 
 	return 0;
 }
