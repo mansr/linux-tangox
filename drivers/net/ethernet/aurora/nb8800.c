@@ -629,8 +629,7 @@ static void nb8800_set_rx_mode(struct net_device *dev)
 	int af_en;
 	int i;
 
-	if ((dev->flags & (IFF_PROMISC | IFF_ALLMULTI)) ||
-	    netdev_mc_count(dev) > 64)
+	if (dev->flags & (IFF_PROMISC | IFF_ALLMULTI))
 		af_en = 0;
 	else
 		af_en = 1;
