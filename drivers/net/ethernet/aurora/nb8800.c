@@ -537,13 +537,6 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 		}
 	}
 
-	/* wake on lan */
-	val = nb8800_readb(priv, NB8800_WAKEUP);
-	if (val == 1) {
-		nb8800_writeb(priv, NB8800_SLEEP_MODE, 0);
-		nb8800_writeb(priv, NB8800_WAKEUP, 0);
-	}
-
 	return IRQ_HANDLED;
 }
 
