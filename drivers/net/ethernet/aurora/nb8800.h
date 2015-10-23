@@ -59,19 +59,9 @@
 #define NB8800_MDIO_STS			0x24
 #define MDIO_STS_ERR			BIT(31)
 
-#define NB8800_MC_ADDR1			0x28
-#define NB8800_MC_ADDR2			0x29
-#define NB8800_MC_ADDR3			0x2a
-#define NB8800_MC_ADDR4			0x2b
-#define NB8800_MC_ADDR5			0x2c
-#define NB8800_MC_ADDR6			0x2d
+#define NB8800_MC_ADDR(i)		(0x28 + (i))
 #define NB8800_MC_INIT			0x2e
-#define NB8800_UC_ADDR1			0x3c
-#define NB8800_UC_ADDR2			0x3d
-#define NB8800_UC_ADDR3			0x3e
-#define NB8800_UC_ADDR4			0x3f
-#define NB8800_UC_ADDR5			0x40
-#define NB8800_UC_ADDR6			0x41
+#define NB8800_UC_ADDR(i)		(0x3c + (i))
 
 #define NB8800_MAC_MODE			0x44
 #define RGMII_MODE			BIT(7)
@@ -87,12 +77,7 @@
 #define NB8800_FIFO_CTL			0x56
 #define NB8800_PQ1			0x60
 #define NB8800_PQ2			0x61
-#define NB8800_MAC_ADDR1		0x6a
-#define NB8800_MAC_ADDR2		0x6b
-#define NB8800_MAC_ADDR3		0x6c
-#define NB8800_MAC_ADDR4		0x6d
-#define NB8800_MAC_ADDR5		0x6e
-#define NB8800_MAC_ADDR6		0x6f
+#define NB8800_SRC_ADDR(i)		(0x6a + (i))
 #define NB8800_STAT_DATA1		0x78
 #define NB8800_STAT_DATA2		0x79
 #define NB8800_STAT_DATA3		0x7a

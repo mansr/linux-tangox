@@ -585,20 +585,13 @@ static void nb8800_link_reconfigure(struct net_device *dev)
 static void nb8800_update_mac_addr(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
+	int i;
 
-	nb8800_writeb(priv, NB8800_MAC_ADDR1, dev->dev_addr[0]);
-	nb8800_writeb(priv, NB8800_MAC_ADDR2, dev->dev_addr[1]);
-	nb8800_writeb(priv, NB8800_MAC_ADDR3, dev->dev_addr[2]);
-	nb8800_writeb(priv, NB8800_MAC_ADDR4, dev->dev_addr[3]);
-	nb8800_writeb(priv, NB8800_MAC_ADDR5, dev->dev_addr[4]);
-	nb8800_writeb(priv, NB8800_MAC_ADDR6, dev->dev_addr[5]);
+	for (i = 0; i < 6; i++)
+		nb8800_writeb(priv, NB8800_SRC_ADDR(i), dev->dev_addr[i]);
 
-	nb8800_writeb(priv, NB8800_UC_ADDR1, dev->dev_addr[0]);
-	nb8800_writeb(priv, NB8800_UC_ADDR2, dev->dev_addr[1]);
-	nb8800_writeb(priv, NB8800_UC_ADDR3, dev->dev_addr[2]);
-	nb8800_writeb(priv, NB8800_UC_ADDR4, dev->dev_addr[3]);
-	nb8800_writeb(priv, NB8800_UC_ADDR5, dev->dev_addr[4]);
-	nb8800_writeb(priv, NB8800_UC_ADDR6, dev->dev_addr[5]);
+	for (i = 0; i < 6; i++)
+		nb8800_writeb(priv, NB8800_UC_ADDR(i), dev->dev_addr[i]);
 }
 
 static int nb8800_set_mac_address(struct net_device *dev, void *addr)
@@ -628,6 +621,7 @@ static void nb8800_set_rx_mode(struct net_device *dev)
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct netdev_hw_addr *ha;
 	int af_en;
+	int i;
 
 	if ((dev->flags & (IFF_PROMISC | IFF_ALLMULTI)) ||
 	    netdev_mc_count(dev) > 64)
@@ -645,12 +639,8 @@ static void nb8800_set_rx_mode(struct net_device *dev)
 	netdev_for_each_mc_addr(ha, dev) {
 		char *addr = ha->addr;
 
-		nb8800_writeb(priv, NB8800_MC_ADDR1, addr[0]);
-		nb8800_writeb(priv, NB8800_MC_ADDR2, addr[1]);
-		nb8800_writeb(priv, NB8800_MC_ADDR3, addr[2]);
-		nb8800_writeb(priv, NB8800_MC_ADDR4, addr[3]);
-		nb8800_writeb(priv, NB8800_MC_ADDR5, addr[4]);
-		nb8800_writeb(priv, NB8800_MC_ADDR6, addr[5]);
+		for (i = 0; i < 6; i++)
+			nb8800_writeb(priv, NB8800_MC_ADDR(i), addr[i]);
 
 		nb8800_mc_init(dev, 0xff);
 	}
