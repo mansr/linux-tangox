@@ -248,23 +248,22 @@ static void nb8800_receive(struct net_device *dev, int i, int len)
 	skb->protocol = eth_type_trans(skb, dev);
 	netif_receive_skb(skb);
 
-	priv->stats.rx_packets++;
-	priv->stats.rx_bytes += len;
+	dev->stats.rx_packets++;
+	dev->stats.rx_bytes += len;
 }
 
 static void nb8800_rx_error(struct net_device *dev, u32 report)
 {
-	struct nb8800_priv *priv = netdev_priv(dev);
 	int len = RX_BYTES_TRANSFERRED(report);
 
 	if (report & RX_FCS_ERR)
-		priv->stats.rx_crc_errors++;
+		dev->stats.rx_crc_errors++;
 
 	if ((report & (RX_FRAME_LEN_ERROR | RX_LENGTH_ERR)) ||
 	    (len > RX_BUF_SIZE))
-		priv->stats.rx_length_errors++;
+		dev->stats.rx_length_errors++;
 
-	priv->stats.rx_errors++;
+	dev->stats.rx_errors++;
 }
 
 static int nb8800_poll(struct napi_struct *napi, int budget)
@@ -462,8 +461,8 @@ static void nb8800_tx_reclaim(unsigned long data)
 	}
 
 	if (reclaimed) {
-		priv->stats.tx_packets += packets;
-		priv->stats.tx_bytes += bytes;
+		dev->stats.tx_packets += packets;
+		dev->stats.tx_bytes += bytes;
 
 		smp_mb__before_atomic();
 		atomic_add(reclaimed, &priv->tx_free);
@@ -716,13 +715,6 @@ static int nb8800_stop(struct net_device *dev)
 	return 0;
 }
 
-static struct net_device_stats *nb8800_get_stats(struct net_device *dev)
-{
-	struct nb8800_priv *priv = netdev_priv(dev);
-
-	return &priv->stats;
-}
-
 static int nb8800_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
@@ -734,7 +726,6 @@ static const struct net_device_ops nb8800_netdev_ops = {
 	.ndo_open		= nb8800_open,
 	.ndo_stop		= nb8800_stop,
 	.ndo_start_xmit		= nb8800_xmit,
-	.ndo_get_stats		= nb8800_get_stats,
 	.ndo_set_mac_address	= nb8800_set_mac_address,
 	.ndo_set_rx_mode	= nb8800_set_rx_mode,
 	.ndo_do_ioctl		= nb8800_ioctl,

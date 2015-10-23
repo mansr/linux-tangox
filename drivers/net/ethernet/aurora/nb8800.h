@@ -219,8 +219,6 @@ struct nb8800_priv {
 	struct tasklet_struct		tx_reclaim_tasklet;
 	struct timer_list		tx_reclaim_timer;
 
-	struct net_device_stats		stats;
-
 	struct mii_bus			*mii_bus;
 	struct phy_device		*phydev;
 	int				speed;
