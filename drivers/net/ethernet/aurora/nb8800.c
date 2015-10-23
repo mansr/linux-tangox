@@ -502,6 +502,8 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 static void nb8800_mac_config(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
+	unsigned phy_clk;
+	unsigned ict;
 
 	if (priv->duplex)
 		nb8800_clear_bits(b, priv, NB8800_MAC_MODE, HALF_DUPLEX);
@@ -511,14 +513,17 @@ static void nb8800_mac_config(struct net_device *dev)
 	if (priv->speed == SPEED_1000) {
 		nb8800_set_bits(b, priv, NB8800_MAC_MODE,
 				RGMII_MODE | GMAC_MODE);
-		nb8800_writeb(priv, NB8800_IC_THRESHOLD, 3);
 		nb8800_writeb(priv, NB8800_SLOT_TIME, 255);
+		phy_clk = 125000000;
 	} else {
 		nb8800_clear_bits(b, priv, NB8800_MAC_MODE,
 				  RGMII_MODE | GMAC_MODE);
-		nb8800_writeb(priv, NB8800_IC_THRESHOLD, 1);
 		nb8800_writeb(priv, NB8800_SLOT_TIME, 127);
+		phy_clk = 25000000;
 	}
+
+	ict = DIV_ROUND_UP(phy_clk, clk_get_rate(priv->clk));
+	nb8800_writeb(priv, NB8800_IC_THRESHOLD, ict);
 }
 
 static void nb8800_link_reconfigure(struct net_device *dev)
