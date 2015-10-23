@@ -438,8 +438,6 @@ static void nb8800_tx_reclaim(unsigned long data)
 		return;
 
 	limit = priv->tx_reclaim_limit;
-	if (dirty == limit)
-		goto end;
 
 	while (dirty != limit) {
 		struct nb8800_dma_desc *tx = &priv->tx_descs[dirty];
@@ -463,15 +461,16 @@ static void nb8800_tx_reclaim(unsigned long data)
 		reclaimed += frags;
 	}
 
-	priv->stats.tx_packets += packets;
-	priv->stats.tx_bytes += bytes;
+	if (reclaimed) {
+		priv->stats.tx_packets += packets;
+		priv->stats.tx_bytes += bytes;
 
-	smp_mb__before_atomic();
-	atomic_add(reclaimed, &priv->tx_free);
+		smp_mb__before_atomic();
+		atomic_add(reclaimed, &priv->tx_free);
 
-	netif_wake_queue(dev);
+		netif_wake_queue(dev);
+	}
 
-end:
 	priv->tx_dirty = dirty;
 }
 
