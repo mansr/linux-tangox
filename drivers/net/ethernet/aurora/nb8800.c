@@ -763,20 +763,11 @@ static int nb8800_nway_reset(struct net_device *dev)
 	return genphy_restart_aneg(priv->phydev);
 }
 
-static u32 nb8800_get_link(struct net_device *dev)
-{
-	struct nb8800_priv *priv = netdev_priv(dev);
-
-	phy_read_status(priv->phydev);
-
-	return priv->phydev->link;
-}
-
 static struct ethtool_ops nb8800_ethtool_ops = {
 	.get_settings		= nb8800_get_settings,
 	.set_settings		= nb8800_set_settings,
 	.nway_reset		= nb8800_nway_reset,
-	.get_link		= nb8800_get_link,
+	.get_link		= ethtool_op_get_link,
 };
 
 static int nb8800_dma_init(struct net_device *dev)
