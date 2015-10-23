@@ -683,6 +683,7 @@ static void nb8800_dma_reinit(struct net_device *dev)
 static int nb8800_open(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
+	int err;
 
 	phy_resume(priv->phydev);
 	phy_start(priv->phydev);
@@ -693,6 +694,10 @@ static int nb8800_open(struct net_device *dev)
 	nb8800_dma_reinit(dev);
 	wmb();		/* ensure all setup is written before starting */
 	nb8800_start_rx(dev);
+
+	err = request_irq(dev->irq, nb8800_isr, 0, dev_name(&dev->dev), dev);
+	if (err)
+		return err;
 
 	nb8800_mac_rx(dev, 1);
 	nb8800_mac_tx(dev, 1);
@@ -714,6 +719,8 @@ static int nb8800_stop(struct net_device *dev)
 
 	nb8800_mac_rx(dev, 0);
 	nb8800_mac_tx(dev, 0);
+
+	free_irq(dev->irq, dev);
 
 	phy_stop(priv->phydev);
 	phy_suspend(priv->phydev);
@@ -1064,10 +1071,6 @@ static int nb8800_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_detach_phy;
 
-	ret = request_irq(irq, nb8800_isr, 0, dev_name(&pdev->dev), dev);
-	if (ret)
-		goto err_free_dma;
-
 	dev->netdev_ops = &nb8800_netdev_ops;
 	dev->ethtool_ops = &nb8800_ethtool_ops;
 	dev->tx_queue_len = TX_DESC_COUNT;
@@ -1122,7 +1125,6 @@ static int nb8800_remove(struct platform_device *pdev)
 	struct nb8800_priv *priv = netdev_priv(ndev);
 
 	unregister_netdev(ndev);
-	free_irq(ndev->irq, ndev);
 
 	phy_detach(priv->phydev);
 	mdiobus_unregister(priv->mii_bus);
