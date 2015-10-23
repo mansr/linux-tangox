@@ -1073,7 +1073,6 @@ static int nb8800_probe(struct platform_device *pdev)
 
 	dev->netdev_ops = &nb8800_netdev_ops;
 	dev->ethtool_ops = &nb8800_ethtool_ops;
-	dev->tx_queue_len = TX_DESC_COUNT;
 	dev->flags |= IFF_MULTICAST;
 	dev->irq = irq;
 
