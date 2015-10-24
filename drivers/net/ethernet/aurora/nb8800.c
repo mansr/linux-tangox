@@ -37,8 +37,6 @@
 
 #include "nb8800.h"
 
-static void nb8800_tx_reclaim(unsigned long data);
-
 static inline u8 nb8800_readb(struct nb8800_priv *priv, int reg)
 {
 	return readb(priv->base + reg);
@@ -322,8 +320,6 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 	if (work < budget)
 		napi_complete_done(napi, work);
 
-	nb8800_tx_reclaim((unsigned long)dev);
-
 	return work;
 }
 
@@ -363,7 +359,6 @@ static void nb8800_tx_dma_start(struct net_device *dev, int new)
 	tx_buf = &priv->tx_bufs[next];
 
 	next = (next + tx_buf->frags) & (TX_DESC_COUNT - 1);
-	priv->tx_reclaim_next = next;
 
 	nb8800_writel(priv, NB8800_TX_DESC_ADDR, tx_buf->desc_dma);
 	wmb();		/* ensure desc addr is written before starting DMA */
@@ -422,83 +417,36 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	nb8800_tx_dma_start(dev, next);
 
-	if (!skb->xmit_more && !timer_pending(&priv->tx_reclaim_timer))
-		mod_timer(&priv->tx_reclaim_timer, jiffies + HZ / 20);
-
 	if (atomic_read(&priv->tx_free) <= NB8800_DESC_LOW)
 		netif_stop_queue(dev);
 
 	return NETDEV_TX_OK;
 }
 
-static void nb8800_tx_reclaim(unsigned long data)
-{
-	struct net_device *dev = (struct net_device *)data;
-	struct nb8800_priv *priv = netdev_priv(dev);
-	int packets = 0, bytes = 0;
-	int reclaimed = 0;
-	int dirty, limit;
-
-	dirty = xchg(&priv->tx_dirty, -1);
-	if (dirty < 0)
-		return;
-
-	limit = priv->tx_reclaim_limit;
-
-	while (dirty != limit) {
-		struct nb8800_dma_desc *tx = &priv->tx_descs[dirty];
-		struct tx_buf *tx_buf = &priv->tx_bufs[dirty];
-		struct sk_buff *skb = tx_buf->skb;
-		struct tx_skb_data *skb_data = (struct tx_skb_data *)skb->cb;
-		int frags = tx_buf->frags;
-
-		packets++;
-		bytes += skb->len;
-
-		dma_unmap_single(&dev->dev, skb_data->dma_addr,
-				 skb_data->dma_len, DMA_TO_DEVICE);
-		dev_kfree_skb(skb);
-
-		tx->report = 0;
-		tx_buf->skb = NULL;
-		tx_buf->frags = 0;
-
-		dirty = (dirty + frags) & (TX_DESC_COUNT - 1);
-		reclaimed += frags;
-	}
-
-	if (reclaimed) {
-		dev->stats.tx_packets += packets;
-		dev->stats.tx_bytes += bytes;
-
-		smp_mb__before_atomic();
-		atomic_add(reclaimed, &priv->tx_free);
-
-		netif_wake_queue(dev);
-	}
-
-	priv->tx_dirty = dirty;
-}
-
 static void nb8800_tx_done(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
-	struct tx_buf *tx_buf;
-	int tx_mask = (TX_DESC_COUNT - 1);
-	int nr_dirty;
+	struct tx_buf *tx_buf = &priv->tx_bufs[priv->tx_done];
+	struct sk_buff *skb = tx_buf->skb;
+	struct tx_skb_data *skb_data = (struct tx_skb_data *)skb->cb;
 
-	tx_buf = &priv->tx_bufs[priv->tx_done];
-	priv->tx_done = (priv->tx_done + tx_buf->frags) & tx_mask;
+	priv->tx_done = (priv->tx_done + tx_buf->frags) & (TX_DESC_COUNT - 1);
 
-	netdev_completed_queue(dev, 1, tx_buf->skb->len);
+	dev->stats.tx_packets++;
+	dev->stats.tx_bytes += skb->len;
 
-	priv->tx_reclaim_limit = priv->tx_reclaim_next;
+	netdev_completed_queue(dev, 1, skb->len);
+	dma_unmap_single(&dev->dev, skb_data->dma_addr, skb_data->dma_len,
+			 DMA_TO_DEVICE);
+	dev_consume_skb_irq(tx_buf->skb);
+
+	atomic_add(tx_buf->frags, &priv->tx_free);
+
+	tx_buf->skb = NULL;
+	tx_buf->frags = 0;
 
 	nb8800_tx_dma_start(dev, -1);
-
-	nr_dirty = (priv->tx_reclaim_limit - priv->tx_dirty) & tx_mask;
-	if (nr_dirty >= NB8800_DESC_RECLAIM)
-		tasklet_schedule(&priv->tx_reclaim_tasklet);
+	netif_wake_queue(dev);
 }
 
 static irqreturn_t nb8800_isr(int irq, void *dev_id)
@@ -658,8 +606,6 @@ static void nb8800_dma_reinit(struct net_device *dev)
 	int i;
 
 	priv->tx_pending = -1;
-	priv->tx_reclaim_limit = 0;
-	priv->tx_dirty = 0;
 	priv->tx_next = 0;
 	priv->tx_done = 0;
 	atomic_set(&priv->tx_free, TX_DESC_COUNT);
@@ -1084,11 +1030,6 @@ static int nb8800_probe(struct platform_device *pdev)
 		eth_hw_addr_random(dev);
 
 	nb8800_update_mac_addr(dev);
-
-	tasklet_init(&priv->tx_reclaim_tasklet, nb8800_tx_reclaim,
-		     (unsigned long)dev);
-	setup_timer(&priv->tx_reclaim_timer, nb8800_tx_reclaim,
-		    (unsigned long)dev);
 
 	netif_carrier_off(dev);
 

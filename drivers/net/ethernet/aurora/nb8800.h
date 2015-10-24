@@ -12,7 +12,6 @@
 #define TX_DESC_COUNT			256
 
 #define NB8800_DESC_LOW			4
-#define NB8800_DESC_RECLAIM		64
 
 #define RX_BUF_SIZE			1552
 #define TX_BUF_SIZE			1552
@@ -210,14 +209,8 @@ struct nb8800_priv {
 	struct tx_buf			*tx_bufs;
 	atomic_t			tx_free;
 	u32				tx_pending;
-	u32				tx_dirty;
 	u16				tx_next;
-	u16				tx_reclaim_next;
-	u16				tx_reclaim_limit;
 	u16				tx_done;
-
-	struct tasklet_struct		tx_reclaim_tasklet;
-	struct timer_list		tx_reclaim_timer;
 
 	struct mii_bus			*mii_bus;
 	struct phy_device		*phydev;
