@@ -137,7 +137,7 @@ static int nb8800_mdio_write(struct mii_bus *bus, int phy_id, int reg, u16 val)
 	return 0;
 }
 
-static void nb8800_mac_tx(struct net_device *dev, int enable)
+static void nb8800_mac_tx(struct net_device *dev, bool enable)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 
@@ -150,7 +150,7 @@ static void nb8800_mac_tx(struct net_device *dev, int enable)
 		nb8800_clear_bits(b, priv, NB8800_TX_CTL1, TX_EN);
 }
 
-static void nb8800_mac_rx(struct net_device *dev, int enable)
+static void nb8800_mac_rx(struct net_device *dev, bool enable)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 
@@ -160,7 +160,7 @@ static void nb8800_mac_rx(struct net_device *dev, int enable)
 		nb8800_clear_bits(b, priv, NB8800_RX_CTL, RX_EN);
 }
 
-static void nb8800_mac_af(struct net_device *dev, int enable)
+static void nb8800_mac_af(struct net_device *dev, bool enable)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 
@@ -189,7 +189,7 @@ static void nb8800_start_rx(struct net_device *dev)
 	nb8800_set_bits(l, priv, NB8800_RXC_CR, RCR_EN);
 }
 
-static int nb8800_alloc_rx(struct net_device *dev, int i, int napi)
+static int nb8800_alloc_rx(struct net_device *dev, int i, bool napi)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct nb8800_dma_desc *rx = &priv->rx_descs[i];
@@ -303,7 +303,7 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 
 		rx->report = 0;
 		if (!rx_buf->page)
-			nb8800_alloc_rx(dev, next, 1);
+			nb8800_alloc_rx(dev, next, true);
 
 		last = next;
 		work++;
@@ -574,13 +574,13 @@ static void nb8800_set_rx_mode(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct netdev_hw_addr *ha;
-	int af_en;
+	bool af_en;
 	int i;
 
 	if (dev->flags & (IFF_PROMISC | IFF_ALLMULTI))
-		af_en = 0;
+		af_en = false;
 	else
-		af_en = 1;
+		af_en = true;
 
 	nb8800_mac_af(dev, af_en);
 
@@ -645,8 +645,8 @@ static int nb8800_open(struct net_device *dev)
 	if (err)
 		return err;
 
-	nb8800_mac_rx(dev, 1);
-	nb8800_mac_tx(dev, 1);
+	nb8800_mac_rx(dev, true);
+	nb8800_mac_tx(dev, true);
 
 	napi_enable(&priv->napi);
 	netif_start_queue(dev);
@@ -663,8 +663,8 @@ static int nb8800_stop(struct net_device *dev)
 
 	nb8800_stop_rx(dev);
 
-	nb8800_mac_rx(dev, 0);
-	nb8800_mac_tx(dev, 0);
+	nb8800_mac_rx(dev, false);
+	nb8800_mac_tx(dev, false);
 
 	free_irq(dev->irq, dev);
 
@@ -747,7 +747,7 @@ static int nb8800_dma_init(struct net_device *dev)
 		rx->n_addr = rx_dma + sizeof(struct nb8800_dma_desc);
 		rx->r_addr = rx_dma + offsetof(struct nb8800_dma_desc, report);
 
-		err = nb8800_alloc_rx(dev, i, 0);
+		err = nb8800_alloc_rx(dev, i, false);
 		if (err)
 			return err;
 	}
