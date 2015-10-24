@@ -388,12 +388,17 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	cpsz = (8 - (uintptr_t)skb->data) & 7;
 
-	frags = cpsz ? 2 : 1;
-	atomic_sub(frags, &priv->tx_free);
-
 	dma_len = skb->len - cpsz;
 	dma_addr = dma_map_single(&dev->dev, skb->data + cpsz,
 				  dma_len, DMA_TO_DEVICE);
+
+	if (dma_mapping_error(&dev->dev, dma_addr)) {
+		kfree_skb(skb);
+		return NETDEV_TX_OK;
+	}
+
+	frags = cpsz ? 2 : 1;
+	atomic_sub(frags, &priv->tx_free);
 
 	next = priv->tx_next;
 	tx_buf = &priv->tx_bufs[next];
