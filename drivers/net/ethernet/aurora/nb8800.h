@@ -211,6 +211,7 @@ struct nb8800_priv {
 	u16				tx_done;
 
 	struct mii_bus			*mii_bus;
+	struct device_node		*phy_node;
 	struct phy_device		*phydev;
 	int				phy_mode;
 	int				speed;

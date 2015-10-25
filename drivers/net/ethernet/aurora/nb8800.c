@@ -27,6 +27,7 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
+#include <linux/of_mdio.h>
 #include <linux/of_net.h>
 #include <linux/dma-mapping.h>
 #include <linux/phy.h>
@@ -652,9 +653,10 @@ static int nb8800_open(struct net_device *dev)
 	nb8800_mac_rx(dev, true);
 	nb8800_mac_tx(dev, true);
 
-	err = phy_connect_direct(dev, priv->phydev, nb8800_link_reconfigure,
-				 priv->phy_mode);
-	if (err)
+	priv->phydev = of_phy_connect(dev, priv->phy_node,
+				      nb8800_link_reconfigure, 0,
+				      priv->phy_mode);
+	if (!priv->phydev)
 		goto err_free_irq;
 
 	napi_enable(&priv->napi);
@@ -937,7 +939,6 @@ static int nb8800_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct net_device *dev;
 	struct mii_bus *bus;
-	struct phy_device *phydev;
 	const unsigned char *mac;
 	void __iomem *base;
 	int irq;
@@ -1009,23 +1010,20 @@ static int nb8800_probe(struct platform_device *pdev)
 		 pdev->name);
 	bus->priv = priv;
 
-	ret = mdiobus_register(bus);
+	ret = of_mdiobus_register(bus, pdev->dev.of_node);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register MII bus\n");
 		goto err_disable_clk;
 	}
 
-	phydev = phy_find_first(bus);
-	if (!phydev || phy_read(phydev, MII_BMSR) <= 0) {
-		dev_err(&pdev->dev, "no PHY detected\n");
+	priv->phy_node = of_parse_phandle(pdev->dev.of_node, "phy-handle", 0);
+	if (!priv->phy_node) {
+		dev_err(&pdev->dev, "no PHY specified\n");
 		ret = -ENODEV;
 		goto err_free_bus;
 	}
 
 	priv->mii_bus = bus;
-	priv->phydev = phydev;
-
-	phydev->irq = PHY_POLL;
 
 	if (ops && ops->init)
 		ops->init(dev);
