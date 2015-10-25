@@ -252,9 +252,6 @@ static void nb8800_receive(struct net_device *dev, int i, int len)
 
 	skb->protocol = eth_type_trans(skb, dev);
 	netif_receive_skb(skb);
-
-	dev->stats.rx_packets++;
-	dev->stats.rx_bytes += len;
 }
 
 static void nb8800_rx_error(struct net_device *dev, u32 report)
@@ -436,9 +433,6 @@ static void nb8800_tx_done(struct net_device *dev)
 	struct tx_skb_data *skb_data = (struct tx_skb_data *)skb->cb;
 
 	priv->tx_done = (priv->tx_done + tx_buf->frags) & (TX_DESC_COUNT - 1);
-
-	dev->stats.tx_packets++;
-	dev->stats.tx_bytes += skb->len;
 
 	netdev_completed_queue(dev, 1, skb->len);
 	dma_unmap_single(&dev->dev, skb_data->dma_addr, skb_data->dma_len,
@@ -684,6 +678,26 @@ static int nb8800_stop(struct net_device *dev)
 	return 0;
 }
 
+static u32 nb8800_read_stat(struct net_device *dev, int index)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+
+	nb8800_writeb(priv, NB8800_STAT_INDEX, index);
+
+	return nb8800_readl(priv, NB8800_STAT_DATA);
+}
+
+static struct net_device_stats *nb8800_get_stats(struct net_device *dev)
+{
+	dev->stats.rx_bytes	= nb8800_read_stat(dev, 0x00);
+	dev->stats.rx_packets	= nb8800_read_stat(dev, 0x01);
+	dev->stats.multicast	= nb8800_read_stat(dev, 0x0d);
+	dev->stats.tx_bytes	= nb8800_read_stat(dev, 0x80);
+	dev->stats.tx_packets	= nb8800_read_stat(dev, 0x81);
+
+	return &dev->stats;
+}
+
 static int nb8800_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
@@ -698,6 +712,7 @@ static const struct net_device_ops nb8800_netdev_ops = {
 	.ndo_set_mac_address	= nb8800_set_mac_address,
 	.ndo_set_rx_mode	= nb8800_set_rx_mode,
 	.ndo_do_ioctl		= nb8800_ioctl,
+	.ndo_get_stats		= nb8800_get_stats,
 	.ndo_change_mtu		= eth_change_mtu,
 	.ndo_validate_addr	= eth_validate_addr,
 };

@@ -77,10 +77,7 @@
 #define NB8800_PQ1			0x60
 #define NB8800_PQ2			0x61
 #define NB8800_SRC_ADDR(i)		(0x6a + (i))
-#define NB8800_STAT_DATA1		0x78
-#define NB8800_STAT_DATA2		0x79
-#define NB8800_STAT_DATA3		0x7a
-#define NB8800_STAT_DATA4		0x7b
+#define NB8800_STAT_DATA		0x78
 #define NB8800_STAT_INDEX		0x7c
 #define NB8800_STAT_CLEAR		0x7d
 
