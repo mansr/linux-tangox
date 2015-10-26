@@ -639,15 +639,11 @@ static int nb8800_open(struct net_device *dev)
 	struct nb8800_priv *priv = netdev_priv(dev);
 	int err;
 
-	phy_resume(priv->phydev);
-	phy_start(priv->phydev);
-
 	nb8800_writel(priv, NB8800_RXC_SR, 0xf);
 	nb8800_writel(priv, NB8800_TXC_SR, 0xf);
 
 	nb8800_dma_reinit(dev);
 	wmb();		/* ensure all setup is written before starting */
-	nb8800_start_rx(dev);
 
 	err = request_irq(dev->irq, nb8800_isr, 0, dev_name(&dev->dev), dev);
 	if (err)
@@ -656,10 +652,23 @@ static int nb8800_open(struct net_device *dev)
 	nb8800_mac_rx(dev, true);
 	nb8800_mac_tx(dev, true);
 
+	err = phy_connect_direct(dev, priv->phydev, nb8800_link_reconfigure,
+				 priv->phy_mode);
+	if (err)
+		goto err_free_irq;
+
 	napi_enable(&priv->napi);
 	netif_start_queue(dev);
 
+	nb8800_start_rx(dev);
+	phy_start(priv->phydev);
+
 	return 0;
+
+err_free_irq:
+	free_irq(dev->irq, dev);
+
+	return err;
 }
 
 static int nb8800_stop(struct net_device *dev)
@@ -677,7 +686,7 @@ static int nb8800_stop(struct net_device *dev)
 	free_irq(dev->irq, dev);
 
 	phy_stop(priv->phydev);
-	phy_suspend(priv->phydev);
+	phy_disconnect(priv->phydev);
 
 	return 0;
 }
@@ -1018,24 +1027,16 @@ static int nb8800_probe(struct platform_device *pdev)
 
 	phydev->irq = PHY_POLL;
 
-	ret = phy_connect_direct(dev, phydev, nb8800_link_reconfigure,
-				 priv->phy_mode);
-	if (ret)
-		goto err_free_bus;
-
-	dev_info(&pdev->dev, "PHY: found %s at 0x%x\n",
-		 phydev->drv->name, phydev->addr);
-
 	if (ops && ops->init)
 		ops->init(dev);
 
 	ret = nb8800_hw_init(dev);
 	if (ret)
-		goto err_detach_phy;
+		goto err_free_bus;
 
 	ret = nb8800_dma_init(dev);
 	if (ret)
-		goto err_detach_phy;
+		goto err_free_bus;
 
 	dev->netdev_ops = &nb8800_netdev_ops;
 	dev->ethtool_ops = &nb8800_ethtool_ops;
@@ -1067,8 +1068,6 @@ static int nb8800_probe(struct platform_device *pdev)
 
 err_free_dma:
 	nb8800_dma_free(dev);
-err_detach_phy:
-	phy_detach(priv->phydev);
 err_free_bus:
 	mdiobus_unregister(bus);
 err_disable_clk:
@@ -1086,7 +1085,6 @@ static int nb8800_remove(struct platform_device *pdev)
 
 	unregister_netdev(ndev);
 
-	phy_detach(priv->phydev);
 	mdiobus_unregister(priv->mii_bus);
 
 	clk_disable_unprepare(priv->clk);
