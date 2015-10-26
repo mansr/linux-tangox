@@ -212,6 +212,7 @@ struct nb8800_priv {
 
 	struct mii_bus			*mii_bus;
 	struct phy_device		*phydev;
+	int				phy_mode;
 	int				speed;
 	int				duplex;
 	int				link;

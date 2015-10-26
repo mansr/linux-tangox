@@ -833,7 +833,7 @@ static void nb8800_tangox_init(struct net_device *dev)
 	u32 val;
 
 	val = nb8800_readb(priv, NB8800_TANGOX_PAD_MODE) & 0x78;
-	if (priv->phydev->supported & PHY_1000BT_FEATURES)
+	if (priv->phy_mode == PHY_INTERFACE_MODE_RGMII)
 		val |= 1;
 	nb8800_writeb(priv, NB8800_TANGOX_PAD_MODE, val);
 }
@@ -931,7 +931,6 @@ static int nb8800_probe(struct platform_device *pdev)
 	struct phy_device *phydev;
 	const unsigned char *mac;
 	void __iomem *base;
-	int phy_mode;
 	int irq;
 	int ret;
 
@@ -967,9 +966,9 @@ static int nb8800_probe(struct platform_device *pdev)
 	priv = netdev_priv(dev);
 	priv->base = base;
 
-	phy_mode = of_get_phy_mode(pdev->dev.of_node);
-	if (phy_mode < 0)
-		phy_mode = PHY_INTERFACE_MODE_RGMII;
+	priv->phy_mode = of_get_phy_mode(pdev->dev.of_node);
+	if (priv->phy_mode < 0)
+		priv->phy_mode = PHY_INTERFACE_MODE_RGMII;
 
 	priv->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(priv->clk)) {
@@ -1020,7 +1019,7 @@ static int nb8800_probe(struct platform_device *pdev)
 	phydev->irq = PHY_POLL;
 
 	ret = phy_connect_direct(dev, phydev, nb8800_link_reconfigure,
-				 phy_mode);
+				 priv->phy_mode);
 	if (ret)
 		goto err_free_bus;
 
