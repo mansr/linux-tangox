@@ -1,11 +1,11 @@
 #include <linux/init.h>
+#include <linux/of.h>
 #include <linux/phy.h>
 #include <asm/io.h>
 
 #include "memmap.h"
 #include "setup.h"
 
-#ifdef CONFIG_TANGOX_ENET_PCH_C200_FIXUP
 static int tangox_phy_init(struct phy_device *phydev)
 {
 	int err;
@@ -18,15 +18,6 @@ static int tangox_phy_init(struct phy_device *phydev)
 	return err;
 }
 
-static int __init tangox_phy_setup(void)
-{
-	phy_register_fixup_for_uid(0x00070420, 0xfffffff0, tangox_phy_init);
-
-	return 0;
-}
-device_initcall(tangox_phy_setup);
-#endif
-
 static void __init tangox_enet_set_bw(void __iomem *reg)
 {
 	u32 val = readl(reg);
@@ -34,7 +25,7 @@ static void __init tangox_enet_set_bw(void __iomem *reg)
 	writel(val, reg);
 }
 
-static int __init tangox_enet_register(void)
+static int __init tangox_enet_setup(void)
 {
 	void __iomem *ctl = ioremap(SYS_BASE + 0x130, 8);
 	int i;
@@ -43,6 +34,14 @@ static int __init tangox_enet_register(void)
 		if (tangox_ethernet_enabled(i))
 			tangox_enet_set_bw(ctl + i * 4);
 
+	iounmap(ctl);
+
+	if (of_machine_is_compatible("syabas,pch-c200")) {
+		pr_info("PCH C-200 Ethernet PHY fixup enabled\n");
+		phy_register_fixup_for_uid(0x00070420, 0xfffffff0,
+					   tangox_phy_init);
+	}
+
 	return 0;
 }
-device_initcall(tangox_enet_register);
+device_initcall(tangox_enet_setup);
