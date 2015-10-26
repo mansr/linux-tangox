@@ -314,8 +314,10 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 		nb8800_start_rx(dev);
 	}
 
-	if (work < budget)
+	if (work < budget) {
+		nb8800_writel(priv, NB8800_RX_ITR, 1);
 		napi_complete_done(napi, work);
+	}
 
 	return work;
 }
@@ -474,8 +476,10 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 	if (val) {
 		nb8800_writel(priv, NB8800_RXC_SR, val);
 
-		if (likely(val & RSR_RI))
+		if (likely(val & RSR_RI)) {
+			nb8800_writel(priv, NB8800_RX_ITR, priv->rx_poll_itr);
 			napi_schedule_irqoff(&priv->napi);
+		}
 
 		if (unlikely(val & RSR_DE))
 			netdev_err(dev, "RX DMA error\n");
@@ -977,6 +981,8 @@ static int nb8800_probe(struct platform_device *pdev)
 	ret = clk_prepare_enable(priv->clk);
 	if (ret)
 		goto err_free_dev;
+
+	priv->rx_poll_itr = clk_get_rate(priv->clk) / 1000;
 
 	if (ops && ops->reset)
 		ops->reset(dev);

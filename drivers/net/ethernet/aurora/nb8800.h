@@ -201,6 +201,7 @@ struct nb8800_priv {
 	struct nb8800_dma_desc		*rx_descs;
 	struct rx_buf			*rx_bufs;
 	u16				rx_eoc;
+	u32				rx_poll_itr;
 
 	struct nb8800_dma_desc		*tx_descs;
 	struct tx_buf			*tx_bufs;
