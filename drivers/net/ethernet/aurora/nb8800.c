@@ -858,10 +858,6 @@ static int nb8800_hw_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	unsigned int val = 0;
-	int clkdiv, itrmul;
-
-	clkdiv = priv->gigabit ? 125000000 : 25000000;
-	itrmul = clk_get_rate(priv->clk) / clkdiv + 2;
 
 	nb8800_writeb(priv, NB8800_RANDOM_SEED, 0x08);
 
@@ -882,8 +878,7 @@ static int nb8800_hw_init(struct net_device *dev)
 	nb8800_writel(priv, NB8800_TXC_CR, val);
 
 	/* TX Interrupt Time Register */
-	val = TFI * TX_BUF_SIZE * itrmul;
-	nb8800_writel(priv, NB8800_TX_ITR, val);
+	nb8800_writel(priv, NB8800_TX_ITR, 1);
 
 	/* configure RX DMA Channels */
 	val = nb8800_readl(priv, NB8800_RXC_CR);
@@ -892,8 +887,7 @@ static int nb8800_hw_init(struct net_device *dev)
 	nb8800_writel(priv, NB8800_RXC_CR, val);
 
 	/* RX Interrupt Time Register */
-	val = RFI * RX_BUF_SIZE * itrmul;
-	nb8800_writel(priv, NB8800_RX_ITR, val);
+	nb8800_writel(priv, NB8800_RX_ITR, 1);
 
 	val = TX_RETRY_EN | TX_PAD_EN | TX_APPEND_FCS;
 	nb8800_writeb(priv, NB8800_TX_CTL1, val);
@@ -934,7 +928,6 @@ static int nb8800_probe(struct platform_device *pdev)
 	const unsigned char *mac;
 	void __iomem *base;
 	int phy_mode;
-	u32 speed;
 	int irq;
 	int ret;
 
@@ -969,9 +962,6 @@ static int nb8800_probe(struct platform_device *pdev)
 
 	priv = netdev_priv(dev);
 	priv->base = base;
-
-	if (!of_property_read_u32(pdev->dev.of_node, "max-speed", &speed))
-		priv->gigabit = speed >= 1000;
 
 	phy_mode = of_get_phy_mode(pdev->dev.of_node);
 	if (phy_mode < 0)

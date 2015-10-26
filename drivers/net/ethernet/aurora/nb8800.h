@@ -218,7 +218,6 @@ struct nb8800_priv {
 	dma_addr_t			rx_desc_dma;
 	dma_addr_t			tx_desc_dma;
 
-	int				gigabit;
 	struct clk			*clk;
 };
 
