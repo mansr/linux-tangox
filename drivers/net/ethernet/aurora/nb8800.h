@@ -18,9 +18,6 @@
 
 #define RX_COPYBREAK			256
 
-#define RFI				7
-#define TFI				1
-
 #define MAX_MDC_CLOCK			2500000
 
 /* register offsets */
