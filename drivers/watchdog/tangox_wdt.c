@@ -6,11 +6,6 @@
  *  under  the terms of the GNU General  Public License as published by the
  *  Free Software Foundation;  either version 2 of the License, or (at your
  *  option) any later version.
- *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  675 Mass Ave, Cambridge, MA 02139, USA.
- *
  */
 
 #include <linux/kernel.h>
@@ -22,7 +17,7 @@
 #include <linux/platform_device.h>
 #include <linux/watchdog.h>
 #include <linux/clk.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #define DEFAULT_TIMEOUT	30
 #define MAX_TIMEOUT	120
@@ -63,7 +58,7 @@ static int tangox_wdt_set_timeout(struct watchdog_device *wdt,
 	struct tangox_wdt_device *dev = watchdog_get_drvdata(wdt);
 
 	wdt->timeout = new_timeout;
-	dev->timeout = new_timeout * clk_get_rate(dev->clk);
+	dev->timeout = 1 + new_timeout * clk_get_rate(dev->clk);
 
 	tangox_wdt_ping(wdt);
 
@@ -99,16 +94,10 @@ static const struct watchdog_ops tangox_wdt_ops = {
 static int tangox_wdt_restart(struct notifier_block *nb, unsigned long action,
 			      void *data)
 {
-	struct tangox_wdt_device *dev;
-	unsigned int timeout;
+	struct tangox_wdt_device *dev =
+		container_of(nb, struct tangox_wdt_device, restart);
 
-	dev = container_of(nb, struct tangox_wdt_device, restart);
-	timeout = clk_get_rate(dev->clk) / 10;
-
-	writel(timeout, dev->base + WD_COUNTER);
-	writeb(1, dev->base + WD_CONFIG);
-
-	mdelay(150);
+	writel(1, dev->base + WD_COUNTER);
 
 	return NOTIFY_DONE;
 }
@@ -123,6 +112,7 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 	if (!dev)
 		return -ENOMEM;
 
+	dev->wdt.parent = &pdev->dev;
 	dev->wdt.info = &tangox_wdt_info;
 	dev->wdt.ops = &tangox_wdt_ops;
 	dev->wdt.timeout = timeout;
@@ -144,7 +134,7 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 		return PTR_ERR(dev->base);
 
 	writel(0, dev->base + WD_COUNTER);
-	writeb(1, dev->base + WD_CONFIG);
+	writel(1, dev->base + WD_CONFIG);
 
 	err = watchdog_register_device(&dev->wdt);
 	if (err)
@@ -158,7 +148,7 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 	if (err)
 		dev_err(&pdev->dev, "failed to register restart handler\n");
 
-	dev_info(&pdev->dev, "SMP86xx watchdog registered\n");
+	dev_info(dev->wdt.dev, "SMP86xx watchdog registered\n");
 
 	return 0;
 }
@@ -175,7 +165,7 @@ static int tangox_wdt_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id tangox_wdt_dt_ids[] = {
-	{ .compatible = "sigma,smp8640-wdt" },
+	{ .compatible = "sigma,smp8642-wdt" },
 	{ }
 };
 
