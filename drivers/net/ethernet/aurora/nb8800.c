@@ -845,7 +845,7 @@ static int nb8800_nway_reset(struct net_device *dev)
 	return genphy_restart_aneg(priv->phydev);
 }
 
-static struct ethtool_ops nb8800_ethtool_ops = {
+static const struct ethtool_ops nb8800_ethtool_ops = {
 	.get_settings		= nb8800_get_settings,
 	.set_settings		= nb8800_set_settings,
 	.nway_reset		= nb8800_nway_reset,
