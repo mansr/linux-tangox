@@ -16,9 +16,6 @@
 #include "memmap.h"
 #include "setup.h"
 
-unsigned int tangox_chip_type;
-unsigned int tangox_chip_rev;
-
 static char tangox_system_type[32];
 
 const char *get_system_type(void)
@@ -29,13 +26,13 @@ const char *get_system_type(void)
 static void __init tangox_systype_init(void)
 {
 	void __iomem *cid = ioremap(HOST_BASE + 0xfee8, 8);
+	u32 chip_type, chip_rev;
 
-	tangox_chip_type = readl(cid);
-	tangox_chip_rev = readl(cid + 4);
+	chip_type = readl(cid);
+	chip_rev = readl(cid + 4);
 
 	snprintf(tangox_system_type, sizeof(tangox_system_type),
-		 "Sigma Designs SMP%04x ES%d",
-		 tangox_chip_type, tangox_chip_rev);
+		 "Sigma Designs SMP%04x ES%d", chip_type, chip_rev);
 
 	pr_info("%s\n", tangox_system_type);
 }
