@@ -683,7 +683,7 @@ static void __init l2c310_enable(void __iomem *base, unsigned num_lock)
 			power_ctrl & L310_STNDBY_MODE_EN ? "en" : "dis");
 	}
 
-	if (aux & L310_AUX_CTRL_FULL_LINE_ZERO) {
+	if (l2x0_saved_regs.aux_ctrl & L310_AUX_CTRL_FULL_LINE_ZERO) {
 		set_auxcr(get_auxcr() | BIT(3) | BIT(2) | BIT(1));
 		cpu_notifier(l2c310_cpu_enable_flz, 0);
 	}
