@@ -208,7 +208,7 @@ static int nb8800_alloc_rx(struct net_device *dev, int i, bool napi)
 	buf->page = virt_to_head_page(data);
 	buf->offset = data - page_address(buf->page);
 
-	rx->config = RX_BUF_SIZE | DESC_BTS(2) | DESC_DS | DESC_EOF;
+	rx->config = priv->rx_dma_config;
 	rx->s_addr = dma_map_page(&dev->dev, buf->page, buf->offset,
 				  RX_BUF_SIZE, DMA_FROM_DEVICE);
 
@@ -410,7 +410,7 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 		nb8800_tx_dma_queue(dev, dma, cpsz, 0);
 	}
 
-	nb8800_tx_dma_queue(dev, dma_addr, dma_len, DESC_EOF | DESC_EOC);
+	nb8800_tx_dma_queue(dev, dma_addr, dma_len, priv->tx_dma_config);
 	netdev_sent_queue(dev, skb->len);
 
 	tx_buf->skb = skb;
@@ -462,7 +462,7 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 	if (val) {
 		nb8800_writel(priv, NB8800_TXC_SR, val);
 
-		if (likely(val & TSR_TI))
+		if (likely(val & (TSR_TI | TSR_DI)))
 			nb8800_tx_done(dev);
 
 		if (unlikely(val & TSR_DE))
@@ -477,7 +477,7 @@ static irqreturn_t nb8800_isr(int irq, void *dev_id)
 	if (val) {
 		nb8800_writel(priv, NB8800_RXC_SR, val);
 
-		if (likely(val & RSR_RI)) {
+		if (likely(val & (RSR_RI | RSR_DI))) {
 			nb8800_writel(priv, NB8800_RX_ITR, priv->rx_poll_itr);
 			napi_schedule_irqoff(&priv->napi);
 		}
@@ -852,37 +852,6 @@ static const struct ethtool_ops nb8800_ethtool_ops = {
 	.get_link		= ethtool_op_get_link,
 };
 
-static void nb8800_tangox_init(struct net_device *dev)
-{
-	struct nb8800_priv *priv = netdev_priv(dev);
-	u32 val;
-
-	val = nb8800_readb(priv, NB8800_TANGOX_PAD_MODE) & 0x78;
-	if (priv->phy_mode == PHY_INTERFACE_MODE_RGMII)
-		val |= 1;
-	nb8800_writeb(priv, NB8800_TANGOX_PAD_MODE, val);
-}
-
-static void nb8800_tangox_reset(struct net_device *dev)
-{
-	struct nb8800_priv *priv = netdev_priv(dev);
-	int clk_div;
-
-	nb8800_writeb(priv, NB8800_TANGOX_RESET, 0);
-	usleep_range(1000, 10000);
-	nb8800_writeb(priv, NB8800_TANGOX_RESET, 1);
-
-	wmb();		/* ensure reset is cleared before proceeding */
-
-	clk_div = DIV_ROUND_UP(clk_get_rate(priv->clk), 2 * MAX_MDC_CLOCK);
-	nb8800_writew(priv, NB8800_TANGOX_MDIO_CLKDIV, clk_div);
-}
-
-static const struct nb8800_ops nb8800_tangox_ops = {
-	.init	= nb8800_tangox_init,
-	.reset	= nb8800_tangox_reset,
-};
-
 static int nb8800_hw_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
@@ -934,6 +903,63 @@ static int nb8800_hw_init(struct net_device *dev)
 	return 0;
 }
 
+static void nb8800_tangox_init(struct net_device *dev)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+	u32 val;
+
+	val = nb8800_readb(priv, NB8800_TANGOX_PAD_MODE) & 0x78;
+	if (priv->phy_mode == PHY_INTERFACE_MODE_RGMII)
+		val |= 1;
+	nb8800_writeb(priv, NB8800_TANGOX_PAD_MODE, val);
+}
+
+static void nb8800_tangox_reset(struct net_device *dev)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+	int clk_div;
+
+	nb8800_writeb(priv, NB8800_TANGOX_RESET, 0);
+	usleep_range(1000, 10000);
+	nb8800_writeb(priv, NB8800_TANGOX_RESET, 1);
+
+	wmb();		/* ensure reset is cleared before proceeding */
+
+	clk_div = DIV_ROUND_UP(clk_get_rate(priv->clk), 2 * MAX_MDC_CLOCK);
+	nb8800_writew(priv, NB8800_TANGOX_MDIO_CLKDIV, clk_div);
+}
+
+static const struct nb8800_ops nb8800_tangox_ops = {
+	.init	= nb8800_tangox_init,
+	.reset	= nb8800_tangox_reset,
+};
+
+static void nb8800_tango4_init(struct net_device *dev)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+	u32 val;
+
+	nb8800_tangox_init(dev);
+
+	val = nb8800_readl(priv, NB8800_RXC_CR);
+	val &= ~RCR_RFI(7);
+	val |= RCR_DIE;
+	nb8800_writel(priv, NB8800_RXC_CR, val);
+
+	val = nb8800_readl(priv, NB8800_TXC_CR);
+	val &= ~TCR_TFI(7);
+	val |= TCR_DIE;
+	nb8800_writel(priv, NB8800_TXC_CR, val);
+
+	priv->rx_dma_config |= DESC_ID;
+	priv->tx_dma_config |= DESC_ID;
+}
+
+static const struct nb8800_ops nb8800_tango4_ops = {
+	.init	= nb8800_tango4_init,
+	.reset	= nb8800_tangox_reset,
+};
+
 static const struct of_device_id nb8800_dt_ids[] = {
 	{
 		.compatible = "aurora,nb8800",
@@ -941,6 +967,10 @@ static const struct of_device_id nb8800_dt_ids[] = {
 	{
 		.compatible = "sigma,smp8642-ethernet",
 		.data = &nb8800_tangox_ops,
+	},
+	{
+		.compatible = "sigma,smp8734-ethernet",
+		.data = &nb8800_tango4_ops,
 	},
 	{ }
 };
@@ -1006,6 +1036,8 @@ static int nb8800_probe(struct platform_device *pdev)
 		goto err_free_dev;
 
 	priv->rx_poll_itr = clk_get_rate(priv->clk) / 1000;
+	priv->rx_dma_config = RX_BUF_SIZE | DESC_BTS(2) | DESC_DS | DESC_EOF;
+	priv->tx_dma_config = DESC_EOF | DESC_EOC;
 
 	if (ops && ops->reset)
 		ops->reset(dev);
@@ -1039,12 +1071,12 @@ static int nb8800_probe(struct platform_device *pdev)
 
 	priv->mii_bus = bus;
 
-	if (ops && ops->init)
-		ops->init(dev);
-
 	ret = nb8800_hw_init(dev);
 	if (ret)
 		goto err_free_bus;
+
+	if (ops && ops->init)
+		ops->init(dev);
 
 	dev->netdev_ops = &nb8800_netdev_ops;
 	dev->ethtool_ops = &nb8800_ethtool_ops;
