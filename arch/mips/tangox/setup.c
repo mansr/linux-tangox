@@ -1,10 +1,5 @@
 /*
- * Copyright 2001 MontaVista Software Inc.
- * Author: Jun Sun, jsun@mvista.com or jsun@junsun.net
- *
- * Copyright (C) 2009 Sigma Designs, Inc.
- * arch/mips/tangox/setup.c
- *     The setup file for tango2/tango3
+ * Copyright (C) 2015 Mans Rullgard <mans@mansr.com>
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the
@@ -13,8 +8,11 @@
  *
  */
 
+#include <linux/clk.h>
+#include <linux/clk-provider.h>
 #include <linux/init.h>
 #include <linux/ioport.h>
+#include <linux/irqchip.h>
 #include <linux/of_platform.h>
 #include <linux/of_fdt.h>
 #include <linux/slab.h>
@@ -22,11 +20,17 @@
 #include <asm/byteorder.h>
 #include <asm/bootinfo.h>
 #include <asm/reboot.h>
+#include <asm/time.h>
 #include <asm/traps.h>
 #include <asm/cpu-info.h>
 #include <asm/prom.h>
 
 #include "setup.h"
+
+void __init arch_init_irq(void)
+{
+	irqchip_init();
+}
 
 static void tangox_machine_halt(void)
 {
@@ -52,6 +56,32 @@ void __init plat_mem_setup(void)
 	iomem_resource.end = 0x7fffffff;
 
 	__dt_setup_arch(__dtb_start);
+}
+
+void __init plat_time_init(void)
+{
+	struct device_node *cpu;
+	struct clk *clk;
+	unsigned rate;
+	int ccres;
+
+	of_clk_init(NULL);
+	clocksource_of_init();
+
+	cpu = of_find_node_by_path("cpu0");
+	if (!cpu)
+		return;
+
+	clk = of_clk_get(cpu, 0);
+	if (IS_ERR(clk))
+		return;
+
+	rate = clk_get_rate(clk);
+
+	__asm__ ("rdhwr %0, $3" : "=r" (ccres));
+	mips_hpt_frequency = rate / ccres;
+
+	pr_info("CPU clock %d Hz\n", rate);
 }
 
 void __init device_tree_init(void)
