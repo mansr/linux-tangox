@@ -17,19 +17,6 @@ void prom_console_init(void);
 static inline void prom_console_init(void) { }
 #endif
 
-extern unsigned int tangox_chip_type;
-extern unsigned int tangox_chip_rev;
-
-static inline int is_tangox_chip(int type, int mask)
-{
-	return (tangox_chip_type & mask) == type;
-}
-
-static inline int is_tangox_chip_rev(int type, int mask, int rev)
-{
-	return is_tangox_chip(type, mask) && tangox_chip_rev == rev;
-}
-
 int xenv_config(void);
 unsigned int tangox_sata_cfg(void);
 int tangox_ethernet_enabled(unsigned int i);
