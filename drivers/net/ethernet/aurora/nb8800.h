@@ -5,7 +5,6 @@
 #include <linux/skbuff.h>
 #include <linux/phy.h>
 #include <linux/clk.h>
-#include <linux/timer.h>
 #include <linux/bitops.h>
 
 #define RX_DESC_COUNT			256
