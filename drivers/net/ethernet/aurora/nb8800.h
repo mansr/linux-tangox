@@ -205,9 +205,9 @@ struct nb8800_priv {
 	struct tx_buf			*tx_bufs;
 	atomic_t			tx_free;
 	u32				tx_dma_config;
-	u32				tx_pending;
 	u16				tx_next;
 	u16				tx_done;
+	u32				tx_lock;
 
 	struct mii_bus			*mii_bus;
 	struct device_node		*phy_node;
