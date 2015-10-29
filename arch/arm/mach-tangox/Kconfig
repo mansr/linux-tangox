@@ -1,0 +1,11 @@
+config ARCH_TANGOX
+	bool "Sigma Designs SMP87xx" if ARCH_MULTI_V7
+	select ARCH_HAS_HOLES_MEMORYMODEL
+	select ARM_ERRATA_754322
+	select ARM_ERRATA_764369 if SMP
+	select ARM_GIC
+	select CLKSRC_TANGOX
+	select COMMON_CLK
+	select HAVE_ARM_SCU
+	select HAVE_ARM_TWD if SMP
+	select TANGOX_IRQ

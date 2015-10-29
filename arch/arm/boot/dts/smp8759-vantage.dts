@@ -1,0 +1,38 @@
+/dts-v1/;
+
+#include "smp87xx.dtsi"
+
+/ {
+	compatible = "sigma,smp8759-vantage", "sigma,smp8759-soc";
+	model = "Sigma Designs SMP8759 Vantage";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0x20000000>;
+	};
+
+	memory@c0000000 {
+		device_type = "memory";
+		reg = <0xc0000000 0x20000000>;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+};
+
+&eth0 {
+	phy-connection-type = "rgmii";
+	phy-handle = <&eth0_phy>;
+	mac-address = [ 00 16 e8 4b 74 6e ];
+
+	eth0_phy: ethernet-phy@4 {
+		compatible = "ethernet-phy-id004d.d072",
+			     "ethernet-phy-ieee802.3-c22";
+		reg = <4>;
+	};
+};
