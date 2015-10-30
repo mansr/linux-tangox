@@ -1,0 +1,24 @@
+Sigma Designs SMP8642 I2C master
+
+Required properties:
+- compatible: should be "sigma,smp8642-i2c"
+- reg: physical address space of the device
+- interrupts: the interrupt of the device
+- clocks: phandle of the clock for the device
+- #address-cells: should be <1>
+- #size-cells: should be <0>
+
+Optional properties:
+- clock-frequency: frequency of bus clock in Hz, default 100kHz
+
+Example:
+
+i2c@10480 {
+	compatible = "sigma,smp8642-i2c";
+	reg = <0x10480 0x2c>;
+	interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&sys_clk>;
+	clock-frequency = <100000>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
