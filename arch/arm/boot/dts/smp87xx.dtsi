@@ -46,7 +46,7 @@
 		interrupts = <GIC_PPI 13
 			      (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_EDGE_RISING)>;
 		interrupt-parent = <&gic>;
-		clocks = <&cpu_clk>;
+		clocks = <&cpu_periph_clk>;
 	};
 
 	gic: interrupt-controller@20001000 {
@@ -153,7 +153,7 @@
 			compatible = "sigma,smp8750-div-clk";
 			reg = <0x10020 0x4>;
 			#clock-cells = <0>;
-			clocks = <&pll0_clk 0>, <&sysmux_clk 0>;
+			clocks = <&sysdiv_clk>, <&sysmux_clk 0>;
 			clock-output-names = "sys_clk";
 		};
 
@@ -163,6 +163,15 @@
 			#clock-cells = <0>;
 			clocks = <&pll0_clk 0>, <&sysmux_clk 1>;
 			clock-output-names = "cpu_clk";
+		};
+
+		cpu_periph_clk: cpu_periph_clk {
+			compatible = "fixed-factor-clock";
+			#clock-cells = <0>;
+			clocks = <&cpu_clk>;
+			clock-output-names = "cpu_periph_clk";
+			clock-mult = <1>;
+			clock-div = <2>;
 		};
 
 		premux_clk: clk@10034 {
@@ -187,6 +196,15 @@
 			sigma,divisors = <2 4 3 3 3 3 3 3 4 4 4 4
 					  2 2 2 3 3 2 3 2 4 2 4 2
 					  2 4 3 3 3 3 3 3 4 4 4 4>;
+		};
+
+		sysdiv_clk: sysdiv_clk {
+			compatible = "fixed-factor-clock";
+			#clock-cells = <0>;
+			clocks = <&premux_clk 0>;
+			clock-output-names = "sysdiv_clk";
+			clock-mult = <1>;
+			clock-div = <4>;
 		};
 
 		cd0_clk: clk@10080 {
@@ -347,7 +365,7 @@
 			compatible = "sigma,smp8640-i2c";
 			reg = <0x10400 0x2c>;
 			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&sysmux_clk 0>;
+			clocks = <&sys_clk>;
 			clock-frequency = <100000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -357,7 +375,7 @@
 			compatible = "sigma,smp8640-i2c";
 			reg = <0x10480 0x2c>;
 			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&sysmux_clk 0>;
+			clocks = <&sys_clk>;
 			clock-frequency = <100000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -395,7 +413,7 @@
 			compatible = "sigma,smp8734-ethernet";
 			reg = <0x26000 0x800>;
 			interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&sysmux_clk 0>;
+			clocks = <&sys_clk>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
@@ -404,7 +422,7 @@
 			compatible = "sigma,smp8734-ethernet";
 			reg = <0x26800 0x800>;
 			interrupts = <57 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&sysmux_clk 0>;
+			clocks = <&sys_clk>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
@@ -421,7 +439,7 @@
 			compatible = "sigma,smp8640-timer";
 			reg = <0x6c500 0x10>;
 			interrupts = <5 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&sysmux_clk 0>;
+			clocks = <&sys_clk>;
 			label = "tangox_timer0";
 		};
 
