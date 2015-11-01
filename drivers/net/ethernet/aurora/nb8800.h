@@ -20,16 +20,16 @@
 #define MAX_MDC_CLOCK			2500000
 
 /* register offsets */
-#define NB8800_TX_CTL1			0x00
+#define NB8800_TX_CTL1			0x000
 #define TX_TPD				BIT(5)
 #define TX_APPEND_FCS			BIT(4)
 #define TX_PAD_EN			BIT(3)
 #define TX_RETRY_EN			BIT(2)
 #define TX_EN				BIT(0)
 
-#define NB8800_TX_CTL2			0x01
+#define NB8800_TX_CTL2			0x001
 
-#define NB8800_RX_CTL			0x04
+#define NB8800_RX_CTL			0x004
 #define RX_BC_DISABLE			BIT(7)
 #define RX_RUNT				BIT(6)
 #define RX_AF_EN			BIT(5)
@@ -38,49 +38,49 @@
 #define RX_PAD_STRIP			BIT(1)
 #define RX_EN				BIT(0)
 
-#define NB8800_RANDOM_SEED		0x8
+#define NB8800_RANDOM_SEED		0x008
 #define NB8800_TX_SDP			0x14
 #define NB8800_TX_TPDP1			0x18
 #define NB8800_TX_TPDP2			0x19
 #define NB8800_SLOT_TIME		0x1c
 
-#define NB8800_MDIO_CMD			0x20
+#define NB8800_MDIO_CMD			0x020
 #define MIIAR_ADDR(x)			((x) << 21)
 #define MIIAR_REG(x)			((x) << 16)
 #define MIIAR_DATA(x)			((x) <<	 0)
 #define MDIO_CMD_GO			BIT(31)
 #define MDIO_CMD_WR			BIT(26)
 
-#define NB8800_MDIO_STS			0x24
+#define NB8800_MDIO_STS			0x024
 #define MDIO_STS_ERR			BIT(31)
 
-#define NB8800_MC_ADDR(i)		(0x28 + (i))
-#define NB8800_MC_INIT			0x2e
-#define NB8800_UC_ADDR(i)		(0x3c + (i))
+#define NB8800_MC_ADDR(i)		(0x028 + (i))
+#define NB8800_MC_INIT			0x02e
+#define NB8800_UC_ADDR(i)		(0x03c + (i))
 
-#define NB8800_MAC_MODE			0x44
+#define NB8800_MAC_MODE			0x044
 #define RGMII_MODE			BIT(7)
 #define HALF_DUPLEX			BIT(4)
 #define BURST_EN			BIT(3)
 #define LOOPBACK_EN			BIT(2)
 #define GMAC_MODE			BIT(0)
 
-#define NB8800_IC_THRESHOLD		0x50
-#define NB8800_PE_THRESHOLD		0x51
-#define NB8800_PF_THRESHOLD		0x52
-#define NB8800_TX_BUFSIZE		0x54
-#define NB8800_FIFO_CTL			0x56
-#define NB8800_PQ1			0x60
-#define NB8800_PQ2			0x61
-#define NB8800_SRC_ADDR(i)		(0x6a + (i))
-#define NB8800_STAT_DATA		0x78
-#define NB8800_STAT_INDEX		0x7c
-#define NB8800_STAT_CLEAR		0x7d
+#define NB8800_IC_THRESHOLD		0x050
+#define NB8800_PE_THRESHOLD		0x051
+#define NB8800_PF_THRESHOLD		0x052
+#define NB8800_TX_BUFSIZE		0x054
+#define NB8800_FIFO_CTL			0x056
+#define NB8800_PQ1			0x060
+#define NB8800_PQ2			0x061
+#define NB8800_SRC_ADDR(i)		(0x06a + (i))
+#define NB8800_STAT_DATA		0x078
+#define NB8800_STAT_INDEX		0x07c
+#define NB8800_STAT_CLEAR		0x07d
 
-#define NB8800_SLEEP_MODE		0x7e
+#define NB8800_SLEEP_MODE		0x07e
 #define SLEEP_MODE			BIT(0)
 
-#define NB8800_WAKEUP			0x7f
+#define NB8800_WAKEUP			0x07f
 #define WAKEUP				BIT(0)
 
 #define NB8800_TXC_CR			0x100
