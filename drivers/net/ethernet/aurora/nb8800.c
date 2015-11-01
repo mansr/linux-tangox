@@ -87,23 +87,29 @@ static int nb8800_mdio_wait(struct mii_bus *bus)
 					 val, !(val & MDIO_CMD_GO), 1, 1000);
 }
 
-static int nb8800_mdio_read(struct mii_bus *bus, int phy_id, int reg)
+static int nb8800_mdio_cmd(struct mii_bus *bus, u32 cmd)
 {
 	struct nb8800_priv *priv = bus->priv;
-	int val;
 	int err;
 
 	err = nb8800_mdio_wait(bus);
 	if (err)
 		return err;
 
-	val = MIIAR_ADDR(phy_id) | MIIAR_REG(reg);
-
-	nb8800_writel(priv, NB8800_MDIO_CMD, val);
+	nb8800_writel(priv, NB8800_MDIO_CMD, cmd);
 	udelay(10);
-	nb8800_writel(priv, NB8800_MDIO_CMD, val | MDIO_CMD_GO);
+	nb8800_writel(priv, NB8800_MDIO_CMD, cmd | MDIO_CMD_GO);
 
-	err = nb8800_mdio_wait(bus);
+	return nb8800_mdio_wait(bus);
+}
+
+static int nb8800_mdio_read(struct mii_bus *bus, int phy_id, int reg)
+{
+	struct nb8800_priv *priv = bus->priv;
+	u32 val;
+	int err;
+
+	err = nb8800_mdio_cmd(bus, MIIAR_ADDR(phy_id) | MIIAR_REG(reg));
 	if (err)
 		return err;
 
@@ -116,26 +122,10 @@ static int nb8800_mdio_read(struct mii_bus *bus, int phy_id, int reg)
 
 static int nb8800_mdio_write(struct mii_bus *bus, int phy_id, int reg, u16 val)
 {
-	struct nb8800_priv *priv = bus->priv;
-	int tmp;
-	int err;
-
-	err = nb8800_mdio_wait(bus);
-	if (err)
-		return err;
-
-	tmp = MIIAR_DATA(val) | MIIAR_ADDR(phy_id) | MIIAR_REG(reg) |
+	u32 cmd = MIIAR_DATA(val) | MIIAR_ADDR(phy_id) | MIIAR_REG(reg) |
 		MDIO_CMD_WR;
 
-	nb8800_writel(priv, NB8800_MDIO_CMD, tmp);
-	udelay(10);
-	nb8800_writel(priv, NB8800_MDIO_CMD, tmp | MDIO_CMD_GO);
-
-	err = nb8800_mdio_wait(bus);
-	if (err)
-		return err;
-
-	return 0;
+	return nb8800_mdio_cmd(bus, cmd);
 }
 
 static void nb8800_mac_tx(struct net_device *dev, bool enable)
