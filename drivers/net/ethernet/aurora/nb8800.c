@@ -538,10 +538,10 @@ static void nb8800_update_mac_addr(struct net_device *dev)
 	struct nb8800_priv *priv = netdev_priv(dev);
 	int i;
 
-	for (i = 0; i < 6; i++)
+	for (i = 0; i < ETH_ALEN; i++)
 		nb8800_writeb(priv, NB8800_SRC_ADDR(i), dev->dev_addr[i]);
 
-	for (i = 0; i < 6; i++)
+	for (i = 0; i < ETH_ALEN; i++)
 		nb8800_writeb(priv, NB8800_UC_ADDR(i), dev->dev_addr[i]);
 }
 
@@ -589,7 +589,7 @@ static void nb8800_set_rx_mode(struct net_device *dev)
 	netdev_for_each_mc_addr(ha, dev) {
 		char *addr = ha->addr;
 
-		for (i = 0; i < 6; i++)
+		for (i = 0; i < ETH_ALEN; i++)
 			nb8800_writeb(priv, NB8800_MC_ADDR(i), addr[i]);
 
 		nb8800_mc_init(dev, 0xff);
