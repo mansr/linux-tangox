@@ -1129,4 +1129,5 @@ static struct platform_driver nb8800_driver = {
 module_platform_driver(nb8800_driver);
 
 MODULE_DESCRIPTION("Aurora AU-NB8800 Ethernet driver");
+MODULE_AUTHOR("Mans Rullgard <mans@mansr.com>");
 MODULE_LICENSE("GPL");
