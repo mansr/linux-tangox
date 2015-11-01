@@ -34,6 +34,7 @@
 #include <linux/cache.h>
 #include <linux/jiffies.h>
 #include <linux/io.h>
+#include <linux/iopoll.h>
 #include <asm/barrier.h>
 
 #include "nb8800.h"
@@ -77,29 +78,24 @@ static inline void nb8800_writel(struct nb8800_priv *priv, int reg, u32 val)
 			nb8800_write##sz(priv, reg, __n);		\
 	} while (0)
 
-#define MDIO_TIMEOUT	1000
-
 static int nb8800_mdio_wait(struct mii_bus *bus)
 {
 	struct nb8800_priv *priv = bus->priv;
-	int tmo = MDIO_TIMEOUT;
+	u32 val;
 
-	while (--tmo) {
-		if (!(nb8800_readl(priv, NB8800_MDIO_CMD) & MDIO_CMD_GO))
-			break;
-		udelay(1);
-	}
-
-	return tmo;
+	return readl_poll_timeout_atomic(priv->base + NB8800_MDIO_CMD,
+					 val, !(val & MDIO_CMD_GO), 1, 1000);
 }
 
 static int nb8800_mdio_read(struct mii_bus *bus, int phy_id, int reg)
 {
 	struct nb8800_priv *priv = bus->priv;
 	int val;
+	int err;
 
-	if (!nb8800_mdio_wait(bus))
-		return -ETIMEDOUT;
+	err = nb8800_mdio_wait(bus);
+	if (err)
+		return err;
 
 	val = MIIAR_ADDR(phy_id) | MIIAR_REG(reg);
 
@@ -107,8 +103,9 @@ static int nb8800_mdio_read(struct mii_bus *bus, int phy_id, int reg)
 	udelay(10);
 	nb8800_writel(priv, NB8800_MDIO_CMD, val | MDIO_CMD_GO);
 
-	if (!nb8800_mdio_wait(bus))
-		return -ETIMEDOUT;
+	err = nb8800_mdio_wait(bus);
+	if (err)
+		return err;
 
 	val = nb8800_readl(priv, NB8800_MDIO_STS);
 	if (val & MDIO_STS_ERR)
@@ -121,9 +118,11 @@ static int nb8800_mdio_write(struct mii_bus *bus, int phy_id, int reg, u16 val)
 {
 	struct nb8800_priv *priv = bus->priv;
 	int tmp;
+	int err;
 
-	if (!nb8800_mdio_wait(bus))
-		return -ETIMEDOUT;
+	err = nb8800_mdio_wait(bus);
+	if (err)
+		return err;
 
 	tmp = MIIAR_DATA(val) | MIIAR_ADDR(phy_id) | MIIAR_REG(reg) |
 		MDIO_CMD_WR;
@@ -132,8 +131,9 @@ static int nb8800_mdio_write(struct mii_bus *bus, int phy_id, int reg, u16 val)
 	udelay(10);
 	nb8800_writel(priv, NB8800_MDIO_CMD, tmp | MDIO_CMD_GO);
 
-	if (!nb8800_mdio_wait(bus))
-		return -ETIMEDOUT;
+	err = nb8800_mdio_wait(bus);
+	if (err)
+		return err;
 
 	return 0;
 }
@@ -174,13 +174,14 @@ static void nb8800_mac_af(struct net_device *dev, bool enable)
 static void nb8800_stop_rx(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
+	u32 val;
 	int i;
 
 	for (i = 0; i < RX_DESC_COUNT; i++)
 		priv->rx_descs[i].config |= DESC_EOC;
 
-	while (nb8800_readl(priv, NB8800_RXC_CR) & RCR_EN)
-		usleep_range(1000, 10000);
+	readl_poll_timeout(priv->base + NB8800_RXC_CR, val, !(val & RCR_EN),
+			   1000, 1000000);
 }
 
 static void nb8800_start_rx(struct net_device *dev)
@@ -572,8 +573,8 @@ static void nb8800_mc_init(struct net_device *dev, int val)
 	struct nb8800_priv *priv = netdev_priv(dev);
 
 	nb8800_writeb(priv, NB8800_MC_INIT, val);
-	while (nb8800_readb(priv, NB8800_MC_INIT))
-		cpu_relax();
+	readb_poll_timeout_atomic(priv->base + NB8800_MC_INIT, val, !val,
+				  1, 1000);
 }
 
 static void nb8800_set_rx_mode(struct net_device *dev)
