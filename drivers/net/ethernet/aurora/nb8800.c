@@ -990,7 +990,7 @@ static int nb8800_probe(struct platform_device *pdev)
 	if (IS_ERR(base))
 		return PTR_ERR(base);
 
-	dev_info(&pdev->dev, "AU-NB8800 Ethernet at %pa\n", &res->start);
+	dev_dbg(&pdev->dev, "AU-NB8800 Ethernet at %pa\n", &res->start);
 
 	dev = alloc_etherdev(sizeof(*priv));
 	if (!dev)
