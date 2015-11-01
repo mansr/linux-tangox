@@ -842,7 +842,7 @@ static const struct ethtool_ops nb8800_ethtool_ops = {
 static int nb8800_hw_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
-	unsigned int val = 0;
+	u32 val;
 
 	nb8800_writeb(priv, NB8800_RANDOM_SEED, 0x08);
 
