@@ -10,6 +10,8 @@
 		cpu0 = &cpu0;
 		eth0 = &eth0;
 		eth1 = &eth1;
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
 		sata_phy = &sata_phy;
 	};
 
@@ -285,7 +287,7 @@
 		};
 
 		i2c1: i2c@10400 {
-			compatible = "sigma,smp8640-i2c";
+			compatible = "sigma,smp8642-i2c";
 			reg = <0x10400 0x2c>;
 			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sys_clk 0>;
@@ -295,7 +297,7 @@
 		};
 
 		i2c0: i2c@10480 {
-			compatible = "sigma,smp8640-i2c";
+			compatible = "sigma,smp8642-i2c";
 			reg = <0x10480 0x2c>;
 			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sys_clk 0>;
