@@ -16,6 +16,7 @@
 #define TX_BUF_SIZE			1552
 
 #define RX_COPYBREAK			256
+#define RX_COPYHDR			128
 
 #define MAX_MDC_CLOCK			2500000
 

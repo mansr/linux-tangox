@@ -187,28 +187,31 @@ static int nb8800_alloc_rx(struct net_device *dev, int i, bool napi)
 	struct nb8800_dma_desc *rx = &priv->rx_descs[i];
 	struct rx_buf *buf = &priv->rx_bufs[i];
 	int size = L1_CACHE_ALIGN(RX_BUF_SIZE);
+	dma_addr_t dma_addr;
+	struct page *page;
+	int offset;
 	void *data;
 
 	data = napi ? napi_alloc_frag(size) : netdev_alloc_frag(size);
-	if (!data) {
-		buf->page = NULL;
-		rx->config = DESC_EOF;
+	if (!data)
+		return -ENOMEM;
+
+	page = virt_to_head_page(data);
+	offset = data - page_address(page);
+
+	dma_addr = dma_map_page(&dev->dev, page, offset, RX_BUF_SIZE,
+				DMA_FROM_DEVICE);
+
+	if (dma_mapping_error(&dev->dev, dma_addr)) {
+		skb_free_frag(data);
 		return -ENOMEM;
 	}
 
-	buf->page = virt_to_head_page(data);
-	buf->offset = data - page_address(buf->page);
+	buf->page = page;
+	buf->offset = offset;
 
 	rx->config = priv->rx_dma_config;
-	rx->s_addr = dma_map_page(&dev->dev, buf->page, buf->offset,
-				  RX_BUF_SIZE, DMA_FROM_DEVICE);
-
-	if (dma_mapping_error(&dev->dev, rx->s_addr)) {
-		skb_free_frag(data);
-		buf->page = NULL;
-		rx->config = DESC_EOF;
-		return -ENOMEM;
-	}
+	rx->s_addr = dma_addr;
 
 	return 0;
 }
@@ -222,10 +225,15 @@ static void nb8800_receive(struct net_device *dev, int i, int len)
 	void *data = page_address(page) + offset;
 	dma_addr_t dma = rx->s_addr;
 	struct sk_buff *skb;
+	int size;
+	int err;
 
-	skb = napi_alloc_skb(&priv->napi, RX_COPYBREAK);
+	size = len <= RX_COPYBREAK ? len : RX_COPYHDR;
+
+	skb = napi_alloc_skb(&priv->napi, size);
 	if (!skb) {
 		netdev_err(dev, "rx skb allocation failed\n");
+		dev->stats.rx_dropped++;
 		return;
 	}
 
@@ -235,11 +243,17 @@ static void nb8800_receive(struct net_device *dev, int i, int len)
 		dma_sync_single_for_device(&dev->dev, dma, len,
 					   DMA_FROM_DEVICE);
 	} else {
+		err = nb8800_alloc_rx(dev, i, true);
+		if (err) {
+			dev->stats.rx_dropped++;
+			return;
+		}
+
 		dma_unmap_page(&dev->dev, dma, RX_BUF_SIZE, DMA_FROM_DEVICE);
-		memcpy(skb_put(skb, 128), data, 128);
+		memcpy(skb_put(skb, RX_COPYHDR), data, RX_COPYHDR);
 		skb_add_rx_frag(skb, skb_shinfo(skb)->nr_frags, page,
-				offset + 128, len - 128, RX_BUF_SIZE);
-		priv->rx_bufs[i].page = NULL;
+				offset + RX_COPYHDR, len - RX_COPYHDR,
+				RX_BUF_SIZE);
 	}
 
 	skb->protocol = eth_type_trans(skb, dev);
@@ -285,15 +299,12 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 
 		if (IS_RX_ERROR(report)) {
 			nb8800_rx_error(dev, report);
-		} else if (likely(rx_buf->page)) {
+		} else {
 			len = RX_BYTES_TRANSFERRED(report);
 			nb8800_receive(dev, next, len);
 		}
 
 		rx->report = 0;
-		if (!rx_buf->page)
-			nb8800_alloc_rx(dev, next, true);
-
 		last = next;
 		work++;
 	}
