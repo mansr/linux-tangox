@@ -1045,8 +1045,8 @@ static int nb8800_probe(struct platform_device *pdev)
 	bus->read = nb8800_mdio_read;
 	bus->write = nb8800_mdio_write;
 	bus->parent = &pdev->dev;
-	snprintf(bus->id, MII_BUS_ID_SIZE, "%.*s-mii", MII_BUS_ID_SIZE - 5,
-		 pdev->name);
+	snprintf(bus->id, MII_BUS_ID_SIZE, "%lx.nb8800-mii",
+		 (unsigned long)res->start);
 	bus->priv = priv;
 
 	ret = of_mdiobus_register(bus, pdev->dev.of_node);
