@@ -28,7 +28,6 @@
 &eth0 {
 	phy-connection-type = "rgmii";
 	phy-handle = <&eth0_phy>;
-	mac-address = [ 00 16 e8 4b 74 6e ];
 
 	eth0_phy: ethernet-phy@4 {
 		compatible = "ethernet-phy-id004d.d072",
