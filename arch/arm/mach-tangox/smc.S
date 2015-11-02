@@ -22,19 +22,3 @@ ENTRY(tangox_smc1)
 	smc	#0
 	pop	{r2-r12, pc}
 ENDPROC(tangox_smc1)
-
-ENTRY(tangox_modify_auxcoreboot0)
-	push	{r1-r12, lr}
-	ldr	r12, =0x104
-	dsb
-	smc	#0
-	pop	{r1-r12, pc}
-ENDPROC(tangox_modify_auxcoreboot0)
-
-ENTRY(tangox_auxcoreboot_addr)
-	push	{r2-r12, lr}
-	ldr	r12, =0x105
-	dsb
-	smc	#0
-	pop	{r2-r12, pc}
-ENDPROC(tangox_auxcoreboot_addr)

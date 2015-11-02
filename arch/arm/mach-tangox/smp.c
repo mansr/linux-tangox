@@ -64,11 +64,6 @@ static int tangox_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	spin_lock(&boot_lock);
 
 	/*
-	 * Update the AuxCoreBoot0 with boot state for secondary core.
-	 */
-	tangox_modify_auxcoreboot0(0x200, 0xfffffdff);
-
-	/*
 	 * This is really belt and braces; we hold unintended secondary
 	 * CPUs in the holding pen until we're ready for them.  However,
 	 * since we haven't sent them a soft interrupt, they shouldn't
@@ -77,11 +72,9 @@ static int tangox_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	write_pen_release(cpu_logical_map(cpu));
 
 	/*
-	 * Send the secondary CPU a soft interrupt, thereby causing
-	 * the boot monitor to read the system wide flags register,
-	 * and branch to the address found there.
+	 * Ask the secure monitor to start the secondary CPU.
 	 */
-	arch_send_wakeup_ipi_mask(cpumask_of(cpu));
+	tangox_smc1(0x104, 0);
 
 	timeout = jiffies + (1 * HZ);
 	while (time_before(jiffies, timeout)) {
@@ -115,11 +108,10 @@ static void __init tangox_smp_prepare_cpus(unsigned int max_cpus)
 		scu_enable(of_iomap(scu, 0));
 
 	/*
-	 * Write the address of secondary startup routine into the
-	 * AuxCoreBoot1 where ROM code will jump and start executing
-	 * on secondary core once out of WFE
+	 * Register the address of secondary startup routine with the
+	 * secure monitor.
 	 */
-	tangox_auxcoreboot_addr(virt_to_phys(secondary_startup));
+	tangox_smc1(0x105, virt_to_phys(secondary_startup));
 }
 
 struct smp_operations tangox_smp_ops __initdata = {
