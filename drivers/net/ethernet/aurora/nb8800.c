@@ -855,6 +855,15 @@ static int nb8800_hw_init(struct net_device *dev)
 	struct nb8800_priv *priv = netdev_priv(dev);
 	u32 val;
 
+	val = TX_RETRY_EN | TX_PAD_EN | TX_APPEND_FCS;
+	nb8800_writeb(priv, NB8800_TX_CTL1, val);
+
+	/* collision retry count */
+	nb8800_writeb(priv, NB8800_TX_CTL2, 5);
+
+	val = RX_PAD_STRIP | RX_PAUSE_EN | RX_AF_EN | RX_RUNT;
+	nb8800_writeb(priv, NB8800_RX_CTL, val);
+
 	nb8800_writeb(priv, NB8800_RANDOM_SEED, 0x08);
 
 	/* TX single deferral params */
@@ -862,6 +871,8 @@ static int nb8800_hw_init(struct net_device *dev)
 
 	/* Threshold for partial full */
 	nb8800_writeb(priv, NB8800_PF_THRESHOLD, 0xff);
+
+	nb8800_writeb(priv, NB8800_TX_BUFSIZE, 0xff);
 
 	/* Pause Quanta */
 	nb8800_writeb(priv, NB8800_PQ1, 0xff);
@@ -885,18 +896,7 @@ static int nb8800_hw_init(struct net_device *dev)
 	/* RX Interrupt Time Register */
 	nb8800_writel(priv, NB8800_RX_ITR, 1);
 
-	val = TX_RETRY_EN | TX_PAD_EN | TX_APPEND_FCS;
-	nb8800_writeb(priv, NB8800_TX_CTL1, val);
-
-	/* collision retry count */
-	nb8800_writeb(priv, NB8800_TX_CTL2, 5);
-
-	val = RX_PAD_STRIP | RX_PAUSE_EN | RX_AF_EN | RX_RUNT;
-	nb8800_writeb(priv, NB8800_RX_CTL, val);
-
 	nb8800_mc_init(dev, 0);
-
-	nb8800_writeb(priv, NB8800_TX_BUFSIZE, 0xff);
 
 	return 0;
 }
