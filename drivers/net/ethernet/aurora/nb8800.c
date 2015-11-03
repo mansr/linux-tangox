@@ -923,11 +923,101 @@ static int nb8800_nway_reset(struct net_device *dev)
 	return genphy_restart_aneg(priv->phydev);
 }
 
+static const char nb8800_stats_names[][ETH_GSTRING_LEN] = {
+	"rx_bytes_ok",
+	"rx_frames_ok",
+	"rx_undersize_frames",
+	"rx_fragment_frames",
+	"rx_64_byte_frames",
+	"rx_127_byte_frames",
+	"rx_255_byte_frames",
+	"rx_511_byte_frames",
+	"rx_1023_byte_frames",
+	"rx_max_size_frames",
+	"rx_oversize_frames",
+	"rx_bad_fcs_frames",
+	"rx_broadcast_frames",
+	"rx_multicast_frames",
+	"rx_control_frames",
+	"rx_pause_frames",
+	"rx_unsup_control_frames",
+	"rx_align_error_frames",
+	"rx_overrun_frames",
+	"rx_jabber_frames",
+	"rx_bytes",
+	"rx_frames",
+
+	"tx_bytes_ok",
+	"tx_frames_ok",
+	"tx_64_byte_frames",
+	"tx_127_byte_frames",
+	"tx_255_byte_frames",
+	"tx_511_byte_frames",
+	"tx_1023_byte_frames",
+	"tx_max_size_frames",
+	"tx_oversize_frames",
+	"tx_broadcast_frames",
+	"tx_multicast_frames",
+	"tx_control_frames",
+	"tx_pause_frames",
+	"tx_underrun_frames",
+	"tx_single_collision_frames",
+	"tx_multi_collision_frames",
+	"tx_deferred_collision_frames",
+	"tx_late_collision_frames",
+	"tx_excessive_collision_frames",
+	"tx_bytes",
+	"tx_frames",
+	"tx_collisions",
+};
+
+#define NB8800_NUM_STATS ARRAY_SIZE(nb8800_stats_names)
+
+static int nb8800_get_sset_count(struct net_device *dev, int sset)
+{
+	if (sset == ETH_SS_STATS)
+		return NB8800_NUM_STATS;
+
+	return -EOPNOTSUPP;
+}
+
+static void nb8800_get_strings(struct net_device *dev, u32 sset, u8 *buf)
+{
+	if (sset == ETH_SS_STATS)
+		memcpy(buf, &nb8800_stats_names, sizeof(nb8800_stats_names));
+}
+
+static u32 nb8800_read_stat(struct net_device *dev, int index)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+
+	nb8800_writeb(priv, NB8800_STAT_INDEX, index);
+
+	return nb8800_readl(priv, NB8800_STAT_DATA);
+}
+
+static void nb8800_get_ethtool_stats(struct net_device *dev,
+				     struct ethtool_stats *estats, u64 *st)
+{
+	u32 rx, tx;
+	int i;
+
+	for (i = 0; i < NB8800_NUM_STATS / 2; i++) {
+		rx = nb8800_read_stat(dev, i);
+		tx = nb8800_read_stat(dev, i | 0x80);
+		st[i] = rx;
+		st[i + NB8800_NUM_STATS / 2] = tx;
+	}
+}
+
 static const struct ethtool_ops nb8800_ethtool_ops = {
 	.get_settings		= nb8800_get_settings,
 	.set_settings		= nb8800_set_settings,
 	.nway_reset		= nb8800_nway_reset,
 	.get_link		= ethtool_op_get_link,
+	.get_sset_count		= nb8800_get_sset_count,
+	.get_strings		= nb8800_get_strings,
+	.get_ethtool_stats	= nb8800_get_ethtool_stats,
 };
 
 static int nb8800_hw_init(struct net_device *dev)
