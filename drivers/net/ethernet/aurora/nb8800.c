@@ -870,10 +870,18 @@ static int nb8800_hw_init(struct net_device *dev)
 	/* TX single deferral params */
 	nb8800_writeb(priv, NB8800_TX_SDP, 0xc);
 
-	/* Threshold for partial full */
-	nb8800_writeb(priv, NB8800_PF_THRESHOLD, 0xff);
+	/* The following three threshold values have been
+	 * experimentally determined for good results.
+	 */
 
-	nb8800_writeb(priv, NB8800_TX_BUFSIZE, 0xff);
+	/* RX/TX FIFO threshold for partial empty (64-bit entries) */
+	nb8800_writeb(priv, NB8800_PE_THRESHOLD, 0);
+
+	/* RX/TX FIFO threshold for partial full (64-bit entries) */
+	nb8800_writeb(priv, NB8800_PF_THRESHOLD, 255);
+
+	/* Buffer size for transmit (64-bit entries) */
+	nb8800_writeb(priv, NB8800_TX_BUFSIZE, 64);
 
 	/* Pause Quanta */
 	nb8800_writeb(priv, NB8800_PQ1, 0xff);
