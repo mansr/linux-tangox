@@ -862,7 +862,7 @@ static int nb8800_hw_init(struct net_device *dev)
 	/* collision retry count */
 	nb8800_writeb(priv, NB8800_TX_CTL2, 5);
 
-	val = RX_PAD_STRIP | RX_PAUSE_EN | RX_AF_EN | RX_RUNT;
+	val = RX_PAD_STRIP | RX_AF_EN | RX_RUNT;
 	nb8800_writeb(priv, NB8800_RX_CTL, val);
 
 	nb8800_writeb(priv, NB8800_RANDOM_SEED, 0x08);
@@ -883,10 +883,6 @@ static int nb8800_hw_init(struct net_device *dev)
 	/* Buffer size for transmit (64-bit entries) */
 	nb8800_writeb(priv, NB8800_TX_BUFSIZE, 64);
 
-	/* Pause Quanta */
-	nb8800_writeb(priv, NB8800_PQ1, 0xff);
-	nb8800_writeb(priv, NB8800_PQ2, 0xff);
-
 	/* configure TX DMA Channels */
 	val = nb8800_readl(priv, NB8800_TXC_CR);
 	val &= TCR_LE;
@@ -899,7 +895,7 @@ static int nb8800_hw_init(struct net_device *dev)
 	/* configure RX DMA Channels */
 	val = nb8800_readl(priv, NB8800_RXC_CR);
 	val &= RCR_LE;
-	val |= RCR_DM | RCR_RS | RCR_RFI(7) | RCR_BTS(2) | RCR_FL;
+	val |= RCR_DM | RCR_RS | RCR_RFI(7) | RCR_BTS(2);
 	nb8800_writel(priv, NB8800_RXC_CR, val);
 
 	/* RX Interrupt Time Register */
