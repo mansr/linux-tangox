@@ -745,6 +745,7 @@ static int nb8800_open(struct net_device *dev)
 	if (!priv->phydev)
 		goto err_free_irq;
 
+	netdev_reset_queue(dev);
 	napi_enable(&priv->napi);
 	netif_start_queue(dev);
 
