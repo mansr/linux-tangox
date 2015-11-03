@@ -528,20 +528,30 @@ static void nb8800_link_reconfigure(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct phy_device *phydev = priv->phydev;
+	int change = 0;
 
-	if (phydev->speed == priv->speed && phydev->duplex == priv->duplex &&
-	    phydev->link == priv->link)
-		return;
+	if (phydev->link) {
+		if (phydev->speed != priv->speed) {
+			priv->speed = phydev->speed;
+			change = 1;
+		}
 
-	if (phydev->link != priv->link || phydev->link)
+		if (phydev->duplex != priv->duplex) {
+			priv->duplex = phydev->duplex;
+			change = 1;
+		}
+
+		if (change)
+			nb8800_mac_config(dev);
+	}
+
+	if (phydev->link != priv->link) {
+		priv->link = phydev->link;
+		change = 1;
+	}
+
+	if (change)
 		phy_print_status(priv->phydev);
-
-	priv->speed = phydev->speed;
-	priv->duplex = phydev->duplex;
-	priv->link = phydev->link;
-
-	if (priv->link)
-		nb8800_mac_config(dev);
 }
 
 static void nb8800_update_mac_addr(struct net_device *dev)
