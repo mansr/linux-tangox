@@ -287,7 +287,7 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 		struct nb8800_rx_buf *rxb;
 		int len;
 
-		next = (last + 1) & (RX_DESC_COUNT - 1);
+		next = (last + 1) % RX_DESC_COUNT;
 
 		rxb = &priv->rx_bufs[next];
 		rxd = &priv->rx_descs[next];
@@ -344,7 +344,7 @@ static void nb8800_tx_dma_start(struct net_device *dev)
 	wmb();		/* ensure desc addr is written before starting DMA */
 	nb8800_writel(priv, NB8800_TXC_CR, txc_cr | TCR_EN);
 
-	priv->tx_queue = (priv->tx_queue + 1) & (TX_DESC_COUNT - 1);
+	priv->tx_queue = (priv->tx_queue + 1) % TX_DESC_COUNT;
 
 end:
 	spin_unlock_irqrestore(&priv->tx_lock, flags);
@@ -413,7 +413,7 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	if (!skb->xmit_more)
 		nb8800_tx_dma_start(dev);
 
-	priv->tx_next = (next + 1) & (TX_DESC_COUNT - 1);
+	priv->tx_next = (next + 1) % TX_DESC_COUNT;
 
 	return NETDEV_TX_OK;
 }
@@ -446,7 +446,7 @@ static void nb8800_tx_done(struct net_device *dev)
 		txb->skb = NULL;
 		txd->report = 0;
 
-		done = (done + 1) & (TX_DESC_COUNT - 1);
+		done = (done + 1) % TX_DESC_COUNT;
 		packets++;
 	}
 
