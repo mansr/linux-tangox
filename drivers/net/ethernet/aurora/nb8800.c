@@ -64,19 +64,55 @@ static inline void nb8800_writel(struct nb8800_priv *priv, int reg, u32 val)
 	writel(val, priv->base + reg);
 }
 
-#define nb8800_set_bits(sz, priv, reg, bits) do {			\
-		u32 __o = nb8800_read##sz(priv, reg);			\
-		u32 __n = __o | (bits);					\
-		if (__n != __o)						\
-			nb8800_write##sz(priv, reg, __n);		\
-	} while (0)
+static inline void nb8800_maskb(struct nb8800_priv *priv, int reg,
+				u32 mask, u32 val)
+{
+	u32 old = nb8800_readb(priv, reg);
+	u32 new = (old & ~mask) | val;
+	if (new != old)
+		nb8800_writeb(priv, reg, new);
+}
 
-#define nb8800_clear_bits(sz, priv, reg, bits) do {			\
-		u32 __o = nb8800_read##sz(priv, reg);			\
-		u32 __n = __o & ~(bits);				\
-		if (__n != __o)						\
-			nb8800_write##sz(priv, reg, __n);		\
-	} while (0)
+static inline void nb8800_maskl(struct nb8800_priv *priv, int reg,
+				u32 mask, u32 val)
+{
+	u32 old = nb8800_readl(priv, reg);
+	u32 new = (old & ~mask) | val;
+	if (new != old)
+		nb8800_writel(priv, reg, new);
+}
+
+static inline void nb8800_modb(struct nb8800_priv *priv, int reg, u8 bits,
+			       bool set)
+{
+	nb8800_maskb(priv, reg, bits, set ? bits : 0);
+}
+
+static inline void nb8800_setb(struct nb8800_priv *priv, int reg, u8 bits)
+{
+	nb8800_maskb(priv, reg, bits, bits);
+}
+
+static inline void nb8800_clearb(struct nb8800_priv *priv, int reg, u8 bits)
+{
+	nb8800_maskb(priv, reg, bits, 0);
+}
+
+static inline void nb8800_modl(struct nb8800_priv *priv, int reg, u32 bits,
+			       bool set)
+{
+	nb8800_maskl(priv, reg, bits, set ? bits : 0);
+}
+
+static inline void nb8800_setl(struct nb8800_priv *priv, int reg, u32 bits)
+{
+	nb8800_maskl(priv, reg, bits, bits);
+}
+
+static inline void nb8800_clearl(struct nb8800_priv *priv, int reg, u32 bits)
+{
+	nb8800_maskl(priv, reg, bits, 0);
+}
 
 static int nb8800_mdio_wait(struct mii_bus *bus)
 {
@@ -135,30 +171,17 @@ static void nb8800_mac_tx(struct net_device *dev, bool enable)
 	while (nb8800_readl(priv, NB8800_TXC_CR) & TCR_EN)
 		cpu_relax();
 
-	if (enable)
-		nb8800_set_bits(b, priv, NB8800_TX_CTL1, TX_EN);
-	else
-		nb8800_clear_bits(b, priv, NB8800_TX_CTL1, TX_EN);
+	nb8800_modb(priv, NB8800_TX_CTL1, TX_EN, enable);
 }
 
 static void nb8800_mac_rx(struct net_device *dev, bool enable)
 {
-	struct nb8800_priv *priv = netdev_priv(dev);
-
-	if (enable)
-		nb8800_set_bits(b, priv, NB8800_RX_CTL, RX_EN);
-	else
-		nb8800_clear_bits(b, priv, NB8800_RX_CTL, RX_EN);
+	nb8800_modb(netdev_priv(dev), NB8800_RX_CTL, RX_EN, enable);
 }
 
 static void nb8800_mac_af(struct net_device *dev, bool enable)
 {
-	struct nb8800_priv *priv = netdev_priv(dev);
-
-	if (enable)
-		nb8800_set_bits(b, priv, NB8800_RX_CTL, RX_AF_EN);
-	else
-		nb8800_clear_bits(b, priv, NB8800_RX_CTL, RX_AF_EN);
+	nb8800_modb(netdev_priv(dev), NB8800_RX_CTL, RX_AF_EN, enable);
 }
 
 static void nb8800_stop_rx(struct net_device *dev)
@@ -176,9 +199,7 @@ static void nb8800_stop_rx(struct net_device *dev)
 
 static void nb8800_start_rx(struct net_device *dev)
 {
-	struct nb8800_priv *priv = netdev_priv(dev);
-
-	nb8800_set_bits(l, priv, NB8800_RXC_CR, RCR_EN);
+	nb8800_setl(netdev_priv(dev), NB8800_RXC_CR, RCR_EN);
 }
 
 static int nb8800_alloc_rx(struct net_device *dev, int i, bool napi)
@@ -509,22 +530,17 @@ static irqreturn_t nb8800_irq(int irq, void *dev_id)
 static void nb8800_mac_config(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
+	bool gigabit = priv->speed == SPEED_1000;
 	unsigned phy_clk;
 	unsigned ict;
 
-	if (priv->duplex)
-		nb8800_clear_bits(b, priv, NB8800_MAC_MODE, HALF_DUPLEX);
-	else
-		nb8800_set_bits(b, priv, NB8800_MAC_MODE, HALF_DUPLEX);
+	nb8800_modb(priv, NB8800_MAC_MODE, HALF_DUPLEX, !priv->duplex);
+	nb8800_modb(priv, NB8800_MAC_MODE, RGMII_MODE | GMAC_MODE, gigabit);
 
-	if (priv->speed == SPEED_1000) {
-		nb8800_set_bits(b, priv, NB8800_MAC_MODE,
-				RGMII_MODE | GMAC_MODE);
+	if (gigabit) {
 		nb8800_writeb(priv, NB8800_SLOT_TIME, 255);
 		phy_clk = 125000000;
 	} else {
-		nb8800_clear_bits(b, priv, NB8800_MAC_MODE,
-				  RGMII_MODE | GMAC_MODE);
 		nb8800_writeb(priv, NB8800_SLOT_TIME, 127);
 		phy_clk = 25000000;
 	}
