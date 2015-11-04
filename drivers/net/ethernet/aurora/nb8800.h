@@ -13,7 +13,6 @@
 #define NB8800_DESC_LOW			4
 
 #define RX_BUF_SIZE			1552
-#define TX_BUF_SIZE			1552
 
 #define RX_COPYBREAK			256
 #define RX_COPYHDR			128
@@ -158,14 +157,13 @@
 #define NB8800_TANGOX_MDIO_CLKDIV	0x420
 #define NB8800_TANGOX_RESET		0x424
 
+/* Hardware DMA descriptor */
 struct nb8800_dma_desc {
-	u32 s_addr;
-	u32 n_addr;
-	u32 r_addr;
-	u32 config;
-	u8  buf[12];
-	u32 report;
-};
+	u32				s_addr;	/* start address */
+	u32				n_addr;	/* next descriptor address */
+	u32				r_addr;	/* report address */
+	u32				config;
+} __aligned(8);
 
 #define DESC_ID				BIT(23)
 #define DESC_EOC			BIT(22)
@@ -174,20 +172,52 @@ struct nb8800_dma_desc {
 #define DESC_DS				BIT(19)
 #define DESC_BTS(x)			(((x) & 0x7) << 16)
 
-struct rx_buf {
-	struct page *page;
-	int offset;
+/* DMA descriptor and associated data for rx.
+ * Allocated from coherent memory.
+ */
+struct nb8800_rx_desc {
+	/* DMA descriptor */
+	struct nb8800_dma_desc		desc;
+
+	/* Status report filled in by hardware */
+	u32				report;
 };
 
-struct tx_buf {
-	struct sk_buff *skb;
-	dma_addr_t desc_dma;
-	int frags;
+/* Address of buffer on rx ring */
+struct nb8800_rx_buf {
+	struct page			*page;
+	unsigned long			offset;
 };
 
-struct tx_skb_data {
-	dma_addr_t dma_addr;
-	unsigned int dma_len;
+/* DMA descriptors and associated data for tx.
+ * Allocated from coherent memory.
+ */
+struct nb8800_tx_desc {
+	/* DMA descriptor.  The second descriptor is used if packet
+	 * data is unaligned. */
+	struct nb8800_dma_desc		desc[2];
+
+	/* Status report filled in by hardware */
+	u32				report;
+
+	/* Bounce buffer for initial unaligned part of packet */
+	u8				buf[8] __aligned(8);
+};
+
+/* Packet in tx queue */
+struct nb8800_tx_buf {
+	/* Currently queued skb */
+	struct sk_buff			*skb;
+
+	/* DMA address of the first descriptor */
+	dma_addr_t			dma_desc;
+
+	/* DMA address of packet data */
+	dma_addr_t			dma_addr;
+
+	/* Length of DMA mapping, less than skb->len if alignment
+	 * buffer is used. */
+	unsigned int			dma_len;
 };
 
 struct nb8800_priv {
@@ -195,29 +225,59 @@ struct nb8800_priv {
 
 	void __iomem			*base;
 
-	struct nb8800_dma_desc		*rx_descs;
-	struct rx_buf			*rx_bufs;
-	u16				rx_eoc;
+	/* RX DMA descriptors */
+	struct nb8800_rx_desc		*rx_descs;
+
+	/* RX buffers referenced by DMA descriptors */
+	struct nb8800_rx_buf		*rx_bufs;
+
+	/* Current end of chain */
+	u32				rx_eoc;
+
+	/* Value for rx interrupt time register in NAPI interrupt mode */
 	u32				rx_poll_itr;
+
+	/* Value for config field of rx DMA descriptors */
 	u32				rx_dma_config;
 
-	struct nb8800_dma_desc		*tx_descs;
-	struct tx_buf			*tx_bufs;
+	/* TX DMA descriptors */
+	struct nb8800_tx_desc		*tx_descs;
+
+	/* TX packet queue */
+	struct nb8800_tx_buf		*tx_bufs;
+
+	/* Number of free tx queue entries */
 	atomic_t			tx_free;
+
+	/* Value for config field of last tx DMA descriptor */
 	u32				tx_dma_config;
-	u16				tx_next;
-	u16				tx_done;
-	u32				tx_lock;
+
+	/* First free tx queue entry */
+	u32				tx_next;
+
+	/* Next buffer to transmit */
+	u32				tx_queue;
+
+	/* Next buffer to reclaim */
+	u32				tx_done;
+
+	/* Lock for DMA activation */
+	spinlock_t			tx_lock;
 
 	struct mii_bus			*mii_bus;
 	struct device_node		*phy_node;
 	struct phy_device		*phydev;
 	int				phy_mode;
+
+	/* Current link status */
 	int				speed;
 	int				duplex;
 	int				link;
 
+	/* DMA base address of rx descriptors, see rx_descs above */
 	dma_addr_t			rx_desc_dma;
+
+	/* DMA base address of tx descriptors, see tx_descs above */
 	dma_addr_t			tx_desc_dma;
 
 	struct clk			*clk;
