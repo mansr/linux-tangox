@@ -241,7 +241,10 @@ struct nb8800_priv {
 	u32				rx_eoc;
 
 	/* Value for rx interrupt time register in NAPI interrupt mode */
-	u32				rx_poll_itr;
+	u32				rx_itr_irq;
+
+	/* Value for rx interrupt time register in NAPI poll mode */
+	u32				rx_itr_poll;
 
 	/* Value for config field of rx DMA descriptors */
 	u32				rx_dma_config;

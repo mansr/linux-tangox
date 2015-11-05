@@ -304,6 +304,7 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 	int last = priv->rx_eoc;
 	int next;
 
+again:
 	while (work < budget) {
 		struct nb8800_rx_buf *rxb;
 		int len;
@@ -337,7 +338,14 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 	}
 
 	if (work < budget) {
-		nb8800_writel(priv, NB8800_RX_ITR, 1);
+		nb8800_writel(priv, NB8800_RX_ITR, priv->rx_itr_irq);
+
+		/* If a packet arrived after we last checked but
+		 * before writing RX_ITR, the interrupt will be
+		 * delayed, so we retrieve it now. */
+		if (priv->rx_descs[next].report)
+			goto again;
+
 		napi_complete_done(napi, work);
 	}
 
@@ -507,7 +515,7 @@ static irqreturn_t nb8800_irq(int irq, void *dev_id)
 		nb8800_writel(priv, NB8800_RXC_SR, val);
 
 		if (likely(val & (RSR_RI | RSR_DI))) {
-			nb8800_writel(priv, NB8800_RX_ITR, priv->rx_poll_itr);
+			nb8800_writel(priv, NB8800_RX_ITR, priv->rx_itr_poll);
 			napi_schedule_irqoff(&priv->napi);
 		}
 
@@ -959,7 +967,7 @@ static int nb8800_hw_init(struct net_device *dev)
 	nb8800_writel(priv, NB8800_RXC_CR, val);
 
 	/* RX Interrupt Time Register */
-	nb8800_writel(priv, NB8800_RX_ITR, 1);
+	nb8800_writel(priv, NB8800_RX_ITR, priv->rx_itr_irq);
 
 	nb8800_mc_init(dev, 0);
 
@@ -1122,7 +1130,14 @@ static int nb8800_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_dev;
 
-	priv->rx_poll_itr = clk_get_rate(priv->clk) / 1000;
+	/* The rx interrupt can fire before the DMA has completed
+	 * unless a small delay is added.  50 us is hopefully enough. */
+	priv->rx_itr_irq = clk_get_rate(priv->clk) / 20000;
+
+	/* In NAPI poll mode we want to disable interrupts, but the
+	 * hardware does not permit this.  Delay 10 ms instead. */
+	priv->rx_itr_poll = clk_get_rate(priv->clk) / 100;
+
 	priv->rx_dma_config = RX_BUF_SIZE | DESC_BTS(2) | DESC_DS | DESC_EOF;
 	spin_lock_init(&priv->tx_lock);
 
