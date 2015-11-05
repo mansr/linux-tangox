@@ -437,8 +437,7 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	}
 
 	dma->s_addr = dma_addr;
-	dma->config = DESC_BTS(2) | DESC_DS | DESC_EOF | DESC_EOC | dma_len |
-		priv->tx_dma_config;
+	dma->config = DESC_BTS(2) | DESC_DS | DESC_EOF | DESC_EOC | dma_len;
 
 	txb->dma_addr = dma_addr;
 	txb->dma_len = dma_len;
@@ -476,8 +475,6 @@ static void nb8800_tx_done(struct net_device *dev)
 	int done = priv->tx_done;
 	unsigned int packets = 0;
 	unsigned int len = 0;
-
-	nb8800_tx_dma_start(dev);
 
 	for (;;) {
 		struct nb8800_tx_desc *txd = &priv->tx_descs[done];
@@ -531,7 +528,10 @@ static irqreturn_t nb8800_irq(int irq, void *dev_id)
 	if (val) {
 		nb8800_writel(priv, NB8800_TXC_SR, val);
 
-		if (likely(val & (TSR_TI | TSR_DI)))
+		if (val & TSR_DI)
+			nb8800_tx_dma_start(dev);
+
+		if (val & TSR_TI)
 			nb8800_tx_done(dev);
 
 		if (unlikely(val & TSR_DE))
@@ -1055,11 +1055,12 @@ static int nb8800_hw_init(struct net_device *dev)
 	/* configure TX DMA Channels */
 	val = nb8800_readl(priv, NB8800_TXC_CR);
 	val &= TCR_LE;
-	val |= TCR_DM | TCR_RS | TCR_TFI(1) | TCR_BTS(2);
+	val |= TCR_DM | TCR_RS | TCR_DIE | TCR_TFI(7) | TCR_BTS(2);
 	nb8800_writel(priv, NB8800_TXC_CR, val);
 
 	/* TX Interrupt Time Register */
-	nb8800_writel(priv, NB8800_TX_ITR, 1);
+	val = clk_get_rate(priv->clk) / 100;
+	nb8800_writel(priv, NB8800_TX_ITR, val);
 
 	/* configure RX DMA Channels */
 	val = nb8800_readl(priv, NB8800_RXC_CR);
@@ -1145,13 +1146,6 @@ static int nb8800_tango4_init(struct net_device *dev)
 	nb8800_writel(priv, NB8800_RXC_CR, val);
 
 	priv->rx_dma_config |= DESC_ID;
-
-	val = nb8800_readl(priv, NB8800_TXC_CR);
-	val &= ~TCR_TFI(7);
-	val |= TCR_DIE;
-	nb8800_writel(priv, NB8800_TXC_CR, val);
-
-	priv->tx_dma_config |= DESC_ID;
 
 	return 0;
 }

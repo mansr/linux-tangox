@@ -258,9 +258,6 @@ struct nb8800_priv {
 	/* Number of free tx queue entries */
 	atomic_t			tx_free;
 
-	/* Value for config field of last tx DMA descriptor */
-	u32				tx_dma_config;
-
 	/* First free tx queue entry */
 	u32				tx_next;
 
