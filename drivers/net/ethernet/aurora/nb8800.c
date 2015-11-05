@@ -1031,7 +1031,7 @@ static int nb8800_hw_init(struct net_device *dev)
 	/* collision retry count */
 	nb8800_writeb(priv, NB8800_TX_CTL2, 5);
 
-	val = RX_PAD_STRIP | RX_AF_EN | RX_RUNT;
+	val = RX_PAD_STRIP | RX_AF_EN;
 	nb8800_writeb(priv, NB8800_RX_CTL, val);
 
 	nb8800_writeb(priv, NB8800_RANDOM_SEED, 0x08);
