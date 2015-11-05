@@ -110,7 +110,7 @@
 #define TX_LATE_COLLISION		BIT(2)
 #define TX_PACKET_DROPPED		BIT(1)
 #define TX_FIFO_UNDERRUN		BIT(0)
-#define IS_TX_ERROR(r)			((r) & 0x87)
+#define IS_TX_ERROR(r)			((r) & 0x07)
 
 #define NB8800_TX_FIFO_SR		0x114
 #define NB8800_TX_ITR			0x118

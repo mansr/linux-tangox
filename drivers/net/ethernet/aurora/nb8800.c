@@ -447,6 +447,20 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	return NETDEV_TX_OK;
 }
 
+static void nb8800_tx_error(struct net_device *dev, u32 report)
+{
+	dev->stats.tx_errors++;
+
+	if (report & TX_LATE_COLLISION)
+		dev->stats.collisions++;
+
+	if (report & TX_PACKET_DROPPED)
+		dev->stats.tx_dropped++;
+
+	if (report & TX_FIFO_UNDERRUN)
+		dev->stats.tx_fifo_errors++;
+}
+
 static void nb8800_tx_done(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
@@ -470,7 +484,12 @@ static void nb8800_tx_done(struct net_device *dev)
 		dma_unmap_single(&dev->dev, txb->dma_addr, txb->dma_len,
 				 DMA_TO_DEVICE);
 
-		dev_consume_skb_irq(skb);
+		if (IS_TX_ERROR(txd->report)) {
+			nb8800_tx_error(dev, txd->report);
+			dev_kfree_skb_irq(skb);
+		} else {
+			dev_consume_skb_irq(skb);
+		}
 
 		txb->skb = NULL;
 		txd->report = 0;
