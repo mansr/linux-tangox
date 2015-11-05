@@ -966,18 +966,37 @@ static int nb8800_hw_init(struct net_device *dev)
 	return 0;
 }
 
-static void nb8800_tangox_init(struct net_device *dev)
+static int nb8800_tangox_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
-	u32 val;
+	u32 pad_mode = PAD_MODE_MII;
 
-	val = nb8800_readb(priv, NB8800_TANGOX_PAD_MODE) & 0x78;
-	if (priv->phy_mode == PHY_INTERFACE_MODE_RGMII)
-		val |= 1;
-	nb8800_writeb(priv, NB8800_TANGOX_PAD_MODE, val);
+	switch (priv->phy_mode) {
+	case PHY_INTERFACE_MODE_MII:
+	case PHY_INTERFACE_MODE_GMII:
+		pad_mode = PAD_MODE_MII;
+		break;
+
+	case PHY_INTERFACE_MODE_RGMII:
+		pad_mode = PAD_MODE_RGMII;
+		break;
+
+	case PHY_INTERFACE_MODE_RGMII_TXID:
+		pad_mode = PAD_MODE_RGMII | PAD_MODE_GTX_CLK_DELAY;
+		break;
+
+	default:
+		dev_err(dev->dev.parent, "unsupported phy mode %s\n",
+			phy_modes(priv->phy_mode));
+		return -EINVAL;
+	}
+
+	nb8800_writeb(priv, NB8800_TANGOX_PAD_MODE, pad_mode);
+
+	return 0;
 }
 
-static void nb8800_tangox_reset(struct net_device *dev)
+static int nb8800_tangox_reset(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	int clk_div;
@@ -990,6 +1009,8 @@ static void nb8800_tangox_reset(struct net_device *dev)
 
 	clk_div = DIV_ROUND_UP(clk_get_rate(priv->clk), 2 * MAX_MDC_CLOCK);
 	nb8800_writew(priv, NB8800_TANGOX_MDIO_CLKDIV, clk_div);
+
+	return 0;
 }
 
 static const struct nb8800_ops nb8800_tangox_ops = {
@@ -997,25 +1018,33 @@ static const struct nb8800_ops nb8800_tangox_ops = {
 	.reset	= nb8800_tangox_reset,
 };
 
-static void nb8800_tango4_init(struct net_device *dev)
+/* On tango4 interrupt on DMA completion works and gives better
+ * performance despite generating more RX interrupts. */
+static int nb8800_tango4_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	u32 val;
+	int err;
 
-	nb8800_tangox_init(dev);
+	err = nb8800_tangox_init(dev);
+	if (err)
+		return err;
 
 	val = nb8800_readl(priv, NB8800_RXC_CR);
 	val &= ~RCR_RFI(7);
 	val |= RCR_DIE;
 	nb8800_writel(priv, NB8800_RXC_CR, val);
 
+	priv->rx_dma_config |= DESC_ID;
+
 	val = nb8800_readl(priv, NB8800_TXC_CR);
 	val &= ~TCR_TFI(7);
 	val |= TCR_DIE;
 	nb8800_writel(priv, NB8800_TXC_CR, val);
 
-	priv->rx_dma_config |= DESC_ID;
 	priv->tx_dma_config |= DESC_ID;
+
+	return 0;
 }
 
 static const struct nb8800_ops nb8800_tango4_ops = {
@@ -1097,8 +1126,11 @@ static int nb8800_probe(struct platform_device *pdev)
 	priv->rx_dma_config = RX_BUF_SIZE | DESC_BTS(2) | DESC_DS | DESC_EOF;
 	spin_lock_init(&priv->tx_lock);
 
-	if (ops && ops->reset)
-		ops->reset(dev);
+	if (ops && ops->reset) {
+		ret = ops->reset(dev);
+		if (ret)
+			goto err_free_dev;
+	}
 
 	bus = devm_mdiobus_alloc(&pdev->dev);
 	if (!bus) {
@@ -1133,8 +1165,11 @@ static int nb8800_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_bus;
 
-	if (ops && ops->init)
-		ops->init(dev);
+	if (ops && ops->init) {
+		ret = ops->init(dev);
+		if (ret)
+			goto err_free_bus;
+	}
 
 	dev->netdev_ops = &nb8800_netdev_ops;
 	dev->ethtool_ops = &nb8800_ethtool_ops;

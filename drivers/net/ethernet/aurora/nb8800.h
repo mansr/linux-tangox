@@ -154,6 +154,12 @@
 
 /* Sigma Designs SMP86xx additional registers */
 #define NB8800_TANGOX_PAD_MODE		0x400
+#define PAD_MODE_MASK			0x7
+#define PAD_MODE_MII			0x0
+#define PAD_MODE_RGMII			0x1
+#define PAD_MODE_GTX_CLK_INV		BIT(3)
+#define PAD_MODE_GTX_CLK_DELAY		BIT(4)
+
 #define NB8800_TANGOX_MDIO_CLKDIV	0x420
 #define NB8800_TANGOX_RESET		0x424
 
@@ -284,8 +290,8 @@ struct nb8800_priv {
 };
 
 struct nb8800_ops {
-	void (*init)(struct net_device *dev);
-	void (*reset)(struct net_device *dev);
+	int				(*init)(struct net_device *dev);
+	int				(*reset)(struct net_device *dev);
 };
 
 #endif /* _NB8800_H_ */
