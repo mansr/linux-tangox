@@ -531,22 +531,34 @@ static void nb8800_mac_config(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	bool gigabit = priv->speed == SPEED_1000;
-	unsigned phy_clk;
-	unsigned ict;
+	u32 mac_mode_mask = RGMII_MODE | HALF_DUPLEX | GMAC_MODE;
+	u32 mac_mode = 0;
+	u32 slot_time;
+	u32 phy_clk;
+	u32 ict;
 
-	nb8800_modb(priv, NB8800_MAC_MODE, HALF_DUPLEX, !priv->duplex);
-	nb8800_modb(priv, NB8800_MAC_MODE, RGMII_MODE | GMAC_MODE, gigabit);
+	if (!priv->duplex)
+		mac_mode |= HALF_DUPLEX;
 
 	if (gigabit) {
-		nb8800_writeb(priv, NB8800_SLOT_TIME, 255);
+		if (priv->phy_mode == PHY_INTERFACE_MODE_RGMII)
+			mac_mode |= RGMII_MODE;
+
+		mac_mode |= GMAC_MODE;
 		phy_clk = 125000000;
+
+		/* Should be 512 but register is only 8 bits */
+		slot_time = 255;
 	} else {
-		nb8800_writeb(priv, NB8800_SLOT_TIME, 127);
 		phy_clk = 25000000;
+		slot_time = 128;
 	}
 
 	ict = DIV_ROUND_UP(phy_clk, clk_get_rate(priv->clk));
+
 	nb8800_writeb(priv, NB8800_IC_THRESHOLD, ict);
+	nb8800_writeb(priv, NB8800_SLOT_TIME, slot_time);
+	nb8800_maskb(priv, NB8800_MAC_MODE, mac_mode_mask, mac_mode);
 }
 
 static void nb8800_link_reconfigure(struct net_device *dev)
