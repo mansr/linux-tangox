@@ -104,7 +104,7 @@
 #define NB8800_TX_DESC_ADDR		0x10c
 
 #define NB8800_TX_REPORT_ADDR		0x110
-#define TX_BYTES_TRASFERRED(x)		(((x) >> 16) & 0xffff)
+#define TX_BYTES_TRANSFERRED(x)		(((x) >> 16) & 0xffff)
 #define TX_FIRST_DEFERRAL		BIT(7)
 #define TX_EARLY_COLLISIONS(x)		(((x) >> 3) & 0xf)
 #define TX_LATE_COLLISION		BIT(2)
@@ -145,7 +145,7 @@
 #define RX_RUNT_PKT			BIT(5)
 #define RX_FIFO_OVERRUN			BIT(4)
 #define RX_LATE_COLLISION		BIT(3)
-#define RX_FRAME_LEN_ERROR		BIT(2)
+#define RX_ALIGNMENT_ERROR		BIT(2)
 #define RX_ERROR_MASK			0xfc
 #define IS_RX_ERROR(r)			((r) & RX_ERROR_MASK)
 

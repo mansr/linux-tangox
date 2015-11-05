@@ -283,14 +283,17 @@ static void nb8800_receive(struct net_device *dev, int i, int len)
 
 static void nb8800_rx_error(struct net_device *dev, u32 report)
 {
-	int len = RX_BYTES_TRANSFERRED(report);
+	if (report & RX_LENGTH_ERR)
+		dev->stats.rx_length_errors++;
 
 	if (report & RX_FCS_ERR)
 		dev->stats.rx_crc_errors++;
 
-	if ((report & (RX_FRAME_LEN_ERROR | RX_LENGTH_ERR)) ||
-	    (len > RX_BUF_SIZE))
-		dev->stats.rx_length_errors++;
+	if (report & RX_FIFO_OVERRUN)
+		dev->stats.rx_fifo_errors++;
+
+	if (report & RX_ALIGNMENT_ERROR)
+		dev->stats.rx_frame_errors++;
 
 	dev->stats.rx_errors++;
 }
@@ -317,12 +320,18 @@ again:
 		if (!rxd->report)
 			break;
 
-		if (IS_RX_ERROR(rxd->report)) {
+		len = RX_BYTES_TRANSFERRED(rxd->report);
+
+		if (IS_RX_ERROR(rxd->report))
 			nb8800_rx_error(dev, rxd->report);
-		} else {
-			len = RX_BYTES_TRANSFERRED(rxd->report);
+		else
 			nb8800_receive(dev, next, len);
-		}
+
+		dev->stats.rx_packets++;
+		dev->stats.rx_bytes += len;
+
+		if (rxd->report & RX_MULTICAST_PKT)
+			dev->stats.multicast++;
 
 		rxd->report = 0;
 		last = next;
@@ -449,8 +458,6 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 
 static void nb8800_tx_error(struct net_device *dev, u32 report)
 {
-	dev->stats.tx_errors++;
-
 	if (report & TX_LATE_COLLISION)
 		dev->stats.collisions++;
 
@@ -459,6 +466,8 @@ static void nb8800_tx_error(struct net_device *dev, u32 report)
 
 	if (report & TX_FIFO_UNDERRUN)
 		dev->stats.tx_fifo_errors++;
+
+	dev->stats.tx_errors++;
 }
 
 static void nb8800_tx_done(struct net_device *dev)
@@ -490,6 +499,10 @@ static void nb8800_tx_done(struct net_device *dev)
 		} else {
 			dev_consume_skb_irq(skb);
 		}
+
+		dev->stats.tx_packets++;
+		dev->stats.tx_bytes += TX_BYTES_TRANSFERRED(txd->report);
+		dev->stats.collisions += TX_EARLY_COLLISIONS(txd->report);
 
 		txb->skb = NULL;
 		txd->report = 0;
@@ -871,26 +884,6 @@ static int nb8800_stop(struct net_device *dev)
 	return 0;
 }
 
-static u32 nb8800_read_stat(struct net_device *dev, int index)
-{
-	struct nb8800_priv *priv = netdev_priv(dev);
-
-	nb8800_writeb(priv, NB8800_STAT_INDEX, index);
-
-	return nb8800_readl(priv, NB8800_STAT_DATA);
-}
-
-static struct net_device_stats *nb8800_get_stats(struct net_device *dev)
-{
-	dev->stats.rx_bytes	= nb8800_read_stat(dev, 0x00);
-	dev->stats.rx_packets	= nb8800_read_stat(dev, 0x01);
-	dev->stats.multicast	= nb8800_read_stat(dev, 0x0d);
-	dev->stats.tx_bytes	= nb8800_read_stat(dev, 0x80);
-	dev->stats.tx_packets	= nb8800_read_stat(dev, 0x81);
-
-	return &dev->stats;
-}
-
 static int nb8800_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
@@ -905,7 +898,6 @@ static const struct net_device_ops nb8800_netdev_ops = {
 	.ndo_set_mac_address	= nb8800_set_mac_address,
 	.ndo_set_rx_mode	= nb8800_set_rx_mode,
 	.ndo_do_ioctl		= nb8800_ioctl,
-	.ndo_get_stats		= nb8800_get_stats,
 	.ndo_change_mtu		= eth_change_mtu,
 	.ndo_validate_addr	= eth_validate_addr,
 };
