@@ -669,26 +669,19 @@ static void nb8800_set_rx_mode(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct netdev_hw_addr *ha;
-	bool af_en;
 	int i;
 
-	if (dev->flags & (IFF_PROMISC | IFF_ALLMULTI))
-		af_en = false;
-	else
-		af_en = true;
-
-	nb8800_mac_af(dev, af_en);
-
-	if (!af_en)
+	if (dev->flags & (IFF_PROMISC | IFF_ALLMULTI)) {
+		nb8800_mac_af(dev, false);
 		return;
+	}
 
+	nb8800_mac_af(dev, true);
 	nb8800_mc_init(dev, 0);
 
 	netdev_for_each_mc_addr(ha, dev) {
-		char *addr = ha->addr;
-
 		for (i = 0; i < ETH_ALEN; i++)
-			nb8800_writeb(priv, NB8800_MC_ADDR(i), addr[i]);
+			nb8800_writeb(priv, NB8800_MC_ADDR(i), ha->addr[i]);
 
 		nb8800_mc_init(dev, 0xff);
 	}
