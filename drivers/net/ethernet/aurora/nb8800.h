@@ -19,7 +19,7 @@
 
 #define MAX_MDC_CLOCK			2500000
 
-/* register offsets */
+/* Stargate Solutions SSN8800 core registers */
 #define NB8800_TX_CTL1			0x000
 #define TX_TPD				BIT(5)
 #define TX_APPEND_FCS			BIT(4)
@@ -83,6 +83,7 @@
 #define NB8800_WAKEUP			0x07f
 #define WAKEUP				BIT(0)
 
+/* Aurora NB8800 host interface registers */
 #define NB8800_TXC_CR			0x100
 #define TCR_LK				BIT(12)
 #define TCR_DS				BIT(11)
@@ -282,6 +283,8 @@ struct nb8800_priv {
 	struct mii_bus			*mii_bus;
 	struct device_node		*phy_node;
 	struct phy_device		*phydev;
+
+	/* PHY connection type from DT */
 	int				phy_mode;
 
 	/* Current link status */

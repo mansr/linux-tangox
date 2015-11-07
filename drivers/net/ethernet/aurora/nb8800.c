@@ -561,6 +561,7 @@ static irqreturn_t nb8800_irq(int irq, void *dev_id)
 		if (unlikely(val & TSR_DE))
 			netdev_err(dev, "TX DMA error\n");
 
+		/* should never happen with automatic status retrieval */
 		if (unlikely(val & TSR_TO))
 			netdev_err(dev, "TX Status FIFO overflow\n");
 	}
@@ -578,14 +579,9 @@ static irqreturn_t nb8800_irq(int irq, void *dev_id)
 		if (unlikely(val & RSR_DE))
 			netdev_err(dev, "RX DMA error\n");
 
-		if (unlikely(val & RSR_RO)) {
-			int i;
-
+		/* should never happen with automatic status retrieval */
+		if (unlikely(val & RSR_RO))
 			netdev_err(dev, "RX Status FIFO overflow\n");
-
-			for (i = 0; i < 4; i++)
-				nb8800_readl(priv, NB8800_RX_FIFO_SR);
-		}
 	}
 
 	return IRQ_HANDLED;
@@ -842,6 +838,7 @@ static int nb8800_open(struct net_device *dev)
 	struct nb8800_priv *priv = netdev_priv(dev);
 	int err;
 
+	/* clear any pending interrupts */
 	nb8800_writel(priv, NB8800_RXC_SR, 0xf);
 	nb8800_writel(priv, NB8800_TXC_SR, 0xf);
 
