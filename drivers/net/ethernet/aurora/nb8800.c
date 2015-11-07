@@ -266,6 +266,7 @@ static void nb8800_receive(struct net_device *dev, int i, int len)
 	} else {
 		err = nb8800_alloc_rx(dev, i, true);
 		if (err) {
+			netdev_err(dev, "rx buffer allocation failed\n");
 			dev->stats.rx_dropped++;
 			return;
 		}
