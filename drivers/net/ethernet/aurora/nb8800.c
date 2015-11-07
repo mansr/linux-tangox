@@ -365,27 +365,30 @@ static void nb8800_tx_dma_start(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct nb8800_tx_buf *txb;
-	unsigned long flags;
 	u32 txc_cr;
 
-	spin_lock_irqsave(&priv->tx_lock, flags);
-
 	txb = &priv->tx_bufs[priv->tx_queue];
-	if (!txb->skb)
-		goto end;
+	if (!txb->ready)
+		return;
 
 	txc_cr = nb8800_readl(priv, NB8800_TXC_CR);
 	if (txc_cr & TCR_EN)
-		goto end;
+		return;
 
 	nb8800_writel(priv, NB8800_TX_DESC_ADDR, txb->dma_desc);
 	wmb();		/* ensure desc addr is written before starting DMA */
 	nb8800_writel(priv, NB8800_TXC_CR, txc_cr | TCR_EN);
 
-	priv->tx_queue = (priv->tx_queue + 1) % TX_DESC_COUNT;
+	priv->tx_queue = (priv->tx_queue + txb->chain_len) % TX_DESC_COUNT;
+}
 
-end:
-	spin_unlock_irqrestore(&priv->tx_lock, flags);
+static void nb8800_tx_dma_start_irq(struct net_device *dev)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+
+	spin_lock(&priv->tx_lock);
+	nb8800_tx_dma_start(dev);
+	spin_unlock(&priv->tx_lock);
 }
 
 static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
@@ -396,6 +399,7 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	struct nb8800_dma_desc *dma;
 	dma_addr_t dma_addr;
 	unsigned int dma_len;
+	unsigned long flags;
 	int align;
 	int next;
 
@@ -425,6 +429,8 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	txd = &priv->tx_descs[next];
 	dma = &txd->desc[0];
 
+	next = (next + 1) % TX_DESC_COUNT;
+
 	if (align) {
 		memcpy(txd->buf, skb->data, align);
 
@@ -437,20 +443,37 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	}
 
 	dma->s_addr = dma_addr;
-	dma->config = DESC_BTS(2) | DESC_DS | DESC_EOF | DESC_EOC | dma_len;
+	dma->n_addr = priv->tx_bufs[next].dma_desc;
+	dma->config = DESC_BTS(2) | DESC_DS | DESC_EOF | dma_len;
 
+	if (!skb->xmit_more)
+		dma->config |= DESC_EOC;
+
+	txb->skb = skb;
 	txb->dma_addr = dma_addr;
 	txb->dma_len = dma_len;
 
+	if (!priv->tx_chain) {
+		txb->chain_len = 1;
+		priv->tx_chain = txb;
+	} else {
+		priv->tx_chain->chain_len++;
+	}
+
 	netdev_sent_queue(dev, skb->len);
 
-	smp_wmb();
-	txb->skb = skb;
+	smp_mb__before_spinlock();
+	spin_lock_irqsave(&priv->tx_lock, flags);
 
-	if (!skb->xmit_more)
+	if (!skb->xmit_more) {
+		priv->tx_chain->ready = true;
+		priv->tx_chain = NULL;
 		nb8800_tx_dma_start(dev);
+	}
 
-	priv->tx_next = (next + 1) % TX_DESC_COUNT;
+	spin_unlock_irqrestore(&priv->tx_lock, flags);
+
+	priv->tx_next = next;
 
 	return NETDEV_TX_OK;
 }
@@ -502,6 +525,7 @@ static void nb8800_tx_done(struct net_device *dev)
 		dev->stats.collisions += TX_EARLY_COLLISIONS(txd->report);
 
 		txb->skb = NULL;
+		txb->ready = false;
 		txd->report = 0;
 
 		done = (done + 1) % TX_DESC_COUNT;
@@ -529,7 +553,7 @@ static irqreturn_t nb8800_irq(int irq, void *dev_id)
 		nb8800_writel(priv, NB8800_TXC_SR, val);
 
 		if (val & TSR_DI)
-			nb8800_tx_dma_start(dev);
+			nb8800_tx_dma_start_irq(dev);
 
 		if (val & TSR_TI)
 			nb8800_tx_done(dev);

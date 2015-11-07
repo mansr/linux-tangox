@@ -224,6 +224,12 @@ struct nb8800_tx_buf {
 	/* Length of DMA mapping, less than skb->len if alignment
 	 * buffer is used. */
 	unsigned int			dma_len;
+
+	/* Number of packets in chain starting here */
+	unsigned int			chain_len;
+
+	/* Packet chain ready to be submitted to hardware */
+	bool				ready;
 };
 
 struct nb8800_priv {
@@ -263,6 +269,9 @@ struct nb8800_priv {
 
 	/* Next buffer to transmit */
 	u32				tx_queue;
+
+	/* Start of current packet chain */
+	struct nb8800_tx_buf		*tx_chain;
 
 	/* Next buffer to reclaim */
 	u32				tx_done;
