@@ -217,8 +217,6 @@ static int nb8800_alloc_rx(struct net_device *dev, int i, bool napi)
 
 	rxb->page = page;
 	rxb->offset = offset;
-
-	rxd->desc.config = priv->rx_dma_config;
 	rxd->desc.s_addr = dma_addr;
 
 	return 0;
@@ -734,13 +732,56 @@ static void nb8800_dma_free(struct net_device *dev)
 	}
 }
 
+static void nb8800_dma_reset(struct net_device *dev)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+	struct nb8800_rx_desc *rxd;
+	struct nb8800_tx_desc *txd;
+	int i;
+
+	for (i = 0; i < RX_DESC_COUNT; i++) {
+		dma_addr_t rx_dma = priv->rx_desc_dma + i * sizeof(*rxd);
+
+		rxd = &priv->rx_descs[i];
+		rxd->desc.n_addr = rx_dma + sizeof(*rxd);
+		rxd->desc.r_addr =
+			rx_dma + offsetof(struct nb8800_rx_desc, report);
+		rxd->desc.config = priv->rx_dma_config;
+		rxd->report = 0;
+	}
+
+	rxd->desc.n_addr = priv->rx_desc_dma;
+	rxd->desc.config |= DESC_EOC;
+
+	priv->rx_eoc = RX_DESC_COUNT - 1;
+
+	for (i = 0; i < TX_DESC_COUNT; i++) {
+		struct nb8800_tx_buf *txb = &priv->tx_bufs[i];
+		dma_addr_t r_dma = txb->dma_desc +
+			offsetof(struct nb8800_tx_desc, report);
+
+		txd = &priv->tx_descs[i];
+		txd->desc[0].r_addr = r_dma;
+		txd->desc[1].r_addr = r_dma;
+		txd->report = 0;
+	}
+
+	priv->tx_next = 0;
+	priv->tx_queue = 0;
+	priv->tx_done = 0;
+	atomic_set(&priv->tx_free, TX_DESC_COUNT);
+
+	nb8800_writel(priv, NB8800_RX_DESC_ADDR, priv->rx_desc_dma);
+
+	wmb();		/* ensure all setup is written before starting */
+}
+
 static int nb8800_dma_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
-	struct nb8800_rx_desc *rx;
-	struct nb8800_tx_desc *txd;
 	int n_rx = RX_DESC_COUNT;
 	int n_tx = TX_DESC_COUNT;
+	int err;
 	int i;
 
 	priv->rx_descs = dma_alloc_coherent(dev->dev.parent, RX_DESC_SIZE,
@@ -753,25 +794,10 @@ static int nb8800_dma_init(struct net_device *dev)
 		goto err_out;
 
 	for (i = 0; i < n_rx; i++) {
-		dma_addr_t rx_dma;
-		int err;
-
-		rx = &priv->rx_descs[i];
-		rx_dma = priv->rx_desc_dma + i * sizeof(*rx);
-		rx->desc.n_addr = rx_dma + sizeof(*rx);
-		rx->desc.r_addr =
-			rx_dma + offsetof(struct nb8800_rx_desc, report);
-		rx->report = 0;
-
 		err = nb8800_alloc_rx(dev, i, false);
 		if (err)
 			goto err_out;
 	}
-
-	rx->desc.n_addr = priv->rx_desc_dma;
-	rx->desc.config |= DESC_EOC;
-
-	priv->rx_eoc = RX_DESC_COUNT - 1;
 
 	priv->tx_descs = dma_alloc_coherent(dev->dev.parent, TX_DESC_SIZE,
 					    &priv->tx_desc_dma, GFP_KERNEL);
@@ -782,37 +808,11 @@ static int nb8800_dma_init(struct net_device *dev)
 	if (!priv->tx_bufs)
 		goto err_out;
 
-	for (i = 0; i < n_tx; i++) {
-		dma_addr_t tx_dma;
-		dma_addr_t r_dma;
+	for (i = 0; i < n_tx; i++)
+		priv->tx_bufs[i].dma_desc =
+			priv->tx_desc_dma + i * sizeof(struct nb8800_tx_desc);
 
-		txd = &priv->tx_descs[i];
-		tx_dma = priv->tx_desc_dma + i * sizeof(*txd);
-		r_dma = tx_dma + offsetof(struct nb8800_tx_desc, report);
-
-		txd->desc[0].s_addr =
-			tx_dma + offsetof(struct nb8800_tx_desc, buf);
-		txd->desc[0].r_addr = r_dma;
-
-		txd->desc[1].n_addr = tx_dma + sizeof(*txd);
-		txd->desc[1].r_addr = r_dma;
-
-		txd->report = 0;
-
-		priv->tx_bufs[i].dma_desc = tx_dma;
-	}
-
-	txd->desc[1].n_addr = priv->tx_desc_dma;
-
-	priv->tx_next = 0;
-	priv->tx_queue = 0;
-	priv->tx_done = 0;
-	atomic_set(&priv->tx_free, TX_DESC_COUNT);
-
-	nb8800_writel(priv, NB8800_TX_DESC_ADDR, priv->tx_desc_dma);
-	nb8800_writel(priv, NB8800_RX_DESC_ADDR, priv->rx_desc_dma);
-
-	wmb();		/* ensure all setup is written before starting */
+	nb8800_dma_reset(dev);
 
 	return 0;
 
