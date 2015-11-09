@@ -292,6 +292,11 @@ struct nb8800_priv {
 	int				duplex;
 	int				link;
 
+	/* Pause settings */
+	bool				pause_aneg;
+	bool				pause_rx;
+	bool				pause_tx;
+
 	/* DMA base address of rx descriptors, see rx_descs above */
 	dma_addr_t			rx_desc_dma;
 

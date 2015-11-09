@@ -39,6 +39,8 @@
 
 #include "nb8800.h"
 
+static int nb8800_dma_stop(struct net_device *dev);
+
 static inline u8 nb8800_readb(struct nb8800_priv *priv, int reg)
 {
 	return readb(priv->base + reg);
@@ -608,6 +610,39 @@ static void nb8800_mac_config(struct net_device *dev)
 	nb8800_maskb(priv, NB8800_MAC_MODE, mac_mode_mask, mac_mode);
 }
 
+static void nb8800_pause_config(struct net_device *dev)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+	struct phy_device *phydev = priv->phydev;
+	u32 rxcr;
+
+	if (priv->pause_aneg) {
+		if (!phydev || !phydev->link)
+			return;
+
+		priv->pause_rx = phydev->pause;
+		priv->pause_tx = phydev->pause ^ phydev->asym_pause;
+	}
+
+	nb8800_modb(priv, NB8800_RX_CTL, RX_PAUSE_EN, priv->pause_rx);
+
+	rxcr = nb8800_readl(priv, NB8800_RXC_CR);
+	if (!!(rxcr & RCR_FL) == priv->pause_tx)
+		return;
+
+	if (netif_running(dev)) {
+		napi_disable(&priv->napi);
+		netif_tx_lock_bh(dev);
+		nb8800_dma_stop(dev);
+		nb8800_modl(priv, NB8800_RXC_CR, RCR_FL, priv->pause_tx);
+		nb8800_start_rx(dev);
+		netif_tx_unlock_bh(dev);
+		napi_enable(&priv->napi);
+	} else {
+		nb8800_modl(priv, NB8800_RXC_CR, RCR_FL, priv->pause_tx);
+	}
+}
+
 static void nb8800_link_reconfigure(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
@@ -627,6 +662,8 @@ static void nb8800_link_reconfigure(struct net_device *dev)
 
 		if (change)
 			nb8800_mac_config(dev);
+
+		nb8800_pause_config(dev);
 	}
 
 	if (phydev->link != priv->link) {
@@ -871,8 +908,27 @@ static int nb8800_dma_stop(struct net_device *dev)
 
 	nb8800_mac_af(dev, true);
 	nb8800_clearb(priv, NB8800_MAC_MODE, LOOPBACK_EN);
+	nb8800_dma_reset(dev);
 
 	return retry ? 0 : -ETIMEDOUT;
+}
+
+static void nb8800_pause_adv(struct net_device *dev)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+	u32 adv = 0;
+
+	if (!priv->phydev)
+		return;
+
+	if (priv->pause_rx)
+		adv |= ADVERTISED_Pause | ADVERTISED_Asym_Pause;
+	if (priv->pause_tx)
+		adv ^= ADVERTISED_Asym_Pause;
+
+	priv->phydev->supported |= adv;
+	priv->phydev->advertising |= adv;
+
 }
 
 static int nb8800_open(struct net_device *dev)
@@ -900,6 +956,8 @@ static int nb8800_open(struct net_device *dev)
 				      priv->phy_mode);
 	if (!priv->phydev)
 		goto err_free_irq;
+
+	nb8800_pause_adv(dev);
 
 	netdev_reset_queue(dev);
 	napi_enable(&priv->napi);
@@ -987,6 +1045,35 @@ static int nb8800_nway_reset(struct net_device *dev)
 		return -ENODEV;
 
 	return genphy_restart_aneg(priv->phydev);
+}
+
+static void nb8800_get_pauseparam(struct net_device *dev,
+				  struct ethtool_pauseparam *pp)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+
+	pp->autoneg = priv->pause_aneg;
+	pp->rx_pause = priv->pause_rx;
+	pp->tx_pause = priv->pause_tx;
+}
+
+static int nb8800_set_pauseparam(struct net_device *dev,
+				 struct ethtool_pauseparam *pp)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+
+	priv->pause_aneg = pp->autoneg;
+	priv->pause_rx = pp->rx_pause;
+	priv->pause_tx = pp->tx_pause;
+
+	nb8800_pause_adv(dev);
+
+	if (!priv->pause_aneg)
+		nb8800_pause_config(dev);
+	else if (priv->phydev)
+		phy_start_aneg(priv->phydev);
+
+	return 0;
 }
 
 static const char nb8800_stats_names[][ETH_GSTRING_LEN] = {
@@ -1081,6 +1168,8 @@ static const struct ethtool_ops nb8800_ethtool_ops = {
 	.set_settings		= nb8800_set_settings,
 	.nway_reset		= nb8800_nway_reset,
 	.get_link		= ethtool_op_get_link,
+	.get_pauseparam		= nb8800_get_pauseparam,
+	.set_pauseparam		= nb8800_set_pauseparam,
 	.get_sset_count		= nb8800_get_sset_count,
 	.get_strings		= nb8800_get_strings,
 	.get_ethtool_stats	= nb8800_get_ethtool_stats,
@@ -1155,6 +1244,18 @@ static int nb8800_hw_init(struct net_device *dev)
 	nb8800_writel(priv, NB8800_RX_ITR, priv->rx_itr_irq);
 
 	priv->rx_dma_config = RX_BUF_SIZE | DESC_BTS(2) | DESC_DS | DESC_EOF;
+
+	/* Flow control settings */
+
+	/* Pause time of 0.1 ms */
+	val = 100000 / 512;
+	nb8800_writeb(priv, NB8800_PQ1, val >> 8);
+	nb8800_writeb(priv, NB8800_PQ2, val & 0xff);
+
+	/* Auto-negotiate by default */
+	priv->pause_aneg = true;
+	priv->pause_rx = true;
+	priv->pause_tx = true;
 
 	nb8800_mc_init(dev, 0);
 
