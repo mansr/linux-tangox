@@ -1165,7 +1165,6 @@ static const struct nb8800_ops nb8800_tangox_ops = {
 static int nb8800_tango4_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
-	u32 val;
 	int err;
 
 	err = nb8800_tangox_init(dev);
@@ -1176,10 +1175,7 @@ static int nb8800_tango4_init(struct net_device *dev)
 	 * better performance despite generating more rx interrupts. */
 
 	/* Disable unnecessary interrupt on rx completion */
-	val = nb8800_readl(priv, NB8800_RXC_CR);
-	val &= ~RCR_RFI(7);
-	val |= RCR_DIE;
-	nb8800_writel(priv, NB8800_RXC_CR, val);
+	nb8800_clearl(priv, NB8800_RXC_CR, RCR_RFI(7));
 
 	/* Request interrupt on descriptor DMA completion */
 	priv->rx_dma_config |= DESC_ID;
