@@ -1043,20 +1043,20 @@ static int nb8800_hw_init(struct net_device *dev)
 	val = TX_RETRY_EN | TX_PAD_EN | TX_APPEND_FCS;
 	nb8800_writeb(priv, NB8800_TX_CTL1, val);
 
-	/* collision retry count */
+	/* Collision retry count */
 	nb8800_writeb(priv, NB8800_TX_CTL2, 5);
 
 	val = RX_PAD_STRIP | RX_AF_EN;
 	nb8800_writeb(priv, NB8800_RX_CTL, val);
 
-	nb8800_writeb(priv, NB8800_RANDOM_SEED, 0x08);
+	/* Chosen by fair dice roll */
+	nb8800_writeb(priv, NB8800_RANDOM_SEED, 4);
 
-	/* TX single deferral params */
-	nb8800_writeb(priv, NB8800_TX_SDP, 0xc);
+	/* TX cycles per deferral period */
+	nb8800_writeb(priv, NB8800_TX_SDP, 12);
 
 	/* The following three threshold values have been
-	 * experimentally determined for good results.
-	 */
+	 * experimentally determined for good results. */
 
 	/* RX/TX FIFO threshold for partial empty (64-bit entries) */
 	nb8800_writeb(priv, NB8800_PE_THRESHOLD, 0);
@@ -1067,24 +1067,43 @@ static int nb8800_hw_init(struct net_device *dev)
 	/* Buffer size for transmit (64-bit entries) */
 	nb8800_writeb(priv, NB8800_TX_BUFSIZE, 64);
 
-	/* configure TX DMA Channels */
+	/* Configure tx DMA */
+
 	val = nb8800_readl(priv, NB8800_TXC_CR);
-	val &= TCR_LE;
-	val |= TCR_DM | TCR_RS | TCR_DIE | TCR_TFI(7) | TCR_BTS(2);
+	val &= TCR_LE;		/* keep endian setting */
+	val |= TCR_DM;		/* DMA descriptor mode */
+	val |= TCR_RS;		/* automatically store tx status  */
+	val |= TCR_DIE;		/* interrupt on DMA chain completion */
+	val |= TCR_TFI(7);	/* interrupt after 7 frames transmitted */
+	val |= TCR_BTS(2);	/* 32-byte bus transaction size */
 	nb8800_writel(priv, NB8800_TXC_CR, val);
 
-	/* TX Interrupt Time Register */
+	/* TX complete interrupt after 10 ms or 7 frames (see above) */
 	val = clk_get_rate(priv->clk) / 100;
 	nb8800_writel(priv, NB8800_TX_ITR, val);
 
-	/* configure RX DMA Channels */
+	/* Configure rx DMA */
+
 	val = nb8800_readl(priv, NB8800_RXC_CR);
-	val &= RCR_LE;
-	val |= RCR_DM | RCR_RS | RCR_RFI(7) | RCR_BTS(2);
+	val &= RCR_LE;		/* keep endian setting */
+	val |= RCR_DM;		/* DMA descriptor mode */
+	val |= RCR_RS;		/* automatically store rx status */
+	val |= RCR_DIE;		/* interrupt at end of DMA chain */
+	val |= RCR_RFI(7);	/* interrupt after 7 frames received */
+	val |= RCR_BTS(2);	/* 32-byte bus transaction size */
 	nb8800_writel(priv, NB8800_RXC_CR, val);
 
-	/* RX Interrupt Time Register */
+	/* The rx interrupt can fire before the DMA has completed
+	 * unless a small delay is added.  50 us is hopefully enough. */
+	priv->rx_itr_irq = clk_get_rate(priv->clk) / 20000;
+
+	/* In NAPI poll mode we want to disable interrupts, but the
+	 * hardware does not permit this.  Delay 10 ms instead. */
+	priv->rx_itr_poll = clk_get_rate(priv->clk) / 100;
+
 	nb8800_writel(priv, NB8800_RX_ITR, priv->rx_itr_irq);
+
+	priv->rx_dma_config = RX_BUF_SIZE | DESC_BTS(2) | DESC_DS | DESC_EOF;
 
 	nb8800_mc_init(dev, 0);
 
@@ -1143,8 +1162,6 @@ static const struct nb8800_ops nb8800_tangox_ops = {
 	.reset	= nb8800_tangox_reset,
 };
 
-/* On tango4 interrupt on DMA completion works and gives better
- * performance despite generating more RX interrupts. */
 static int nb8800_tango4_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
@@ -1155,11 +1172,16 @@ static int nb8800_tango4_init(struct net_device *dev)
 	if (err)
 		return err;
 
+	/* On tango4 interrupt on DMA completion per frame works and gives
+	 * better performance despite generating more rx interrupts. */
+
+	/* Disable unnecessary interrupt on rx completion */
 	val = nb8800_readl(priv, NB8800_RXC_CR);
 	val &= ~RCR_RFI(7);
 	val |= RCR_DIE;
 	nb8800_writel(priv, NB8800_RXC_CR, val);
 
+	/* Request interrupt on descriptor DMA completion */
 	priv->rx_dma_config |= DESC_ID;
 
 	return 0;
@@ -1240,15 +1262,6 @@ static int nb8800_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_free_dev;
 
-	/* The rx interrupt can fire before the DMA has completed
-	 * unless a small delay is added.  50 us is hopefully enough. */
-	priv->rx_itr_irq = clk_get_rate(priv->clk) / 20000;
-
-	/* In NAPI poll mode we want to disable interrupts, but the
-	 * hardware does not permit this.  Delay 10 ms instead. */
-	priv->rx_itr_poll = clk_get_rate(priv->clk) / 100;
-
-	priv->rx_dma_config = RX_BUF_SIZE | DESC_BTS(2) | DESC_DS | DESC_EOF;
 	spin_lock_init(&priv->tx_lock);
 
 	if (ops && ops->reset) {
