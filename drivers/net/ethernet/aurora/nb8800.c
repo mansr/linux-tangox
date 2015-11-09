@@ -184,19 +184,6 @@ static void nb8800_mac_af(struct net_device *dev, bool enable)
 	nb8800_modb(netdev_priv(dev), NB8800_RX_CTL, RX_AF_EN, enable);
 }
 
-static void nb8800_stop_rx(struct net_device *dev)
-{
-	struct nb8800_priv *priv = netdev_priv(dev);
-	u32 val;
-	int i;
-
-	for (i = 0; i < RX_DESC_COUNT; i++)
-		priv->rx_descs[i].desc.config |= DESC_EOC;
-
-	readl_poll_timeout(priv->base + NB8800_RXC_CR, val, !(val & RCR_EN),
-			   1000, 1000000);
-}
-
 static void nb8800_start_rx(struct net_device *dev)
 {
 	nb8800_setl(netdev_priv(dev), NB8800_RXC_CR, RCR_EN);
@@ -496,11 +483,12 @@ static void nb8800_tx_error(struct net_device *dev, u32 report)
 static void nb8800_tx_done(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
+	int limit = priv->tx_next;
 	int done = priv->tx_done;
 	unsigned int packets = 0;
 	unsigned int len = 0;
 
-	for (;;) {
+	while (done != limit) {
 		struct nb8800_tx_desc *txd = &priv->tx_descs[done];
 		struct nb8800_tx_buf *txb = &priv->tx_bufs[done];
 		struct sk_buff *skb;
@@ -834,6 +822,59 @@ err_out:
 	return -ENOMEM;
 }
 
+static int nb8800_dma_stop(struct net_device *dev)
+{
+	struct nb8800_priv *priv = netdev_priv(dev);
+	struct nb8800_tx_buf *txb = &priv->tx_bufs[0];
+	struct nb8800_tx_desc *txd = &priv->tx_descs[0];
+	int retry = 5;
+	u32 txcr;
+	u32 rxcr;
+	int err;
+	int i;
+
+	/* wait for tx to finish */
+	err = readl_poll_timeout_atomic(priv->base + NB8800_TXC_CR, txcr,
+					!(txcr & TCR_EN) &&
+					priv->tx_done == priv->tx_next,
+					1000, 1000000);
+	if (err)
+		return err;
+
+	/* The rx DMA only stops if it reaches the end of chain.
+	 * To make this happen, we set the EOC flag on all rx
+	 * descriptors, put the device in loopback mode, and send
+	 * a few dummy frames.  The interrupt handler will ignore
+	 * these since NAPI is disabled and no real frames are in
+	 * the tx queue. */
+
+	for (i = 0; i < RX_DESC_COUNT; i++)
+		priv->rx_descs[i].desc.config |= DESC_EOC;
+
+	txd->desc[0].s_addr =
+		txb->dma_desc + offsetof(struct nb8800_tx_desc, buf);
+	txd->desc[0].config = DESC_BTS(2) | DESC_DS | DESC_EOF | DESC_EOC | 8;
+	memset(txd->buf, 0, sizeof(txd->buf));
+
+	nb8800_mac_af(dev, false);
+	nb8800_setb(priv, NB8800_MAC_MODE, LOOPBACK_EN);
+
+	do {
+		nb8800_writel(priv, NB8800_TX_DESC_ADDR, txb->dma_desc);
+		wmb();
+		nb8800_writel(priv, NB8800_TXC_CR, txcr | TCR_EN);
+
+		err = readl_poll_timeout_atomic(priv->base + NB8800_RXC_CR,
+						rxcr, !(rxcr & RCR_EN),
+						1000, 100000);
+	} while (err && --retry);
+
+	nb8800_mac_af(dev, true);
+	nb8800_clearb(priv, NB8800_MAC_MODE, LOOPBACK_EN);
+
+	return retry ? 0 : -ETIMEDOUT;
+}
+
 static int nb8800_open(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
@@ -884,7 +925,7 @@ static int nb8800_stop(struct net_device *dev)
 	netif_stop_queue(dev);
 	napi_disable(&priv->napi);
 
-	nb8800_stop_rx(dev);
+	nb8800_dma_stop(dev);
 
 	nb8800_mac_rx(dev, false);
 	nb8800_mac_tx(dev, false);
