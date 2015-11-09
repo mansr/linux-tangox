@@ -922,18 +922,19 @@ static int nb8800_stop(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 
+	phy_stop(priv->phydev);
+
 	netif_stop_queue(dev);
 	napi_disable(&priv->napi);
 
 	nb8800_dma_stop(dev);
-
 	nb8800_mac_rx(dev, false);
 	nb8800_mac_tx(dev, false);
 
-	free_irq(dev->irq, dev);
-
-	phy_stop(priv->phydev);
 	phy_disconnect(priv->phydev);
+	priv->phydev = NULL;
+
+	free_irq(dev->irq, dev);
 
 	nb8800_dma_free(dev);
 
