@@ -70,7 +70,8 @@ static inline void nb8800_maskb(struct nb8800_priv *priv, int reg,
 				u32 mask, u32 val)
 {
 	u32 old = nb8800_readb(priv, reg);
-	u32 new = (old & ~mask) | val;
+	u32 new = (old & ~mask) | (val & mask);
+
 	if (new != old)
 		nb8800_writeb(priv, reg, new);
 }
@@ -79,7 +80,8 @@ static inline void nb8800_maskl(struct nb8800_priv *priv, int reg,
 				u32 mask, u32 val)
 {
 	u32 old = nb8800_readl(priv, reg);
-	u32 new = (old & ~mask) | val;
+	u32 new = (old & ~mask) | (val & mask);
+
 	if (new != old)
 		nb8800_writel(priv, reg, new);
 }
