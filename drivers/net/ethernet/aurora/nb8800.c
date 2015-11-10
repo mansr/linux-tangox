@@ -266,7 +266,7 @@ static void nb8800_receive(struct net_device *dev, int i, int len)
 	}
 
 	skb->protocol = eth_type_trans(skb, dev);
-	netif_receive_skb(skb);
+	napi_gro_receive(&priv->napi, skb);
 }
 
 static void nb8800_rx_error(struct net_device *dev, u32 report)
