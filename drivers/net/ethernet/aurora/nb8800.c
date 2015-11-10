@@ -409,8 +409,10 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 		return NETDEV_TX_OK;
 	}
 
-	if (atomic_dec_return(&priv->tx_free) <= NB8800_DESC_LOW)
+	if (atomic_dec_return(&priv->tx_free) <= NB8800_DESC_LOW) {
 		netif_stop_queue(dev);
+		skb->xmit_more = 0;
+	}
 
 	next = priv->tx_next;
 	txb = &priv->tx_bufs[next];
