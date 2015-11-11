@@ -39,6 +39,7 @@
 
 #include "nb8800.h"
 
+static void nb8800_tx_done(struct net_device *dev);
 static int nb8800_dma_stop(struct net_device *dev);
 
 static inline u8 nb8800_readb(struct nb8800_priv *priv, int reg)
@@ -297,6 +298,8 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 	int last = priv->rx_eoc;
 	int next;
 
+	nb8800_tx_done(dev);
+
 again:
 	while (work < budget) {
 		struct nb8800_rx_buf *rxb;
@@ -508,9 +511,9 @@ static void nb8800_tx_done(struct net_device *dev)
 
 		if (IS_TX_ERROR(txd->report)) {
 			nb8800_tx_error(dev, txd->report);
-			dev_kfree_skb_irq(skb);
+			kfree_skb(skb);
 		} else {
-			dev_consume_skb_irq(skb);
+			consume_skb(skb);
 		}
 
 		dev->stats.tx_packets++;
@@ -550,7 +553,7 @@ static irqreturn_t nb8800_irq(int irq, void *dev_id)
 			nb8800_tx_dma_start_irq(dev);
 
 		if (val & TSR_TI)
-			nb8800_tx_done(dev);
+			napi_schedule_irqoff(&priv->napi);
 
 		if (unlikely(val & TSR_DE))
 			netdev_err(dev, "TX DMA error\n");
