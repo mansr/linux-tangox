@@ -454,6 +454,8 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	netdev_sent_queue(dev, skb->len);
 
+	priv->tx_next = next;
+
 	smp_mb__before_spinlock();
 	spin_lock_irqsave(&priv->tx_lock, flags);
 
@@ -464,8 +466,6 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	}
 
 	spin_unlock_irqrestore(&priv->tx_lock, flags);
-
-	priv->tx_next = next;
 
 	return NETDEV_TX_OK;
 }
