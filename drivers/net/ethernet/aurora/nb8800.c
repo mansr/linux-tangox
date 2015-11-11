@@ -538,6 +538,7 @@ static irqreturn_t nb8800_irq(int irq, void *dev_id)
 {
 	struct net_device *dev = dev_id;
 	struct nb8800_priv *priv = netdev_priv(dev);
+	irqreturn_t ret = IRQ_NONE;
 	u32 val;
 
 	/* tx interrupt */
@@ -557,6 +558,8 @@ static irqreturn_t nb8800_irq(int irq, void *dev_id)
 		/* should never happen with automatic status retrieval */
 		if (unlikely(val & TSR_TO))
 			netdev_err(dev, "TX Status FIFO overflow\n");
+
+		ret = IRQ_HANDLED;
 	}
 
 	/* rx interrupt */
@@ -575,9 +578,11 @@ static irqreturn_t nb8800_irq(int irq, void *dev_id)
 		/* should never happen with automatic status retrieval */
 		if (unlikely(val & RSR_RO))
 			netdev_err(dev, "RX Status FIFO overflow\n");
+
+		ret = IRQ_HANDLED;
 	}
 
-	return IRQ_HANDLED;
+	return ret;
 }
 
 static void nb8800_mac_config(struct net_device *dev)
