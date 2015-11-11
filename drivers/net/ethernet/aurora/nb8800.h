@@ -45,11 +45,11 @@
 #define NB8800_SLOT_TIME		0x1c
 
 #define NB8800_MDIO_CMD			0x020
-#define MIIAR_ADDR(x)			((x) << 21)
-#define MIIAR_REG(x)			((x) << 16)
-#define MIIAR_DATA(x)			((x) <<	 0)
 #define MDIO_CMD_GO			BIT(31)
 #define MDIO_CMD_WR			BIT(26)
+#define MDIO_CMD_ADDR(x)		((x) << 21)
+#define MDIO_CMD_REG(x)			((x) << 16)
+#define MDIO_CMD_DATA(x)		((x) <<	 0)
 
 #define NB8800_MDIO_STS			0x024
 #define MDIO_STS_ERR			BIT(31)

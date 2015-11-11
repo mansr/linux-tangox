@@ -149,7 +149,7 @@ static int nb8800_mdio_read(struct mii_bus *bus, int phy_id, int reg)
 	u32 val;
 	int err;
 
-	err = nb8800_mdio_cmd(bus, MIIAR_ADDR(phy_id) | MIIAR_REG(reg));
+	err = nb8800_mdio_cmd(bus, MDIO_CMD_ADDR(phy_id) | MDIO_CMD_REG(reg));
 	if (err)
 		return err;
 
@@ -162,8 +162,8 @@ static int nb8800_mdio_read(struct mii_bus *bus, int phy_id, int reg)
 
 static int nb8800_mdio_write(struct mii_bus *bus, int phy_id, int reg, u16 val)
 {
-	u32 cmd = MIIAR_DATA(val) | MIIAR_ADDR(phy_id) | MIIAR_REG(reg) |
-		MDIO_CMD_WR;
+	u32 cmd = MDIO_CMD_ADDR(phy_id) | MDIO_CMD_REG(reg) |
+		MDIO_CMD_DATA(val) | MDIO_CMD_WR;
 
 	return nb8800_mdio_cmd(bus, cmd);
 }
