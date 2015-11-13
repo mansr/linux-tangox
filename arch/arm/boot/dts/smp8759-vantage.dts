@@ -33,5 +33,6 @@
 		compatible = "ethernet-phy-id004d.d072",
 			     "ethernet-phy-ieee802.3-c22";
 		reg = <4>;
+		interrupts = <37 IRQ_TYPE_EDGE_RISING>;
 	};
 };
