@@ -9,14 +9,24 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/bitops.h>
 #include <linux/platform_device.h>
 #include <linux/phy/phy.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
-#define PHY_RESET 0x0
-#define PHY_POWER 0xc
+#define CTL0			0x00
+#define CTL0_PHY_RESET		BIT(0)
+#define CTL0_HOST_RESET		BIT(1)
+
+#define CTL1			0x04
+#define STATUS			0x08
+
+#define CTL2			0x0c
+#define CTL2_CLK_POWER_SAVE	BIT(6)
+
+#define CTL3			0x10
 
 struct tangox_usb_phy {
 	void __iomem *base;
@@ -26,30 +36,32 @@ struct tangox_usb_phy {
 static int tangox_usb_phy_init(struct phy *genphy)
 {
 	struct tangox_usb_phy *phy = phy_get_drvdata(genphy);
-	unsigned int val;
+	u32 val;
 	int err;
 
 	err = clk_prepare_enable(phy->clk);
 	if (err)
 		return err;
 
-	val = readl(phy->base + PHY_RESET);
-	writel(val | 1, phy->base + PHY_RESET);
+	val = BIT(13) | BIT(7) | CTL0_HOST_RESET | CTL0_PHY_RESET;
+	writel(val, phy->base);
+	msleep(5);
 
-	udelay(30);
+	val &= ~BIT(7);
+	writel(val, phy->base);
+	msleep(5);
 
-	val = readl(phy->base + PHY_RESET);
-	writel(val & ~1, phy->base + PHY_RESET);
+	val &= ~CTL0_PHY_RESET;
+	writel(val, phy->base);
+	msleep(5);
 
-	mdelay(2);
+	val &= ~CTL0_HOST_RESET;
+	writel(val, phy->base);
+	msleep(5);
 
-	val = readl(phy->base + PHY_RESET);
-	writel(val & ~2, phy->base + PHY_RESET);
-
-	val = readl(phy->base + PHY_RESET);
-	writel(val | (1 << 19), phy->base + PHY_RESET);
-
-	mdelay(5);
+	val = readl(phy->base + CTL2);
+	val &= ~CTL2_CLK_POWER_SAVE;
+	writel(val, phy->base + CTL2);
 
 	return 0;
 }
@@ -57,48 +69,15 @@ static int tangox_usb_phy_init(struct phy *genphy)
 static int tangox_usb_phy_exit(struct phy *genphy)
 {
 	struct tangox_usb_phy *phy = phy_get_drvdata(genphy);
-	unsigned int val;
-
-	val = readl(phy->base + PHY_RESET);
-	writel(val | 2, phy->base + PHY_RESET);
-
-	mdelay(2);
-
-	val = readl(phy->base + PHY_RESET);
-	writel(val | 1, phy->base + PHY_RESET);
 
 	clk_disable_unprepare(phy->clk);
 
 	return 0;
 }
 
-static int tangox_usb_phy_power_on(struct phy *genphy)
-{
-	struct tangox_usb_phy *phy = phy_get_drvdata(genphy);
-	unsigned int val;
-
-	val = readl(phy->base + PHY_POWER);
-	writel(val & ~(1 << 6), phy->base + PHY_POWER);
-
-	return 0;
-}
-
-static int tangox_usb_phy_power_off(struct phy *genphy)
-{
-	struct tangox_usb_phy *phy = phy_get_drvdata(genphy);
-	unsigned int val;
-
-	val = readl(phy->base + PHY_POWER);
-	writel(val & (1 << 6), phy->base + PHY_POWER);
-
-	return 0;
-}
-
-static struct phy_ops tangox_usb_phy_ops = {
+static const struct phy_ops tangox_usb_phy_ops = {
 	.init		= tangox_usb_phy_init,
 	.exit		= tangox_usb_phy_exit,
-	.power_on	= tangox_usb_phy_power_on,
-	.power_off	= tangox_usb_phy_power_off,
 };
 
 static int tangox_usb_phy_probe(struct platform_device *pdev)
@@ -137,7 +116,7 @@ static int tangox_usb_phy_probe(struct platform_device *pdev)
 }
 
 static const struct of_device_id tangox_usb_phy_dt_ids[] = {
-	{ .compatible = "sigma,smp8640-usb-phy" },
+	{ .compatible	= "sigma,smp8642-usb-phy" },
 	{ }
 };
 
