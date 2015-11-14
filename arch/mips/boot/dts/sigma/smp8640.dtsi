@@ -328,7 +328,7 @@
 		};
 
 		usb0_ehci: usb@21400 {
-			compatible = "sigma,smp8640-ehci", "generic-ehci";
+			compatible = "sigma,smp8642-ehci", "generic-ehci";
 			reg = <0x21400 0x100>;
 			interrupts = <40 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb0_phy>;
@@ -336,7 +336,7 @@
 		};
 
 		usb0_ohci: usb@21500 {
-			compatible = "sigma,smp8640-ohci", "generic-ohci";
+			compatible = "sigma,smp8642-ohci", "generic-ohci";
 			reg = <0x21500 0x100>;
 			interrupts = <39 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb0_phy>;
@@ -344,7 +344,7 @@
 		};
 
 		usb0_phy: phy@21700 {
-			compatible = "sigma,smp8640-usb-phy";
+			compatible = "sigma,smp8642-usb-phy";
 			reg = <0x21700 0x100>;
 			#phy-cells = <0>;
 			clocks = <&usb_clk>;
