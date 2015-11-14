@@ -399,17 +399,32 @@
 			clocks = <&xtal_in_clk>;
 		};
 
-		usb0_ehci: usb@21500 {
-			compatible = "generic-ehci";
-			reg = <0x21500 0x100>;
+		usb0: usb@21400 {
+			compatible = "sigma,smp8734-usb", "chipidea,usb2";
+			reg = <0x21400 0x200>;
 			interrupts = <40 IRQ_TYPE_LEVEL_HIGH>;
 			phys = <&usb0_phy>;
-			phy-names = "usb";
+			phy-names = "usb-phy";
 		};
 
 		usb0_phy: phy@21700 {
-			compatible = "sigma,smp8759-usb-phy";
+			compatible = "sigma,smp8642-usb-phy";
 			reg = <0x21700 0x100>;
+			#phy-cells = <0>;
+			clocks = <&usb_clk>;
+		};
+
+		usb1: usb@25400 {
+			compatible = "sigma,smp8734-usb", "chipidea,usb2";
+			reg = <0x25400 0x200>;
+			interrupts = <7 IRQ_TYPE_LEVEL_HIGH>;
+			phys = <&usb1_phy>;
+			phy-names = "usb-phy";
+		};
+
+		usb1_phy: phy@25700 {
+			compatible = "sigma,smp8642-usb-phy";
+			reg = <0x25700 0x100>;
 			#phy-cells = <0>;
 			clocks = <&usb_clk>;
 		};
