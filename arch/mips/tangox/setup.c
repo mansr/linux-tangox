@@ -66,7 +66,7 @@ void __init plat_time_init(void)
 	int ccres;
 
 	of_clk_init(NULL);
-	clocksource_of_init();
+	clocksource_probe();
 
 	cpu = of_find_node_by_path("cpu0");
 	if (!cpu)
