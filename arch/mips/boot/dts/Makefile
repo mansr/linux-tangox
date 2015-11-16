@@ -7,8 +7,12 @@ dts-dirs	+= netlogic
 dts-dirs	+= qca
 dts-dirs	+= ralink
 dts-dirs	+= sigma
+dts-dirs	+= xilfpga
 
 obj-y		:= $(addsuffix /, $(dts-dirs))
+
+dtstree		:= $(srctree)/$(src)
+dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(dtstree)/%.dts,%.dtb, $(foreach d,$(dts-dirs), $(wildcard $(dtstree)/$(d)/*.dts)))
 
 always		:= $(dtb-y)
 subdir-y	:= $(dts-dirs)

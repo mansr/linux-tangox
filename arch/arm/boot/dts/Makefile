@@ -59,7 +59,9 @@ dtb-$(CONFIG_ARCH_AXXIA) += \
 	axm5516-amarillo.dtb
 dtb-$(CONFIG_ARCH_BCM2835) += \
 	bcm2835-rpi-b.dtb \
-	bcm2835-rpi-b-plus.dtb
+	bcm2835-rpi-b-rev2.dtb \
+	bcm2835-rpi-b-plus.dtb \
+	bcm2835-rpi-a-plus.dtb
 dtb-$(CONFIG_ARCH_BCM_5301X) += \
 	bcm4708-asus-rt-ac56u.dtb \
 	bcm4708-asus-rt-ac68u.dtb \
@@ -73,6 +75,7 @@ dtb-$(CONFIG_ARCH_BCM_5301X) += \
 	bcm47081-buffalo-wzr-900dhp.dtb \
 	bcm4709-asus-rt-ac87u.dtb \
 	bcm4709-buffalo-wxr-1900dhp.dtb \
+	bcm4709-netgear-r7000.dtb \
 	bcm4709-netgear-r8000.dtb
 dtb-$(CONFIG_ARCH_BCM_63XX) += \
 	bcm963138dvt.dtb
@@ -84,6 +87,8 @@ dtb-$(CONFIG_ARCH_BCM_CYGNUS) += \
 dtb-$(CONFIG_ARCH_BCM_MOBILE) += \
 	bcm28155-ap.dtb \
 	bcm21664-garnet.dtb
+dtb-$(CONFIG_ARCH_BCM_NSP) += \
+	bcm958625k.dtb
 dtb-$(CONFIG_ARCH_BERLIN) += \
 	berlin2-sony-nsz-gs7.dtb \
 	berlin2cd-google-chromecast.dtb \
@@ -116,6 +121,7 @@ dtb-$(CONFIG_ARCH_EXYNOS5) += \
 	exynos5250-arndale.dtb \
 	exynos5250-smdk5250.dtb \
 	exynos5250-snow.dtb \
+	exynos5250-snow-rev5.dtb \
 	exynos5250-spring.dtb \
 	exynos5260-xyref5260.dtb \
 	exynos5410-smdk5410.dtb \
@@ -124,6 +130,7 @@ dtb-$(CONFIG_ARCH_EXYNOS5) += \
 	exynos5420-smdk5420.dtb \
 	exynos5422-odroidxu3.dtb \
 	exynos5422-odroidxu3-lite.dtb \
+	exynos5422-odroidxu4.dtb \
 	exynos5440-sd5v1.dtb \
 	exynos5440-ssdk5440.dtb \
 	exynos5800-peach-pi.dtb
@@ -228,6 +235,9 @@ dtb-$(CONFIG_ARCH_MMP) += \
 	pxa168-aspenite.dtb \
 	pxa910-dkb.dtb \
 	mmp2-brownstone.dtb
+dtb-$(CONFIG_MACH_MESON8B) += \
+	meson8b-mxq.dtb \
+	meson8b-odroidc1.dtb
 dtb-$(CONFIG_ARCH_MOXART) += \
 	moxart-uc7112lx.dtb
 dtb-$(CONFIG_SOC_IMX1) += \
@@ -285,6 +295,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6dl-gw551x.dtb \
 	imx6dl-gw552x.dtb \
 	imx6dl-hummingboard.dtb \
+	imx6dl-nit6xlite.dtb \
 	imx6dl-nitrogen6x.dtb \
 	imx6dl-phytec-pbab01.dtb \
 	imx6dl-rex-basic.dtb \
@@ -314,6 +325,7 @@ dtb-$(CONFIG_SOC_IMX6Q) += \
 	imx6q-gw552x.dtb \
 	imx6q-hummingboard.dtb \
 	imx6q-nitrogen6x.dtb \
+	imx6q-nitrogen6_max.dtb \
 	imx6q-phytec-pbab01.dtb \
 	imx6q-rex-pro.dtb \
 	imx6q-sabreauto.dtb \
@@ -447,6 +459,7 @@ dtb-$(CONFIG_SOC_AM33XX) += \
 	am335x-base0033.dtb \
 	am335x-bone.dtb \
 	am335x-boneblack.dtb \
+	am335x-bonegreen.dtb \
 	am335x-sl50.dtb \
 	am335x-evm.dtb \
 	am335x-evmsk.dtb \
@@ -471,6 +484,7 @@ dtb-$(CONFIG_SOC_AM43XX) += \
 	am437x-gp-evm.dtb
 dtb-$(CONFIG_SOC_OMAP5) += \
 	omap5-cm-t54.dtb \
+	omap5-igep0050.dtb \
 	omap5-sbc-t54.dtb \
 	omap5-uevm.dtb
 dtb-$(CONFIG_SOC_DRA7XX) += \
@@ -507,7 +521,10 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3288-evb-rk808.dtb \
 	rk3288-firefly-beta.dtb \
 	rk3288-firefly.dtb \
+	rk3288-popmetal.dtb \
 	rk3288-r89.dtb \
+	rk3288-rock2-square.dtb \
+	rk3288-veyron-jaq.dtb \
 	rk3288-veyron-jerry.dtb \
 	rk3288-veyron-minnie.dtb \
 	rk3288-veyron-pinky.dtb \
@@ -523,9 +540,6 @@ dtb-$(CONFIG_ARCH_S5PV210) += \
 	s5pv210-smdkc110.dtb \
 	s5pv210-smdkv210.dtb \
 	s5pv210-torbreck.dtb
-dtb-$(CONFIG_ARCH_SHMOBILE_LEGACY) += \
-	r8a7778-bockw.dtb \
-	r8a7778-bockw-reference.dtb
 dtb-$(CONFIG_ARCH_SHMOBILE_MULTI) += \
 	emev2-kzm9d.dtb \
 	r7s72100-genmai.dtb \
@@ -536,6 +550,7 @@ dtb-$(CONFIG_ARCH_SHMOBILE_MULTI) += \
 	r8a7790-lager.dtb \
 	r8a7791-henninger.dtb \
 	r8a7791-koelsch.dtb \
+	r8a7791-porter.dtb \
 	r8a7793-gose.dtb \
 	r8a7794-alt.dtb \
 	r8a7794-silk.dtb \
@@ -578,7 +593,9 @@ dtb-$(CONFIG_MACH_SUN4I) += \
 	sun4i-a10-gemei-g9.dtb \
 	sun4i-a10-hackberry.dtb \
 	sun4i-a10-hyundai-a7hd.dtb \
+	sun4i-a10-inet1.dtb \
 	sun4i-a10-inet97fv2.dtb \
+	sun4i-a10-inet9f-rev03.dtb \
 	sun4i-a10-itead-iteaduino-plus.dtb \
 	sun4i-a10-jesurun-q5.dtb \
 	sun4i-a10-marsboard.dtb \
@@ -586,16 +603,23 @@ dtb-$(CONFIG_MACH_SUN4I) += \
 	sun4i-a10-mk802.dtb \
 	sun4i-a10-mk802ii.dtb \
 	sun4i-a10-olinuxino-lime.dtb \
-	sun4i-a10-pcduino.dtb
+	sun4i-a10-pcduino.dtb \
+	sun4i-a10-pcduino2.dtb \
+	sun4i-a10-pov-protab2-ips9.dtb
 dtb-$(CONFIG_MACH_SUN5I) += \
+	sun5i-a10s-auxtek-t003.dtb \
 	sun5i-a10s-auxtek-t004.dtb \
 	sun5i-a10s-mk802.dtb \
 	sun5i-a10s-olinuxino-micro.dtb \
 	sun5i-a10s-r7-tv-dongle.dtb \
+	sun5i-a10s-wobo-i5.dtb \
 	sun5i-a13-hsg-h702.dtb \
+	sun5i-a13-inet-98v-rev2.dtb \
 	sun5i-a13-olinuxino.dtb \
 	sun5i-a13-olinuxino-micro.dtb \
-	sun5i-a13-utoo-p66.dtb
+	sun5i-a13-q8-tablet.dtb \
+	sun5i-a13-utoo-p66.dtb \
+	sun5i-r8-chip.dtb
 dtb-$(CONFIG_MACH_SUN6I) += \
 	sun6i-a31-app4-evb1.dtb \
 	sun6i-a31-colombus.dtb \
@@ -603,7 +627,11 @@ dtb-$(CONFIG_MACH_SUN6I) += \
 	sun6i-a31-i7.dtb \
 	sun6i-a31-m9.dtb \
 	sun6i-a31-mele-a1000g-quad.dtb \
-	sun6i-a31s-cs908.dtb
+	sun6i-a31s-cs908.dtb \
+	sun6i-a31s-primo81.dtb \
+	sun6i-a31s-sina31s.dtb \
+	sun6i-a31s-sinovoip-bpi-m2.dtb \
+	sun6i-a31s-yones-toptech-bs1078-v2.dtb
 dtb-$(CONFIG_MACH_SUN7I) += \
 	sun7i-a20-bananapi.dtb \
 	sun7i-a20-bananapro.dtb \
@@ -613,6 +641,7 @@ dtb-$(CONFIG_MACH_SUN7I) += \
 	sun7i-a20-i12-tvbox.dtb \
 	sun7i-a20-m3.dtb \
 	sun7i-a20-mk808c.dtb \
+	sun7i-a20-olimex-som-evb.dtb \
 	sun7i-a20-olinuxino-lime.dtb \
 	sun7i-a20-olinuxino-lime2.dtb \
 	sun7i-a20-olinuxino-micro.dtb \
@@ -620,14 +649,18 @@ dtb-$(CONFIG_MACH_SUN7I) += \
 	sun7i-a20-orangepi-mini.dtb \
 	sun7i-a20-pcduino3.dtb \
 	sun7i-a20-pcduino3-nano.dtb \
-	sun7i-a20-wexler-tab7200.dtb
+	sun7i-a20-wexler-tab7200.dtb \
+	sun7i-a20-wits-pro-a20-dkt.dtb
 dtb-$(CONFIG_MACH_SUN8I) += \
 	sun8i-a23-evb.dtb \
+	sun8i-a23-gt90h-v4.dtb \
 	sun8i-a23-ippo-q8h-v5.dtb \
 	sun8i-a23-ippo-q8h-v1.2.dtb \
+	sun8i-a23-q8-tablet.dtb \
 	sun8i-a33-et-q8-v1.6.dtb \
 	sun8i-a33-ga10h-v1.1.dtb \
 	sun8i-a33-ippo-q8h-v1.2.dtb \
+	sun8i-a33-q8-tablet.dtb \
 	sun8i-a33-sinlinx-sina33.dtb
 dtb-$(CONFIG_MACH_SUN9I) += \
 	sun9i-a80-optimus.dtb \
@@ -673,7 +706,9 @@ dtb-$(CONFIG_ARCH_UNIPHIER) += \
 	uniphier-ph1-ld6b-ref.dtb \
 	uniphier-ph1-pro4-ref.dtb \
 	uniphier-ph1-sld3-ref.dtb \
-	uniphier-ph1-sld8-ref.dtb 
+	uniphier-ph1-sld8-ref.dtb \
+	uniphier-proxstream2-gentil.dtb \
+	uniphier-proxstream2-vodka.dtb
 dtb-$(CONFIG_ARCH_VERSATILE) += \
 	versatile-ab.dtb \
 	versatile-pb.dtb
@@ -703,6 +738,10 @@ dtb-$(CONFIG_MACH_ARMADA_370) += \
 	armada-370-netgear-rn102.dtb \
 	armada-370-netgear-rn104.dtb \
 	armada-370-rd.dtb \
+	armada-370-seagate-nas-2bay.dtb \
+	armada-370-seagate-nas-4bay.dtb \
+	armada-370-seagate-personal-cloud.dtb \
+	armada-370-seagate-personal-cloud-2bay.dtb \
 	armada-370-synology-ds213j.dtb
 dtb-$(CONFIG_MACH_ARMADA_375) += \
 	armada-375-db.dtb
@@ -740,6 +779,9 @@ dtb-$(CONFIG_ARCH_MEDIATEK) += \
 	mt8135-evbp1.dtb
 dtb-$(CONFIG_ARCH_ZX) += zx296702-ad1.dtb
 endif
+
+dtstree		:= $(srctree)/$(src)
+dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(dtstree)/%.dts,%.dtb, $(wildcard $(dtstree)/*.dts))
 
 always		:= $(dtb-y)
 clean-files	:= *.dtb
