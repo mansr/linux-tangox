@@ -1,6 +1,6 @@
 /*
- *  Copyright (C) 2014, Mans Rullgard <mans@mansr.com>
- *  SMP86xx Watchdog driver
+ *  Copyright (C) 2015 Mans Rullgard <mans@mansr.com>
+ *  SMP86xx/SMP87xx Watchdog driver
  *
  *  This program is free software; you can redistribute it and/or modify it
  *  under  the terms of the GNU General  Public License as published by the
@@ -8,19 +8,18 @@
  *  option) any later version.
  */
 
+#include <linux/clk.h>
+#include <linux/delay.h>
+#include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/notifier.h>
-#include <linux/delay.h>
-#include <linux/reboot.h>
 #include <linux/platform_device.h>
+#include <linux/reboot.h>
 #include <linux/watchdog.h>
-#include <linux/clk.h>
-#include <linux/io.h>
 
-#define DEFAULT_TIMEOUT	30
-#define MAX_TIMEOUT	120
+#define DEFAULT_TIMEOUT 30
 
 static bool nowayout = WATCHDOG_NOWAYOUT;
 module_param(nowayout, bool, 0);
@@ -28,46 +27,45 @@ MODULE_PARM_DESC(nowayout,
 		 "Watchdog cannot be stopped once started (default="
 		 __MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
 
-static unsigned int timeout = DEFAULT_TIMEOUT;
+static unsigned int timeout;
 module_param(timeout, int, 0);
-MODULE_PARM_DESC(watchdog_timeout, "Watchdog timeout");
+MODULE_PARM_DESC(timeout, "Watchdog timeout");
 
-#define WD_COUNTER	0
-#define WD_CONFIG	4
+/*
+ * Counter counts down from programmed value.  Reset asserts when
+ * the counter reaches 1.
+ */
+#define WD_COUNTER		0
+
+#define WD_CONFIG		4
+#define WD_CONFIG_XTAL_IN	BIT(0)
+#define WD_CONFIG_DISABLE	BIT(31)
 
 struct tangox_wdt_device {
 	struct watchdog_device wdt;
 	void __iomem *base;
-	unsigned int timeout;
+	unsigned long clk_rate;
 	struct clk *clk;
 	struct notifier_block restart;
 };
 
-static int tangox_wdt_ping(struct watchdog_device *wdt)
-{
-	struct tangox_wdt_device *dev = watchdog_get_drvdata(wdt);
-
-	writel(dev->timeout, dev->base + WD_COUNTER);
-
-	return 0;
-}
-
 static int tangox_wdt_set_timeout(struct watchdog_device *wdt,
 				  unsigned int new_timeout)
 {
-	struct tangox_wdt_device *dev = watchdog_get_drvdata(wdt);
-
 	wdt->timeout = new_timeout;
-	dev->timeout = 1 + new_timeout * clk_get_rate(dev->clk);
-
-	tangox_wdt_ping(wdt);
 
 	return 0;
 }
 
 static int tangox_wdt_start(struct watchdog_device *wdt)
 {
-	return tangox_wdt_set_timeout(wdt, wdt->timeout);
+	struct tangox_wdt_device *dev = watchdog_get_drvdata(wdt);
+	u32 ticks;
+
+	ticks = 1 + wdt->timeout * dev->clk_rate;
+	writel(ticks, dev->base + WD_COUNTER);
+
+	return 0;
 }
 
 static int tangox_wdt_stop(struct watchdog_device *wdt)
@@ -87,7 +85,6 @@ static const struct watchdog_info tangox_wdt_info = {
 static const struct watchdog_ops tangox_wdt_ops = {
 	.start		= tangox_wdt_start,
 	.stop		= tangox_wdt_stop,
-	.ping		= tangox_wdt_ping,
 	.set_timeout	= tangox_wdt_set_timeout,
 };
 
@@ -112,29 +109,33 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 	if (!dev)
 		return -ENOMEM;
 
-	dev->wdt.parent = &pdev->dev;
-	dev->wdt.info = &tangox_wdt_info;
-	dev->wdt.ops = &tangox_wdt_ops;
-	dev->wdt.timeout = timeout;
-	dev->wdt.min_timeout = 1;
-	dev->wdt.max_timeout = MAX_TIMEOUT;
-	watchdog_set_nowayout(&dev->wdt, nowayout);
-	watchdog_set_drvdata(&dev->wdt, dev);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	dev->base = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(dev->base))
+		return PTR_ERR(dev->base);
 
 	dev->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(dev->clk))
 		return PTR_ERR(dev->clk);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
-		return -EINVAL;
+	err = clk_prepare_enable(dev->clk);
+	if (err)
+		return err;
 
-	dev->base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(dev->base))
-		return PTR_ERR(dev->base);
+	dev->clk_rate = clk_get_rate(dev->clk);
 
-	writel(0, dev->base + WD_COUNTER);
-	writel(1, dev->base + WD_CONFIG);
+	dev->wdt.parent = &pdev->dev;
+	dev->wdt.info = &tangox_wdt_info;
+	dev->wdt.ops = &tangox_wdt_ops;
+	dev->wdt.timeout = DEFAULT_TIMEOUT;
+	dev->wdt.min_timeout = 1;
+	dev->wdt.max_timeout = (U32_MAX - 1) / dev->clk_rate;
+
+	watchdog_init_timeout(&dev->wdt, timeout, &pdev->dev);
+	watchdog_set_nowayout(&dev->wdt, nowayout);
+	watchdog_set_drvdata(&dev->wdt, dev);
+
+	writel(WD_CONFIG_XTAL_IN, dev->base + WD_CONFIG);
 
 	err = watchdog_register_device(&dev->wdt);
 	if (err)
@@ -146,9 +147,9 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 	dev->restart.priority = 128;
 	err = register_restart_handler(&dev->restart);
 	if (err)
-		dev_err(&pdev->dev, "failed to register restart handler\n");
+		dev_warn(&pdev->dev, "failed to register restart handler\n");
 
-	dev_info(dev->wdt.dev, "SMP86xx watchdog registered\n");
+	dev_info(dev->wdt.dev, "SMP86xx/SMP87xx watchdog registered\n");
 
 	return 0;
 }
@@ -158,6 +159,8 @@ static int tangox_wdt_remove(struct platform_device *pdev)
 	struct tangox_wdt_device *dev = platform_get_drvdata(pdev);
 
 	tangox_wdt_stop(&dev->wdt);
+	clk_disable_unprepare(dev->clk);
+
 	unregister_restart_handler(&dev->restart);
 	watchdog_unregister_device(&dev->wdt);
 
@@ -166,8 +169,10 @@ static int tangox_wdt_remove(struct platform_device *pdev)
 
 static const struct of_device_id tangox_wdt_dt_ids[] = {
 	{ .compatible = "sigma,smp8642-wdt" },
+	{ .compatible = "sigma,smp8759-wdt" },
 	{ }
 };
+MODULE_DEVICE_TABLE(of, tangox_wdt_dt_ids);
 
 static struct platform_driver tangox_wdt_driver = {
 	.probe	= tangox_wdt_probe,
@@ -181,5 +186,5 @@ static struct platform_driver tangox_wdt_driver = {
 module_platform_driver(tangox_wdt_driver);
 
 MODULE_AUTHOR("Mans Rullgard <mans@mansr.com>");
-MODULE_DESCRIPTION("SMP86xx Watchdog driver");
+MODULE_DESCRIPTION("SMP86xx/SMP87xx Watchdog driver");
 MODULE_LICENSE("GPL");
