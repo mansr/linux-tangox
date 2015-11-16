@@ -77,6 +77,19 @@ static int tangox_wdt_stop(struct watchdog_device *wdt)
 	return 0;
 }
 
+static unsigned int tangox_wdt_get_timeleft(struct watchdog_device *wdt)
+{
+	struct tangox_wdt_device *dev = watchdog_get_drvdata(wdt);
+	u32 count;
+
+	count = readl(dev->base + WD_COUNTER);
+
+	if (!count)
+		return 0;
+
+	return (count - 1) / dev->clk_rate;
+}
+
 static const struct watchdog_info tangox_wdt_info = {
 	.options  = WDIOF_SETTIMEOUT | WDIOF_KEEPALIVEPING | WDIOF_MAGICCLOSE,
 	.identity = "tangox watchdog",
@@ -86,6 +99,7 @@ static const struct watchdog_ops tangox_wdt_ops = {
 	.start		= tangox_wdt_start,
 	.stop		= tangox_wdt_stop,
 	.set_timeout	= tangox_wdt_set_timeout,
+	.get_timeleft	= tangox_wdt_get_timeleft,
 };
 
 static int tangox_wdt_restart(struct notifier_block *nb, unsigned long action,
