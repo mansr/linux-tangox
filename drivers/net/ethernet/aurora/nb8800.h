@@ -201,7 +201,8 @@ struct nb8800_rx_buf {
  */
 struct nb8800_tx_desc {
 	/* DMA descriptor.  The second descriptor is used if packet
-	 * data is unaligned. */
+	 * data is unaligned.
+	 */
 	struct nb8800_dma_desc		desc[2];
 
 	/* Status report filled in by hardware */
@@ -223,7 +224,8 @@ struct nb8800_tx_buf {
 	dma_addr_t			dma_addr;
 
 	/* Length of DMA mapping, less than skb->len if alignment
-	 * buffer is used. */
+	 * buffer is used.
+	 */
 	unsigned int			dma_len;
 
 	/* Number of packets in chain starting here */

@@ -194,7 +194,7 @@ static void nb8800_start_rx(struct net_device *dev)
 	nb8800_setl(netdev_priv(dev), NB8800_RXC_CR, RCR_EN);
 }
 
-static int nb8800_alloc_rx(struct net_device *dev, int i, bool napi)
+static int nb8800_alloc_rx(struct net_device *dev, unsigned int i, bool napi)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct nb8800_rx_desc *rxd = &priv->rx_descs[i];
@@ -227,7 +227,8 @@ static int nb8800_alloc_rx(struct net_device *dev, int i, bool napi)
 	return 0;
 }
 
-static void nb8800_receive(struct net_device *dev, int i, int len)
+static void nb8800_receive(struct net_device *dev, unsigned int i,
+			   unsigned int len)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct nb8800_rx_desc *rxd = &priv->rx_descs[i];
@@ -236,7 +237,7 @@ static void nb8800_receive(struct net_device *dev, int i, int len)
 	void *data = page_address(page) + offset;
 	dma_addr_t dma = rxd->desc.s_addr;
 	struct sk_buff *skb;
-	int size;
+	unsigned int size;
 	int err;
 
 	size = len <= RX_COPYBREAK ? len : RX_COPYHDR;
@@ -303,7 +304,7 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 again:
 	while (work < budget) {
 		struct nb8800_rx_buf *rxb;
-		int len;
+		unsigned int len;
 
 		next = (last + 1) % RX_DESC_COUNT;
 
@@ -344,7 +345,8 @@ again:
 
 		/* If a packet arrived after we last checked but
 		 * before writing RX_ITR, the interrupt will be
-		 * delayed, so we retrieve it now. */
+		 * delayed, so we retrieve it now.
+		 */
 		if (priv->rx_descs[next].report)
 			goto again;
 
@@ -398,7 +400,7 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct nb8800_tx_desc *txd;
 	struct nb8800_tx_buf *txb;
-	struct nb8800_dma_desc *dma;
+	struct nb8800_dma_desc *desc;
 	dma_addr_t dma_addr;
 	unsigned int dma_len;
 	int align;
@@ -430,27 +432,27 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	next = priv->tx_next;
 	txb = &priv->tx_bufs[next];
 	txd = &priv->tx_descs[next];
-	dma = &txd->desc[0];
+	desc = &txd->desc[0];
 
 	next = (next + 1) % TX_DESC_COUNT;
 
 	if (align) {
 		memcpy(txd->buf, skb->data, align);
 
-		dma->s_addr =
+		desc->s_addr =
 			txb->dma_desc + offsetof(struct nb8800_tx_desc, buf);
-		dma->n_addr = txb->dma_desc + sizeof(txd->desc[0]);
-		dma->config = DESC_BTS(2) | DESC_DS | align;
+		desc->n_addr = txb->dma_desc + sizeof(txd->desc[0]);
+		desc->config = DESC_BTS(2) | DESC_DS | align;
 
-		dma++;
+		desc++;
 	}
 
-	dma->s_addr = dma_addr;
-	dma->n_addr = priv->tx_bufs[next].dma_desc;
-	dma->config = DESC_BTS(2) | DESC_DS | DESC_EOF | dma_len;
+	desc->s_addr = dma_addr;
+	desc->n_addr = priv->tx_bufs[next].dma_desc;
+	desc->config = DESC_BTS(2) | DESC_DS | DESC_EOF | dma_len;
 
 	if (!skb->xmit_more)
-		dma->config |= DESC_EOC;
+		desc->config |= DESC_EOC;
 
 	txb->skb = skb;
 	txb->dma_addr = dma_addr;
@@ -753,7 +755,7 @@ static void nb8800_set_rx_mode(struct net_device *dev)
 static void nb8800_dma_free(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
-	int i;
+	unsigned int i;
 
 	if (priv->rx_bufs) {
 		for (i = 0; i < RX_DESC_COUNT; i++)
@@ -790,7 +792,7 @@ static void nb8800_dma_reset(struct net_device *dev)
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct nb8800_rx_desc *rxd;
 	struct nb8800_tx_desc *txd;
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < RX_DESC_COUNT; i++) {
 		dma_addr_t rx_dma = priv->rx_desc_dma + i * sizeof(*rxd);
@@ -832,10 +834,10 @@ static void nb8800_dma_reset(struct net_device *dev)
 static int nb8800_dma_init(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
-	int n_rx = RX_DESC_COUNT;
-	int n_tx = TX_DESC_COUNT;
+	unsigned int n_rx = RX_DESC_COUNT;
+	unsigned int n_tx = TX_DESC_COUNT;
+	unsigned int i;
 	int err;
-	int i;
 
 	priv->rx_descs = dma_alloc_coherent(dev->dev.parent, RX_DESC_SIZE,
 					    &priv->rx_desc_dma, GFP_KERNEL);
@@ -884,7 +886,7 @@ static int nb8800_dma_stop(struct net_device *dev)
 	u32 txcr;
 	u32 rxcr;
 	int err;
-	int i;
+	unsigned int i;
 
 	/* wait for tx to finish */
 	err = readl_poll_timeout_atomic(priv->base + NB8800_TXC_CR, txcr,
@@ -899,7 +901,8 @@ static int nb8800_dma_stop(struct net_device *dev)
 	 * descriptors, put the device in loopback mode, and send
 	 * a few dummy frames.  The interrupt handler will ignore
 	 * these since NAPI is disabled and no real frames are in
-	 * the tx queue. */
+	 * the tx queue.
+	 */
 
 	for (i = 0; i < RX_DESC_COUNT; i++)
 		priv->rx_descs[i].desc.config |= DESC_EOC;
@@ -944,7 +947,6 @@ static void nb8800_pause_adv(struct net_device *dev)
 
 	priv->phydev->supported |= adv;
 	priv->phydev->advertising |= adv;
-
 }
 
 static int nb8800_open(struct net_device *dev)
@@ -1168,8 +1170,8 @@ static u32 nb8800_read_stat(struct net_device *dev, int index)
 static void nb8800_get_ethtool_stats(struct net_device *dev,
 				     struct ethtool_stats *estats, u64 *st)
 {
+	unsigned int i;
 	u32 rx, tx;
-	int i;
 
 	for (i = 0; i < NB8800_NUM_STATS / 2; i++) {
 		rx = nb8800_read_stat(dev, i);
@@ -1212,7 +1214,8 @@ static int nb8800_hw_init(struct net_device *dev)
 	nb8800_writeb(priv, NB8800_TX_SDP, 12);
 
 	/* The following three threshold values have been
-	 * experimentally determined for good results. */
+	 * experimentally determined for good results.
+	 */
 
 	/* RX/TX FIFO threshold for partial empty (64-bit entries) */
 	nb8800_writeb(priv, NB8800_PE_THRESHOLD, 0);
@@ -1250,11 +1253,13 @@ static int nb8800_hw_init(struct net_device *dev)
 	nb8800_writel(priv, NB8800_RXC_CR, val);
 
 	/* The rx interrupt can fire before the DMA has completed
-	 * unless a small delay is added.  50 us is hopefully enough. */
+	 * unless a small delay is added.  50 us is hopefully enough.
+	 */
 	priv->rx_itr_irq = clk_get_rate(priv->clk) / 20000;
 
 	/* In NAPI poll mode we want to disable interrupts, but the
-	 * hardware does not permit this.  Delay 10 ms instead. */
+	 * hardware does not permit this.  Delay 10 ms instead.
+	 */
 	priv->rx_itr_poll = clk_get_rate(priv->clk) / 100;
 
 	nb8800_writel(priv, NB8800_RX_ITR, priv->rx_itr_irq);
@@ -1340,7 +1345,8 @@ static int nb8800_tango4_init(struct net_device *dev)
 		return err;
 
 	/* On tango4 interrupt on DMA completion per frame works and gives
-	 * better performance despite generating more rx interrupts. */
+	 * better performance despite generating more rx interrupts.
+	 */
 
 	/* Disable unnecessary interrupt on rx completion */
 	nb8800_clearl(priv, NB8800_RXC_CR, RCR_RFI(7));
