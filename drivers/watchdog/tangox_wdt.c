@@ -151,6 +151,15 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 
 	writel(WD_CONFIG_XTAL_IN, dev->base + WD_CONFIG);
 
+	/*
+	 * Mark as active and restart with configured timeout if
+	 * already running.
+	 */
+	if (readl(dev->base + WD_COUNTER)) {
+		set_bit(WDOG_ACTIVE, &dev->wdt.status);
+		tangox_wdt_start(&dev->wdt);
+	}
+
 	err = watchdog_register_device(&dev->wdt);
 	if (err)
 		return err;
