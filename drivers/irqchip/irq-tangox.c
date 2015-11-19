@@ -184,7 +184,7 @@ static int __init tangox_irq_init(void __iomem *base, struct device_node *node)
 
 	irq = irq_of_parse_and_map(node, 0);
 	if (!irq)
-		panic("Failed to get IRQ");
+		panic("%s: failed to get IRQ", node->name);
 
 	if (of_property_read_u32(node, "reg", &ctl))
 		panic("%s: failed to get reg base", node->name);
@@ -198,12 +198,12 @@ static int __init tangox_irq_init(void __iomem *base, struct device_node *node)
 
 	dom = irq_domain_add_linear(node, 64, &irq_generic_chip_ops, chip);
 	if (!dom)
-		panic("Failed to create irqdomain");
+		panic("%s: failed to create irqdomain", node->name);
 
 	err = irq_alloc_domain_generic_chips(dom, 32, 2, name, handle_level_irq,
 					     0, 0, 0);
 	if (err)
-		panic("Failed to allocate irqchip");
+		panic("%s: failed to allocate irqchip", node->name);
 
 	tangox_irq_domain_init(dom);
 
