@@ -44,27 +44,27 @@ static int nb8800_dma_stop(struct net_device *dev);
 
 static inline u8 nb8800_readb(struct nb8800_priv *priv, int reg)
 {
-	return readb(priv->base + reg);
+	return readb_relaxed(priv->base + reg);
 }
 
 static inline u32 nb8800_readl(struct nb8800_priv *priv, int reg)
 {
-	return readl(priv->base + reg);
+	return readl_relaxed(priv->base + reg);
 }
 
 static inline void nb8800_writeb(struct nb8800_priv *priv, int reg, u8 val)
 {
-	writeb(val, priv->base + reg);
+	writeb_relaxed(val, priv->base + reg);
 }
 
 static inline void nb8800_writew(struct nb8800_priv *priv, int reg, u16 val)
 {
-	writew(val, priv->base + reg);
+	writew_relaxed(val, priv->base + reg);
 }
 
 static inline void nb8800_writel(struct nb8800_priv *priv, int reg, u32 val)
 {
-	writel(val, priv->base + reg);
+	writel_relaxed(val, priv->base + reg);
 }
 
 static inline void nb8800_maskb(struct nb8800_priv *priv, int reg,
