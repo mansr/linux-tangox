@@ -295,9 +295,9 @@ static int nb8800_poll(struct napi_struct *napi, int budget)
 	struct net_device *dev = napi->dev;
 	struct nb8800_priv *priv = netdev_priv(dev);
 	struct nb8800_rx_desc *rxd;
+	unsigned int last = priv->rx_eoc;
+	unsigned int next;
 	int work = 0;
-	int last = priv->rx_eoc;
-	int next;
 
 	nb8800_tx_done(dev);
 
@@ -403,8 +403,8 @@ static int nb8800_xmit(struct sk_buff *skb, struct net_device *dev)
 	struct nb8800_dma_desc *desc;
 	dma_addr_t dma_addr;
 	unsigned int dma_len;
-	int align;
-	int next;
+	unsigned int align;
+	unsigned int next;
 
 	if (atomic_read(&priv->tx_free) <= NB8800_DESC_LOW) {
 		netif_stop_queue(dev);
@@ -496,8 +496,8 @@ static void nb8800_tx_error(struct net_device *dev, u32 report)
 static void nb8800_tx_done(struct net_device *dev)
 {
 	struct nb8800_priv *priv = netdev_priv(dev);
-	int limit = priv->tx_next;
-	int done = priv->tx_done;
+	unsigned int limit = priv->tx_next;
+	unsigned int done = priv->tx_done;
 	unsigned int packets = 0;
 	unsigned int len = 0;
 
