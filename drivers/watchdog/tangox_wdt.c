@@ -117,6 +117,7 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 {
 	struct tangox_wdt_device *dev;
 	struct resource *res;
+	u32 config;
 	int err;
 
 	dev = devm_kzalloc(&pdev->dev, sizeof(*dev), GFP_KERNEL);
@@ -148,6 +149,14 @@ static int tangox_wdt_probe(struct platform_device *pdev)
 	watchdog_init_timeout(&dev->wdt, timeout, &pdev->dev);
 	watchdog_set_nowayout(&dev->wdt, nowayout);
 	watchdog_set_drvdata(&dev->wdt, dev);
+
+	/*
+	 * Deactivate counter if disable bit is set to avoid
+	 * accidental reset.
+	 */
+	config = readl(dev->base + WD_CONFIG);
+	if (config & WD_CONFIG_DISABLE)
+		writel(0, dev->base + WD_COUNTER);
 
 	writel(WD_CONFIG_XTAL_IN, dev->base + WD_CONFIG);
 
