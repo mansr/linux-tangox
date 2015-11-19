@@ -472,36 +472,33 @@
 		};
 
 		intc: interrupt-controller@6e000 {
-			compatible = "sigma,smp8640-intc";
-			reg = <0x6e000 0x1000>;
-			ranges = <0x0 0x6e000 0x1000>;
+			compatible = "sigma,smp8642-intc";
+			reg = <0x6e000 0x400>;
+			ranges = <0x0 0x6e000 0x400>;
 			interrupt-parent = <&gic>;
 			interrupt-controller;
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			irq0: interrupt-controller@000 {
+			irq0: irq0 {
 				reg = <0x000 0x100>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
-				label = "IRQ0";
 			};
 
-			irq1: interrupt-controller@100 {
+			irq1: irq1 {
 				reg = <0x100 0x100>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
-				label = "IRQ1";
 			};
 
-			irq2: interrupt-controller@300 {
+			irq2: irq2 {
 				reg = <0x300 0x100>;
 				interrupt-controller;
 				#interrupt-cells = <2>;
 				interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
-				label = "IRQ2";
 			};
 		};
 	};
