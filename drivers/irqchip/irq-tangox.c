@@ -48,12 +48,12 @@ struct tangox_irq_chip {
 
 static inline u32 intc_readl(struct tangox_irq_chip *chip, int reg)
 {
-	return readl(chip->base + reg);
+	return readl_relaxed(chip->base + reg);
 }
 
 static inline void intc_writel(struct tangox_irq_chip *chip, int reg, u32 val)
 {
-	writel(val, chip->base + reg);
+	writel_relaxed(val, chip->base + reg);
 }
 
 static void tangox_dispatch_irqs(struct irq_domain *dom, unsigned int status,
