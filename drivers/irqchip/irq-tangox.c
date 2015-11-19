@@ -229,5 +229,4 @@ static int __init tangox_of_irq_init(struct device_node *node,
 
 	return 0;
 }
-
-IRQCHIP_DECLARE(tangox_intc, "sigma,smp8640-intc", tangox_of_irq_init);
+IRQCHIP_DECLARE(tangox_intc, "sigma,smp8642-intc", tangox_of_irq_init);
