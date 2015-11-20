@@ -65,7 +65,8 @@ static void tangox_dispatch_irqs(struct irq_domain *dom, unsigned int status,
 	while (status) {
 		hwirq = __ffs(status);
 		virq = irq_find_mapping(dom, base + hwirq);
-		generic_handle_irq(virq);
+		if (virq)
+			generic_handle_irq(virq);
 		status &= ~BIT(hwirq);
 	}
 }
