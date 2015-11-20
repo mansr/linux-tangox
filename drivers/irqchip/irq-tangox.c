@@ -179,10 +179,8 @@ static int __init tangox_irq_init(void __iomem *base, struct resource *baseres,
 	struct tangox_irq_chip *chip;
 	struct irq_domain *dom;
 	struct resource res;
-	const char *name;
 	int irq;
 	int err;
-	int i;
 
 	irq = irq_of_parse_and_map(node, 0);
 	if (!irq)
@@ -192,9 +190,6 @@ static int __init tangox_irq_init(void __iomem *base, struct resource *baseres,
 	if (err)
 		panic("%s: failed to get address", node->name);
 
-	if (of_property_read_string(node, "label", &name))
-		name = node->name;
-
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
 	chip->ctl = res.start - baseres->start;
 	chip->base = base;
@@ -203,15 +198,12 @@ static int __init tangox_irq_init(void __iomem *base, struct resource *baseres,
 	if (!dom)
 		panic("%s: failed to create irqdomain", node->name);
 
-	err = irq_alloc_domain_generic_chips(dom, 32, 2, name, handle_level_irq,
-					     0, 0, 0);
+	err = irq_alloc_domain_generic_chips(dom, 32, 2, node->name,
+					     handle_level_irq, 0, 0, 0);
 	if (err)
 		panic("%s: failed to allocate irqchip", node->name);
 
 	tangox_irq_domain_init(dom);
-
-	for (i = 0; i < 64; i++)
-		irq_create_mapping(dom, i);
 
 	irq_set_chained_handler(irq, tangox_irq_handler);
 	irq_set_handler_data(irq, dom);
