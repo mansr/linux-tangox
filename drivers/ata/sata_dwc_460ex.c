@@ -136,12 +136,22 @@ enum {
 #define SATA_DWC_DBTSR_MWR(size)	(((size)/4) & SATA_DWC_TXFIFO_DEPTH)
 #define SATA_DWC_DBTSR_MRD(size)	((((size)/4) & SATA_DWC_RXFIFO_DEPTH)\
 						 << 16)
+
+struct sata_dwc_device;
+
+struct sata_dwc_ops {
+	int (*init)(struct platform_device *, struct sata_dwc_device *);
+	void (*dma_issue)(struct sata_dwc_device *, struct ata_queued_cmd *);
+};
+
 struct sata_dwc_device {
 	struct device		*dev;		/* generic device struct */
 	struct ata_probe_ent	*pe;		/* ptr to probe-ent */
 	struct ata_host		*host;
 	struct sata_dwc_regs __iomem *sata_dwc_regs;	/* DW SATA specific */
 	u32			sactive_issued;
+	void			*ext_data;
+	const struct sata_dwc_ops *ops;
 	struct phy		*phy;
 	phys_addr_t		dmadr;
 #ifdef CONFIG_SATA_DWC_OLD_DMA
@@ -1029,16 +1039,18 @@ static void sata_dwc_bmdma_start_by_tag(struct ata_queued_cmd *qc, u8 tag)
 				__func__, reg);
 		}
 
+		dmaengine_submit(desc);
+		dma_async_issue_pending(hsdevp->chan);
+
+		if (hsdev->ops && hsdev->ops->dma_issue)
+			hsdev->ops->dma_issue(hsdev, qc);
+
 		if (dir == DMA_TO_DEVICE)
 			sata_dwc_writel(&hsdev->sata_dwc_regs->dmacr,
 					SATA_DWC_DMACR_TXCHEN);
 		else
 			sata_dwc_writel(&hsdev->sata_dwc_regs->dmacr,
 					SATA_DWC_DMACR_RXCHEN);
-
-		/* Enable AHB DMA transfer on the specified channel */
-		dmaengine_submit(desc);
-		dma_async_issue_pending(hsdevp->chan);
 	}
 }
 
@@ -1184,6 +1196,121 @@ static const struct ata_port_info sata_dwc_port_info[] = {
 	},
 };
 
+#ifdef CONFIG_SATA_DWC_TANGO
+struct sata_dwc_tango_dma {
+	u32 burst_len;
+	u32 block_cnt;
+	u32 intr;
+};
+
+struct sata_dwc_tango_ext {
+	struct sata_dwc_tango_dma __iomem	*dma_regs;
+	void __iomem				*cipher_ctl;
+};
+
+static irqreturn_t sata_dwc_tango_irq(int irq, void *dev)
+{
+	struct sata_dwc_device *hsdev = dev;
+	struct ata_host *host = hsdev->host;
+	struct ata_port *ap = host->ports[0];
+	struct sata_dwc_device_port *hsdevp = HSDEVP_FROM_AP(ap);
+	struct sata_dwc_tango_ext *ext = hsdev->ext_data;
+	u32 tag = ap->link.active_tag;
+	irqreturn_t ret = IRQ_NONE;
+	u32 intr;
+
+	intr = sata_dwc_readl(&ext->dma_regs->intr);
+
+	if (intr) {
+		sata_dwc_writel(&ext->dma_regs->intr, 0);
+		dma_async_complete(hsdevp->chan, hsdevp->desc[tag]);
+		ret = IRQ_HANDLED;
+	}
+
+	return ret;
+}
+
+static int sata_dwc_tango_init(struct platform_device *pdev,
+			       struct sata_dwc_device *hsdev)
+{
+	struct resource *res;
+	struct sata_dwc_tango_ext *ext;
+	int irq;
+	int err;
+
+	ext = devm_kzalloc(&pdev->dev, sizeof(*ext), GFP_KERNEL);
+	if (!ext)
+		return -ENOMEM;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	ext->dma_regs = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(ext->dma_regs))
+		return PTR_ERR(ext->dma_regs);
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	if (res) {
+		ext->cipher_ctl = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(ext->cipher_ctl))
+			return PTR_ERR(ext->cipher_ctl);
+	}
+
+	irq = platform_get_irq(pdev, 1);
+	if (irq < 0)
+		return irq;
+
+	err = devm_request_irq(&pdev->dev, irq, sata_dwc_tango_irq, 0,
+			       dev_name(&pdev->dev), hsdev);
+	if (err)
+		return err;
+
+	hsdev->ext_data = ext;
+
+	sata_dwc_writel(&ext->dma_regs->burst_len, AHB_DMA_BRST_DFLT / 4);
+
+	return 0;
+}
+
+static unsigned long get_dma_len(struct ata_queued_cmd *qc)
+{
+	struct scatterlist *sg;
+	unsigned long len = 0;
+	unsigned int si;
+
+	for_each_sg(qc->sg, sg, qc->n_elem, si)
+		len += sg_dma_len(sg);
+
+	return len;
+}
+
+static void sata_dwc_tango_dma_issue(struct sata_dwc_device *hsdev,
+				     struct ata_queued_cmd *qc)
+{
+	struct sata_dwc_tango_ext *ext = hsdev->ext_data;
+
+	if (ext->cipher_ctl) {
+		u32 val = qc->dma_dir == DMA_TO_DEVICE ? 0x10 : 0;
+		sata_dwc_writel(ext->cipher_ctl, val);
+	}
+
+	sata_dwc_writel(&ext->dma_regs->block_cnt, get_dma_len(qc) / 4);
+	wmb();
+}
+
+static struct sata_dwc_ops sata_dwc_tango_ops = {
+	.init		= sata_dwc_tango_init,
+	.dma_issue	= sata_dwc_tango_dma_issue,
+};
+#endif
+
+static const struct of_device_id sata_dwc_match[] = {
+	{ .compatible = "amcc,sata-460ex", },
+#ifdef CONFIG_SATA_DWC_TANGO
+	{ .compatible = "sigma,smp8642-sata", .data = &sata_dwc_tango_ops, },
+#endif
+	{}
+};
+MODULE_DEVICE_TABLE(of, sata_dwc_match);
+
 static int sata_dwc_probe(struct platform_device *ofdev)
 {
 	struct sata_dwc_device *hsdev;
@@ -1196,6 +1323,7 @@ static int sata_dwc_probe(struct platform_device *ofdev)
 	const struct ata_port_info *ppi[] = { &pi, NULL };
 	struct device_node *np = ofdev->dev.of_node;
 	struct resource *res;
+	const struct of_device_id *match;
 
 	/* Allocate DWC SATA device */
 	host = ata_host_alloc_pinfo(&ofdev->dev, ppi, SATA_DWC_MAX_PORTS);
@@ -1239,6 +1367,16 @@ static int sata_dwc_probe(struct platform_device *ofdev)
 		dev_err(&ofdev->dev, "no SATA DMA irq\n");
 		err = -ENODEV;
 		goto error_out;
+	}
+
+	match = of_match_device(sata_dwc_match, hsdev->dev);
+	if (match)
+		hsdev->ops = match->data;
+
+	if (hsdev->ops && hsdev->ops->init) {
+		err = hsdev->ops->init(ofdev, hsdev);
+		if (err)
+			goto error_out;
 	}
 
 #ifdef CONFIG_SATA_DWC_OLD_DMA
@@ -1295,12 +1433,6 @@ static int sata_dwc_remove(struct platform_device *ofdev)
 	dev_dbg(&ofdev->dev, "done\n");
 	return 0;
 }
-
-static const struct of_device_id sata_dwc_match[] = {
-	{ .compatible = "amcc,sata-460ex", },
-	{}
-};
-MODULE_DEVICE_TABLE(of, sata_dwc_match);
 
 static struct platform_driver sata_dwc_driver = {
 	.driver = {

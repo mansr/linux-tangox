@@ -321,6 +321,14 @@ config SATA_DWC
 
 	  If unsure, say N.
 
+config SATA_DWC_TANGO
+	bool "Support Sigma Designs SMP86xx/SMP87xx"
+	depends on SATA_DWC && ARCH_TANGO
+	default y
+	help
+	  This option enables support for the SATA controller of the
+	  Sigma Designs SMP86xx/SMP87xx chips.
+
 config SATA_DWC_OLD_DMA
 	bool "Support old device trees"
 	depends on SATA_DWC
