@@ -170,14 +170,11 @@ static int xlr_i2c_tx(struct xlr_i2c_private *priv,  u16 len,
 	unsigned long timeout, stoptime, checktime;
 	u32 i2c_status;
 	int pos, timedout;
-	u8 offset, byte;
+	u8 offset;
 	u32 xfer;
 
-	if (!len) {
-		byte = 0;
-		buf = &byte;
-		len = 1;
-	}
+	if (!len)
+		return -EOPNOTSUPP;
 
 	offset = buf[0];
 	xlr_i2c_wreg(priv->iobase, XLR_I2C_ADDR, offset);
@@ -243,13 +240,9 @@ static int xlr_i2c_rx(struct xlr_i2c_private *priv, u16 len, u8 *buf, u16 addr)
 	u32 i2c_status;
 	unsigned long timeout, stoptime, checktime;
 	int nbytes, timedout;
-	u8 byte;
 
-	if (!len) {
-		byte = 0;
-		buf = &byte;
-		len = 1;
-	}
+	if (!len)
+		return -EOPNOTSUPP;
 
 	xlr_i2c_wreg(priv->iobase, XLR_I2C_CFG,
 			XLR_I2C_CFG_NOADDR | priv->cfg->cfg_extra);
@@ -339,7 +332,7 @@ static int xlr_i2c_xfer(struct i2c_adapter *adap,
 static u32 xlr_func(struct i2c_adapter *adap)
 {
 	/* Emulate SMBUS over I2C */
-	return I2C_FUNC_SMBUS_EMUL | I2C_FUNC_I2C;
+	return (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK) | I2C_FUNC_I2C;
 }
 
 static struct i2c_algorithm xlr_i2c_algo = {
