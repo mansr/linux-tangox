@@ -371,6 +371,9 @@ static struct dma_async_tx_descriptor *tangox_dma_prep_slave_sg(
 	struct scatterlist *sg;
 	unsigned int i;
 
+	if (!is_slave_direction(direction) || !sg_len)
+		return NULL;
+
 	desc = tangox_dma_alloc_desc(sg_len);
 	if (!desc)
 		return NULL;
