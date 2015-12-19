@@ -19,6 +19,7 @@
 #define CTL0			0x00
 #define CTL0_PHY_RESET		BIT(0)
 #define CTL0_HOST_RESET		BIT(1)
+#define CTL0_PHY_SUSPEND	BIT(7)
 
 #define CTL1			0x04
 #define STATUS			0x08
@@ -43,11 +44,11 @@ static int tangox_usb_phy_init(struct phy *genphy)
 	if (err)
 		return err;
 
-	val = BIT(13) | BIT(7) | CTL0_HOST_RESET | CTL0_PHY_RESET;
+	val = BIT(13) | CTL0_PHY_SUSPEND | CTL0_HOST_RESET | CTL0_PHY_RESET;
 	writel(val, phy->base);
 	msleep(5);
 
-	val &= ~BIT(7);
+	val &= ~CTL0_PHY_SUSPEND;
 	writel(val, phy->base);
 	msleep(5);
 
