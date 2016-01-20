@@ -133,6 +133,11 @@ config ST_IRQCHIP
 	help
 	  Enables SysCfg Controlled IRQs on STi based platforms.
 
+config TANGO_IRQ
+	bool
+	select IRQ_DOMAIN
+	select GENERIC_IRQ_CHIP
+
 config TB10X_IRQC
 	bool
 	select IRQ_DOMAIN
@@ -193,8 +198,3 @@ config IRQ_MXS
 	def_bool y if MACH_ASM9260 || ARCH_MXS
 	select IRQ_DOMAIN
 	select STMP_DEVICE
-
-config TANGOX_IRQ
-	bool
-	select IRQ_DOMAIN
-	select GENERIC_IRQ_CHIP

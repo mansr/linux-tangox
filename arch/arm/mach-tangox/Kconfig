@@ -8,4 +8,4 @@ config ARCH_TANGOX
 	select COMMON_CLK
 	select HAVE_ARM_SCU
 	select HAVE_ARM_TWD if SMP
-	select TANGOX_IRQ
+	select TANGO_IRQ
