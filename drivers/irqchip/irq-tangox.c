@@ -172,12 +172,13 @@ static void __init tangox_irq_domain_init(struct irq_domain *dom)
 	}
 }
 
-static int __init tangox_irq_init(void __iomem *base, struct device_node *node)
+static int __init tangox_irq_init(void __iomem *base, struct resource *baseres,
+				  struct device_node *node)
 {
 	struct tangox_irq_chip *chip;
 	struct irq_domain *dom;
+	struct resource res;
 	const char *name;
-	u32 ctl;
 	int irq;
 	int err;
 	int i;
@@ -186,14 +187,15 @@ static int __init tangox_irq_init(void __iomem *base, struct device_node *node)
 	if (!irq)
 		panic("%s: failed to get IRQ", node->name);
 
-	if (of_property_read_u32(node, "reg", &ctl))
-		panic("%s: failed to get reg base", node->name);
+	err = of_address_to_resource(node, 0, &res);
+	if (err)
+		panic("%s: failed to get address", node->name);
 
 	if (of_property_read_string(node, "label", &name))
 		name = node->name;
 
 	chip = kzalloc(sizeof(*chip), GFP_KERNEL);
-	chip->ctl = ctl;
+	chip->ctl = res.start - baseres->start;
 	chip->base = base;
 
 	dom = irq_domain_add_linear(node, 64, &irq_generic_chip_ops, chip);
@@ -220,12 +222,17 @@ static int __init tangox_of_irq_init(struct device_node *node,
 				     struct device_node *parent)
 {
 	struct device_node *c;
+	struct resource res;
 	void __iomem *base;
 
 	base = of_iomap(node, 0);
+	if (!base)
+		panic("%s: of_iomap failed", node->name);
+
+	of_address_to_resource(node, 0, &res);
 
 	for_each_child_of_node(node, c)
-		tangox_irq_init(base, c);
+		tangox_irq_init(base, &res, c);
 
 	return 0;
 }
