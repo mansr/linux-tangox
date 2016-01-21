@@ -34,9 +34,10 @@
 #define DMA_STRIDE	DMA_ADDR2
 #define DMA_CMD		12
 
-#define DMA_MODE_SINGLE	1
-#define DMA_MODE_DOUBLE	2
-#define DMA_MODE_RECT	3
+#define DMA_MODE_SINGLE	(1 << 0)
+#define DMA_MODE_DOUBLE	(2 << 0)
+#define DMA_MODE_RECT	(3 << 0)
+#define DMA_LAST_XFER	(1 << 2)
 
 struct tangox_dma_sg {
 	dma_addr_t addr;
@@ -151,7 +152,7 @@ static int tangox_dma_issue_single(struct tangox_dma_pchan *pchan,
 	writel(sg->addr, pchan->base + DMA_ADDR);
 	writel(sg->len, pchan->base + DMA_COUNT);
 	wmb();
-	writel(flags << 2 | DMA_MODE_SINGLE, pchan->base + DMA_CMD);
+	writel(flags | DMA_MODE_SINGLE, pchan->base + DMA_CMD);
 	wmb();
 
 	return sg->len;
@@ -166,7 +167,7 @@ static int tangox_dma_issue_double(struct tangox_dma_pchan *pchan,
 	writel(sg->addr + TANGOX_DMA_MAX_LEN, pchan->base + DMA_ADDR2);
 	writel(TANGOX_DMA_MAX_LEN | len1 << 16, pchan->base + DMA_COUNT);
 	wmb();
-	writel(flags << 2 | DMA_MODE_DOUBLE, pchan->base + DMA_CMD);
+	writel(flags | DMA_MODE_DOUBLE, pchan->base + DMA_CMD);
 	wmb();
 
 	return sg->len;
@@ -181,14 +182,14 @@ static int tangox_dma_issue_rect(struct tangox_dma_pchan *pchan,
 
 	if (count > TANGOX_DMA_MAX_LEN) {
 		count = TANGOX_DMA_MAX_LEN;
-		flags &= ~1;
+		flags &= ~DMA_LAST_XFER;
 	}
 
 	writel(sg->addr, pchan->base + DMA_ADDR);
 	writel(width, pchan->base + DMA_STRIDE);
 	writel(width | count << 16, pchan->base + DMA_COUNT);
 	wmb();
-	writel(flags << 2 | DMA_MODE_RECT, pchan->base + DMA_CMD);
+	writel(flags | DMA_MODE_RECT, pchan->base + DMA_CMD);
 	wmb();
 
 	return count << shift;
@@ -197,12 +198,10 @@ static int tangox_dma_issue_rect(struct tangox_dma_pchan *pchan,
 static int tangox_dma_pchan_issue(struct tangox_dma_pchan *pchan,
 				  struct tangox_dma_sg *sg)
 {
-	int flags;
+	int flags = 0;
 
 	if (pchan->next_sg == pchan->desc->num_sgs - 1)
-		flags = 1;
-	else
-		flags = 0;
+		flags = DMA_LAST_XFER;
 
 	if (sg->len <= TANGOX_DMA_MAX_LEN)
 		return tangox_dma_issue_single(pchan, sg, flags);
