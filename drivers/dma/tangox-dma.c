@@ -23,7 +23,7 @@
 
 #include "virt-dma.h"
 
-#define TANGOX_DMA_MAX_LEN 0x1fff
+#define TANGOX_DMA_MAX_LEN 0x1000u
 
 #define TANGOX_DMA_MAX_CHANS 6
 #define TANGOX_DMA_MAX_PCHANS 6
@@ -149,41 +149,48 @@ static void tangox_dma_pchan_detach(struct tangox_dma_pchan *pchan)
 static int tangox_dma_issue_single(struct tangox_dma_pchan *pchan,
 				   struct tangox_dma_sg *sg, int flags)
 {
+	unsigned int len = min(sg->len, TANGOX_DMA_MAX_LEN);
+
+	if (len < sg->len)
+		flags &= ~DMA_LAST_XFER;
+
 	writel(sg->addr, pchan->base + DMA_ADDR);
-	writel(sg->len, pchan->base + DMA_COUNT);
+	writel(len, pchan->base + DMA_COUNT);
 	wmb();
 	writel(flags | DMA_MODE_SINGLE, pchan->base + DMA_CMD);
 	wmb();
 
-	return sg->len;
+	return len;
 }
 
 static int tangox_dma_issue_double(struct tangox_dma_pchan *pchan,
 				   struct tangox_dma_sg *sg, int flags)
 {
-	unsigned int len1 = sg->len - TANGOX_DMA_MAX_LEN;
+	unsigned int len = min(sg->len, TANGOX_DMA_MAX_LEN);
+	unsigned int len1 = min(sg->len - len, TANGOX_DMA_MAX_LEN);
+
+	if (len + len1 < sg->len)
+		flags &= ~DMA_LAST_XFER;
 
 	writel(sg->addr, pchan->base + DMA_ADDR);
-	writel(sg->addr + TANGOX_DMA_MAX_LEN, pchan->base + DMA_ADDR2);
-	writel(TANGOX_DMA_MAX_LEN | len1 << 16, pchan->base + DMA_COUNT);
+	writel(sg->addr + len, pchan->base + DMA_ADDR2);
+	writel(len | len1 << 16, pchan->base + DMA_COUNT);
 	wmb();
 	writel(flags | DMA_MODE_DOUBLE, pchan->base + DMA_CMD);
 	wmb();
 
-	return sg->len;
+	return len + len1;
 }
 
 static int tangox_dma_issue_rect(struct tangox_dma_pchan *pchan,
 				 struct tangox_dma_sg *sg, int flags)
 {
-	int shift = min(__ffs(sg->len), 12ul);
-	int count = sg->len >> shift;
-	int width = 1 << shift;
+	unsigned int shift = min(__ffs(sg->len), 12ul);
+	unsigned int count = min(sg->len >> shift, TANGOX_DMA_MAX_LEN);
+	unsigned int width = 1 << shift;
 
-	if (count > TANGOX_DMA_MAX_LEN) {
-		count = TANGOX_DMA_MAX_LEN;
+	if (count << shift < sg->len)
 		flags &= ~DMA_LAST_XFER;
-	}
 
 	writel(sg->addr, pchan->base + DMA_ADDR);
 	writel(width, pchan->base + DMA_STRIDE);
