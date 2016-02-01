@@ -38,6 +38,7 @@
 #include <linux/phy/phy.h>
 #include <linux/libata.h>
 #include <linux/slab.h>
+#include <linux/bitops.h>
 
 #include "libata.h"
 
@@ -444,11 +445,6 @@ static void clear_interrupt_bit(struct sata_dwc_device *hsdev, u32 bit)
 			sata_dwc_readl(&hsdev->sata_dwc_regs->intpr));
 }
 
-static u32 qcmd_tag_to_mask(u8 tag)
-{
-	return 0x00000001 << (tag & 0x1f);
-}
-
 /* See ahci.c */
 static void sata_dwc_error_intr(struct ata_port *ap,
 				struct sata_dwc_device *hsdev, uint intpr)
@@ -541,7 +537,7 @@ static irqreturn_t sata_dwc_isr(int irq, void *dev_instance)
 		if (hsdevp->cmd_issued[tag] != SATA_DWC_CMD_ISSUED_PEND)
 			dev_warn(ap->dev, "CMD tag=%d not pending?\n", tag);
 
-		hsdev->sactive_issued |= qcmd_tag_to_mask(tag);
+		hsdev->sactive_issued |= BIT(tag);
 
 		qc = ata_qc_from_tag(ap, tag);
 		/*
@@ -782,7 +778,6 @@ static void sata_dwc_dma_xfer_complete(struct ata_port *ap)
 static int sata_dwc_qc_complete(struct ata_port *ap, struct ata_queued_cmd *qc)
 {
 	u8 status = 0;
-	u32 mask = 0x0;
 	u8 tag = qc->tag;
 	struct sata_dwc_device *hsdev = HSDEV_FROM_AP(ap);
 	struct sata_dwc_device_port *hsdevp = HSDEVP_FROM_AP(ap);
@@ -796,8 +791,7 @@ static int sata_dwc_qc_complete(struct ata_port *ap, struct ata_queued_cmd *qc)
 		qc->tf.command, status, ap->print_id, qc->tf.protocol);
 
 	/* clear active bit */
-	mask = (~(qcmd_tag_to_mask(tag)));
-	hsdev->sactive_issued = hsdev->sactive_issued & mask;
+	hsdev->sactive_issued &= ~BIT(tag);
 	ata_qc_complete(qc);
 	return 0;
 }
