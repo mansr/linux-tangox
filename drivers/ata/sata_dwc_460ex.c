@@ -141,7 +141,6 @@ struct sata_dwc_device {
 	struct ata_host		*host;
 	struct sata_dwc_regs __iomem *sata_dwc_regs;	/* DW SATA specific */
 	u32			sactive_issued;
-	u32			sactive_queued;
 	struct phy		*phy;
 	phys_addr_t		dmadr;
 #ifdef CONFIG_SATA_DWC_OLD_DMA
@@ -791,7 +790,6 @@ static int sata_dwc_qc_complete(struct ata_port *ap, struct ata_queued_cmd *qc,
 	u8 tag = qc->tag;
 	struct sata_dwc_device *hsdev = HSDEV_FROM_AP(ap);
 	struct sata_dwc_device_port *hsdevp = HSDEVP_FROM_AP(ap);
-	hsdev->sactive_queued = 0;
 	dev_dbg(ap->dev, "%s checkstatus? %x\n", __func__, check_status);
 
 	if (hsdevp->dma_pending[tag] == SATA_DWC_DMA_PENDING_TX)
@@ -804,7 +802,6 @@ static int sata_dwc_qc_complete(struct ata_port *ap, struct ata_queued_cmd *qc,
 
 	/* clear active bit */
 	mask = (~(qcmd_tag_to_mask(tag)));
-	hsdev->sactive_queued = hsdev->sactive_queued & mask;
 	hsdev->sactive_issued = hsdev->sactive_issued & mask;
 	ata_qc_complete(qc);
 	return 0;
