@@ -165,11 +165,11 @@ struct sata_dwc_device_port {
 /*
  * Commonly used DWC SATA driver macros
  */
-#define HSDEV_FROM_HOST(host)	((struct sata_dwc_device *)(host)->private_data)
-#define HSDEV_FROM_AP(ap)	((struct sata_dwc_device *)(ap)->host->private_data)
-#define HSDEVP_FROM_AP(ap)	((struct sata_dwc_device_port *)(ap)->private_data)
-#define HSDEV_FROM_QC(qc)	((struct sata_dwc_device *)(qc)->ap->host->private_data)
-#define HSDEV_FROM_HSDEVP(p)	((struct sata_dwc_device *)(p)->hsdev)
+#define HSDEV_FROM_HOST(host)	((host)->private_data)
+#define HSDEV_FROM_AP(ap)	((ap)->host->private_data)
+#define HSDEVP_FROM_AP(ap)	((ap)->private_data)
+#define HSDEV_FROM_QC(qc)	((qc)->ap->host->private_data)
+#define HSDEV_FROM_HSDEVP(p)	((p)->hsdev)
 
 enum {
 	SATA_DWC_CMD_ISSUED_NOT		= 0,
@@ -302,7 +302,7 @@ static const char *get_prot_descript(u8 protocol)
 
 static const char *get_dma_dir_descript(int dma_dir)
 {
-	switch ((enum dma_data_direction)dma_dir) {
+	switch (dma_dir) {
 	case DMA_BIDIRECTIONAL:
 		return "bidirectional";
 	case DMA_TO_DEVICE:
@@ -333,7 +333,7 @@ static void dma_dwc_xfer_done(void *hsdev_instance)
 {
 	unsigned long flags;
 	struct sata_dwc_device *hsdev = hsdev_instance;
-	struct ata_host *host = (struct ata_host *)hsdev->host;
+	struct ata_host *host = hsdev->host;
 	struct ata_port *ap;
 	struct sata_dwc_device_port *hsdevp;
 	u8 tag = 0;
@@ -505,7 +505,7 @@ static void sata_dwc_error_intr(struct ata_port *ap,
  */
 static irqreturn_t sata_dwc_isr(int irq, void *dev_instance)
 {
-	struct ata_host *host = (struct ata_host *)dev_instance;
+	struct ata_host *host = dev_instance;
 	struct sata_dwc_device *hsdev = HSDEV_FROM_HOST(host);
 	struct ata_port *ap;
 	struct ata_queued_cmd *qc;
@@ -538,7 +538,7 @@ static irqreturn_t sata_dwc_isr(int irq, void *dev_instance)
 	if (intpr & SATA_DWC_INTPR_NEWFP) {
 		clear_interrupt_bit(hsdev, SATA_DWC_INTPR_NEWFP);
 
-		tag = (u8)(sata_dwc_readl(&hsdev->sata_dwc_regs->fptagr));
+		tag = sata_dwc_readl(&hsdev->sata_dwc_regs->fptagr);
 		dev_dbg(ap->dev, "%s: NEWFP tag=%d\n", __func__, tag);
 		if (hsdevp->cmd_issued[tag] != SATA_DWC_CMD_ISSUED_PEND)
 			dev_warn(ap->dev, "CMD tag=%d not pending?\n", tag);
