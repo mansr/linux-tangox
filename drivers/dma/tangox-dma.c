@@ -469,6 +469,13 @@ static int tangox_dma_probe(struct platform_device *pdev)
 	if (!dmadev)
 		return -ENOMEM;
 
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	dmadev->sbox_base = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(dmadev->sbox_base))
+		return PTR_ERR(dmadev->sbox_base);
+
+	tangox_dma_reset(dmadev);
+
 	dd = &dmadev->ddev;
 
 	dma_cap_set(DMA_SLAVE, dd->cap_mask);
@@ -533,16 +540,6 @@ static int tangox_dma_probe(struct platform_device *pdev)
 		if (++dmadev->nr_pchans == TANGOX_DMA_MAX_PCHANS)
 			break;
 	}
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
-		return -EINVAL;
-
-	dmadev->sbox_base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(dmadev->sbox_base))
-		return PTR_ERR(dmadev->sbox_base);
-
-	tangox_dma_reset(dmadev);
 
 	err = dma_async_device_register(dd);
 	if (err)
