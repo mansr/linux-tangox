@@ -430,13 +430,13 @@ static int hsata_probe(struct platform_device *pdev)
 	hsdev->membase = devm_ioremap_resource(dev, memres);
 	hsdev->ctl_base = devm_ioremap_resource(dev, ctlres);
 
-	hsdev->dma_chan = dma_request_slave_channel(dev, "sata");
+	hsdev->dma_chan = dma_request_slave_channel(dev, "sata-dma");
 	if (!hsdev->dma_chan) {
 		dev_err(dev, "unable to allocate dma channel\n");
 		return -ENXIO;
 	}
 
-	hsdev->phy = devm_phy_get(dev, "sata");
+	hsdev->phy = devm_phy_get(dev, "sata-phy");
 	if (IS_ERR(hsdev->phy))
 		hsdev->phy = NULL;
 
