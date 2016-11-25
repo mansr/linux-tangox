@@ -351,25 +351,25 @@
 		};
 
 		sata0: sata@23000 {
-			compatible = "sigma,smp8640-sata";
+			compatible = "sigma,smp8642-sata";
 			reg = <0x23000 0x800 0x24000 0xc>;
-			interrupts = <41 IRQ_TYPE_LEVEL_HIGH
-				      42 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <41 IRQ_TYPE_LEVEL_HIGH>,
+				     <42 IRQ_TYPE_LEVEL_HIGH>;
 			dmas = <&dma0 5>;
-			dma-names = "sata";
+			dma-names = "sata-dma";
 			phys = <&sata_phy>;
-			phy-names = "sata";
+			phy-names = "sata-phy";
 		};
 
 		sata1: sata@23800 {
-			compatible = "sigma,smp8640-sata";
+			compatible = "sigma,smp8642-sata";
 			reg = <0x23800 0x800 0x24040 0xc>;
-			interrupts = <54 IRQ_TYPE_LEVEL_HIGH
-				      55 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <54 IRQ_TYPE_LEVEL_HIGH>,
+				     <55 IRQ_TYPE_LEVEL_HIGH>;
 			dmas = <&dma0 8>;
-			dma-names = "sata";
+			dma-names = "sata-dma";
 			phys = <&sata_phy>;
-			phy-names = "sata";
+			phy-names = "sata-phy";
 		};
 
 		sata_phy: phy@2400c {
