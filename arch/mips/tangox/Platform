@@ -2,6 +2,6 @@
 # Sigma Designs SMP86xx boards
 #
 
-platform-$(CONFIG_ARCH_TANGOX) += tangox/
-load-$(CONFIG_ARCH_TANGOX)	:= 0x90000000
-cflags-$(CONFIG_ARCH_TANGOX)	+= -I$(srctree)/arch/mips/include/asm/mach-tango3
+platform-$(CONFIG_ARCH_TANGO)	+= tangox/
+load-$(CONFIG_ARCH_TANGO)	:= 0x90000000
+cflags-$(CONFIG_ARCH_TANGO)	+= -I$(srctree)/arch/mips/include/asm/mach-tango3

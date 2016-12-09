@@ -390,6 +390,6 @@ config IR_SUNXI
 
 config IR_TANGOX
 	tristate "Sigma Designs SMP86xx IR decoder"
-	depends on ARCH_TANGOX
+	depends on ARCH_TANGO
 
 endif #RC_DEVICES

@@ -392,12 +392,12 @@ config PHY_CYGNUS_PCIE
 
 config PHY_TANGOX_USB
 	tristate "SMP86xx USB PHY driver"
-	depends on ARCH_TANGOX
+	depends on ARCH_TANGO
 	select GENERIC_PHY
 
 config PHY_TANGOX_SATA
 	tristate "SMP86xx SATA PHY driver"
-	depends on ARCH_TANGOX
+	depends on ARCH_TANGO
 	select GENERIC_PHY
 
 endmenu

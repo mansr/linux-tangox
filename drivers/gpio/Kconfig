@@ -389,7 +389,7 @@ config GPIO_TB10X
 
 config GPIO_TANGOX
 	tristate "SMP86xx GPIO"
-	depends on ARCH_TANGOX
+	depends on ARCH_TANGO
 	help
 	  Support for Sigma Designs SMP86xx GPIO.
 

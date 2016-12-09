@@ -453,7 +453,7 @@ config TXX9_DMAC
 
 config TANGOX_DMA
 	tristate "Sigma Designs SMP86xx DMA support"
-	depends on ARCH_TANGOX
+	depends on ARCH_TANGO
 	select DMA_ENGINE
 	select DMA_VIRTUAL_CHANNELS
 

@@ -1,4 +1,4 @@
-config ARCH_TANGOX
+config ARCH_TANGO
 	bool "Sigma Designs SMP87xx" if ARCH_MULTI_V7
 	select ARCH_HAS_HOLES_MEMORYMODEL
 	select ARM_ERRATA_754322

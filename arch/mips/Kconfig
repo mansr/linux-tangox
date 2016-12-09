@@ -831,7 +831,7 @@ config SNI_RM
 	  Technology and now in turn merged with Fujitsu.  Say Y here to
 	  support this machine type.
 
-config ARCH_TANGOX
+config ARCH_TANGO
 	bool "Sigma Designs SMP86xx"
 	select BOOT_RAW
 	select CEVT_R4K
