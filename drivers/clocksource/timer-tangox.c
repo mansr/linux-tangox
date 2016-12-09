@@ -107,7 +107,7 @@ static int tangox_timer_set_oneshot(struct clock_event_device *dev)
 	return 0;
 }
 
-static void __init tangox_timer_setup(struct device_node *node)
+static int __init tangox_timer_setup(struct device_node *node)
 {
 	struct tangox_timer *tm;
 	void __iomem *base;
@@ -119,26 +119,26 @@ static void __init tangox_timer_setup(struct device_node *node)
 
 	clk = of_clk_get(node, 0);
 	if (IS_ERR(clk))
-		return;
+		return PTR_ERR(clk);
 
 	base = of_iomap(node, 0);
 	if (!base)
-		return;
+		return -ENXIO;
 
 	irq = irq_of_parse_and_map(node, 0);
 	if (irq <= 0)
-		return;
+		return -EINVAL;
 
 	if (of_property_read_string(node, "label", &name))
 		name = node->name;
 
 	tm = kzalloc(sizeof(*tm), GFP_KERNEL);
 	if (!tm)
-		return;
+		return -ENOMEM;
 
 	err = clk_prepare_enable(clk);
 	if (err)
-		return;
+		return err;
 
 	rate = clk_get_rate(clk);
 
@@ -167,5 +167,7 @@ static void __init tangox_timer_setup(struct device_node *node)
 	err = request_irq(irq, tangox_timer_irq, 0, name, tm);
 	if (err)
 		pr_warn("%s: failed to request irq %d\n", name, irq);
+
+	return err;
 }
 CLOCKSOURCE_OF_DECLARE(tangox_timer, "sigma,smp8640-timer", tangox_timer_setup);

@@ -24,7 +24,7 @@ static struct delay_timer tangox_delay_timer = {
 };
 #endif
 
-static void __init tangox_csrc_setup(struct device_node *node)
+static int __init tangox_csrc_setup(struct device_node *node)
 {
 	void __iomem *base;
 	struct clk *clk;
@@ -33,11 +33,11 @@ static void __init tangox_csrc_setup(struct device_node *node)
 
 	clk = of_clk_get(node, 0);
 	if (IS_ERR(clk))
-		return;
+		return PTR_ERR(clk);
 
 	base = of_iomap(node, 0);
 	if (!base)
-		return;
+		return -ENXIO;
 
 	if (of_property_read_string(node, "label", &name))
 		name = node->name;
@@ -56,5 +56,7 @@ static void __init tangox_csrc_setup(struct device_node *node)
 		register_current_timer_delay(&tangox_delay_timer);
 #endif
 	}
+
+	return 0;
 }
 CLOCKSOURCE_OF_DECLARE(tangox_csrc, "sigma,smp8640-csrc", tangox_csrc_setup);
