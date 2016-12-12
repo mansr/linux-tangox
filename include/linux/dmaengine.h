@@ -795,6 +795,8 @@ struct dma_device {
 					    dma_cookie_t cookie,
 					    struct dma_tx_state *txstate);
 	void (*device_issue_pending)(struct dma_chan *chan);
+	void (*device_async_complete)(struct dma_chan *chan,
+				      struct dma_async_tx_descriptor *desc);
 };
 
 static inline int dmaengine_slave_config(struct dma_chan *chan,
@@ -1234,6 +1236,21 @@ __dma_has_cap(enum dma_transaction_type tx_type, dma_cap_mask_t *srcp)
 static inline void dma_async_issue_pending(struct dma_chan *chan)
 {
 	chan->device->device_issue_pending(chan);
+}
+
+/**
+ * dma_async_complete - notify DMA driver of completed transfer
+ * @chan: target DMA channel
+ *
+ * If required by the hardware, this function should be called when
+ * the transfer for a descriptor has completed from the device point
+ * of view.
+ */
+static inline void dma_async_complete(struct dma_chan *chan,
+				      struct dma_async_tx_descriptor *desc)
+{
+	if (chan->device->device_async_complete)
+		chan->device->device_async_complete(chan, desc);
 }
 
 /**
