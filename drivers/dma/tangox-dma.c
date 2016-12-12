@@ -20,6 +20,7 @@
 #include <linux/spinlock.h>
 #include <linux/irq.h>
 #include <linux/delay.h>
+#include <linux/bitops.h>
 
 #include "virt-dma.h"
 
@@ -44,6 +45,12 @@
 #define DMA_MODE_RECT	(3 << 0)
 #define DMA_LAST_XFER	(1 << 2)
 
+#define DMA_COMPLETE_HOST	0
+#define DMA_COMPLETE_DEV	1
+#define DMA_COMPLETE_DONE	2
+
+struct tangox_dma_pchan;
+
 struct tangox_dma_sg {
 	dma_addr_t addr;
 	unsigned int len;
@@ -52,7 +59,11 @@ struct tangox_dma_sg {
 struct tangox_dma_desc {
 	struct virt_dma_desc vd;
 	enum dma_transfer_direction direction;
+	struct tangox_dma_pchan *pchan;
+	bool last;
+	unsigned long complete;
 	unsigned int num_sgs;
+	unsigned int next_sg;
 	struct tangox_dma_sg sg[];
 };
 
@@ -69,8 +80,8 @@ struct tangox_dma_pchan {
 	void __iomem *base;
 	spinlock_t lock;
 	struct tangox_dma_desc *desc;
-	unsigned int next_sg;
 	unsigned long issued_len;
+	struct tasklet_struct complete;
 };
 
 struct tangox_dma_device {
@@ -96,6 +107,12 @@ static inline struct tangox_dma_chan *to_tangox_dma_chan(struct dma_chan *c)
 }
 
 static inline struct tangox_dma_desc *to_tangox_dma_desc(
+	struct dma_async_tx_descriptor *d)
+{
+	return container_of(d, struct tangox_dma_desc, vd.tx);
+}
+
+static inline struct tangox_dma_desc *vdesc_to_tangox_dma_desc(
 	struct virt_dma_desc *vdesc)
 {
 	return container_of(vdesc, struct tangox_dma_desc, vd);
@@ -210,9 +227,10 @@ static int tangox_dma_issue_rect(struct tangox_dma_pchan *pchan,
 static int tangox_dma_pchan_issue(struct tangox_dma_pchan *pchan,
 				  struct tangox_dma_sg *sg)
 {
+	struct tangox_dma_desc *desc = pchan->desc;
 	int flags = 0;
 
-	if (pchan->next_sg == pchan->desc->num_sgs - 1)
+	if (desc->next_sg == desc->num_sgs - 1)
 		flags = DMA_LAST_XFER;
 
 	if (sg->len <= TANGOX_DMA_MAX_LEN)
@@ -247,25 +265,27 @@ static struct tangox_dma_desc *tangox_dma_next_desc(
 	return desc;
 }
 
-static int tangox_dma_pchan_start(struct tangox_dma_pchan *pchan)
+static void tangox_dma_pchan_start(struct tangox_dma_pchan *pchan)
 {
 	struct tangox_dma_device *dev = pchan->dev;
+	struct tangox_dma_desc *desc = pchan->desc;
 	struct tangox_dma_sg *sg;
 	int len;
 
-	if (!pchan->desc) {
-		pchan->desc = tangox_dma_next_desc(dev, pchan->direction);
-
-		if (!pchan->desc) {
+	if (!desc) {
+		desc = tangox_dma_next_desc(dev, pchan->direction);
+		if (!desc) {
 			tangox_dma_pchan_detach(pchan);
-			return 0;
+			return;
 		}
 
-		pchan->next_sg = 0;
-		tangox_dma_pchan_setup(pchan, pchan->desc);
+		pchan->desc = desc;
+		tangox_dma_pchan_setup(pchan, desc);
 	}
 
-	sg = &pchan->desc->sg[pchan->next_sg];
+	desc->pchan = pchan;
+
+	sg = &desc->sg[desc->next_sg];
 
 	len = tangox_dma_pchan_issue(pchan, sg);
 
@@ -273,11 +293,9 @@ static int tangox_dma_pchan_start(struct tangox_dma_pchan *pchan)
 	sg->len  -= len;
 
 	if (!sg->len)
-		pchan->next_sg++;
+		desc->next_sg++;
 
 	pchan->issued_len = len;
-
-	return 0;
 }
 
 static void tangox_dma_queue_desc(struct tangox_dma_device *dev,
@@ -293,37 +311,69 @@ static void tangox_dma_queue_desc(struct tangox_dma_device *dev,
 	spin_unlock_irqrestore(&dev->lock, flags);
 }
 
-static irqreturn_t tangox_dma_irq(int irq, void *irq_data)
+static void tangox_dma_pchan_complete(unsigned long data)
 {
-	struct tangox_dma_pchan *pchan = irq_data;
+	struct tangox_dma_pchan *pchan = (struct tangox_dma_pchan *)data;
 	struct tangox_dma_chan *chan;
 	struct tangox_dma_desc *desc;
 	struct virt_dma_desc *vdesc;
+	bool last;
 
-	spin_lock(&pchan->lock);
+	desc = pchan->desc;
+	chan = to_tangox_dma_chan(desc->vd.tx.chan);
+	last = desc->last;
 
-	if (pchan->desc) {
-		desc = pchan->desc;
-		chan = to_tangox_dma_chan(desc->vd.tx.chan);
-		this_cpu_ptr(chan->vc.chan.local)->bytes_transferred +=
-			pchan->issued_len;
-		if (pchan->next_sg == desc->num_sgs) {
-			spin_lock(&chan->vc.lock);
-			vchan_cookie_complete(&desc->vd);
-			vdesc = vchan_next_desc(&chan->vc);
-			if (vdesc) {
-				list_del(&vdesc->node);
-				desc = to_tangox_dma_desc(vdesc);
-				tangox_dma_queue_desc(pchan->dev, desc);
-			}
-			spin_unlock(&chan->vc.lock);
-			pchan->desc = NULL;
-		}
+	spin_lock_irq(&chan->vc.lock);
+	vchan_cookie_complete(&desc->vd);
+	vdesc = vchan_next_desc(&chan->vc);
+	if (vdesc)
+		list_del(&vdesc->node);
+	spin_unlock_irq(&chan->vc.lock);
+
+	desc = vdesc ? vdesc_to_tangox_dma_desc(vdesc) : NULL;
+
+	if (desc && (last || desc->direction != pchan->direction)) {
+		tangox_dma_queue_desc(pchan->dev, desc);
+		desc = NULL;
 	}
 
+	spin_lock_irq(&pchan->lock);
+	pchan->desc = desc;
 	tangox_dma_pchan_start(pchan);
+	spin_unlock_irq(&pchan->lock);
+}
 
-	spin_unlock(&pchan->lock);
+static void tangox_dma_desc_complete(struct tangox_dma_desc *desc, int comp)
+{
+	if (desc->last) {
+		set_bit(comp, &desc->complete);
+		if (desc->complete != 3)
+			return;
+
+		if (test_and_set_bit(DMA_COMPLETE_DONE, &desc->complete))
+			return;
+	}
+
+	tasklet_schedule(&desc->pchan->complete);
+}
+
+static irqreturn_t tangox_dma_irq(int irq, void *irq_data)
+{
+	struct tangox_dma_pchan *pchan = irq_data;
+	struct tangox_dma_desc *desc = pchan->desc;
+	struct dma_chan *dc;
+
+	if (!desc)
+		return IRQ_NONE;
+
+	dc = desc->vd.tx.chan;
+	this_cpu_ptr(dc->local)->bytes_transferred += pchan->issued_len;
+
+	if (desc->next_sg == desc->num_sgs) {
+		tangox_dma_desc_complete(desc, DMA_COMPLETE_HOST);
+	} else {
+		tangox_dma_pchan_start(pchan);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -360,9 +410,13 @@ static void tangox_dma_issue_pending(struct dma_chan *c)
 
 	spin_lock_irqsave(&chan->vc.lock, flags);
 	if (vchan_issue_pending(&chan->vc)) {
+		desc = list_last_entry(&chan->vc.desc_issued,
+				       struct tangox_dma_desc, vd.node);
+		desc->last = true;
+
 		vdesc = vchan_next_desc(&chan->vc);
 		list_del(&vdesc->node);
-		desc = to_tangox_dma_desc(vdesc);
+		desc = vdesc_to_tangox_dma_desc(vdesc);
 	}
 	spin_unlock_irqrestore(&chan->vc.lock, flags);
 
@@ -370,6 +424,17 @@ static void tangox_dma_issue_pending(struct dma_chan *c)
 		tangox_dma_queue_desc(dev, desc);
 		tangox_dma_start(dev, desc->direction);
 	}
+}
+
+static void tangox_dma_async_complete(struct dma_chan *c,
+				      struct dma_async_tx_descriptor *d)
+{
+	struct tangox_dma_desc *desc = to_tangox_dma_desc(d);
+
+	if (WARN_ON(!desc->last))
+		return;
+
+	tangox_dma_desc_complete(desc, DMA_COMPLETE_DEV);
 }
 
 static struct dma_async_tx_descriptor *tangox_dma_prep_slave_sg(
@@ -491,6 +556,7 @@ static int tangox_dma_probe(struct platform_device *pdev)
 	dd->device_prep_slave_sg = tangox_dma_prep_slave_sg;
 	dd->device_tx_status = tangox_dma_tx_status;
 	dd->device_issue_pending = tangox_dma_issue_pending;
+	dd->device_async_complete = tangox_dma_async_complete;
 
 	INIT_LIST_HEAD(&dd->channels);
 
@@ -515,6 +581,8 @@ static int tangox_dma_probe(struct platform_device *pdev)
 		pchan = &dmadev->pchan[dmadev->nr_pchans];
 		pchan->dev = dmadev;
 		spin_lock_init(&pchan->lock);
+		tasklet_init(&pchan->complete, tangox_dma_pchan_complete,
+			     (unsigned long)pchan);
 
 		if (of_property_read_bool(cnode, "sigma,mem-to-dev"))
 			pchan->direction = DMA_MEM_TO_DEV;
