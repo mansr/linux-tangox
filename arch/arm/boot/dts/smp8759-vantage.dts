@@ -36,3 +36,11 @@
 		interrupts = <37 IRQ_TYPE_EDGE_RISING>;
 	};
 };
+
+&sata_phy {
+	clock-frequency = <60>;
+	sigma,internal-clock;
+	sigma,rx-ssc = <1 1>;
+	sigma,tx-ssc = <1>;
+	sigma,tx-erc = <5>;
+};
