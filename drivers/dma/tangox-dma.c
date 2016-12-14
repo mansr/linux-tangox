@@ -508,7 +508,7 @@ static int tangox_dma_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&dmadev->desc_memtodev);
 	INIT_LIST_HEAD(&dmadev->desc_devtomem);
 
-	for_each_child_of_node(node, cnode) {
+	for_each_available_child_of_node(node, cnode) {
 		pchan = &dmadev->pchan[dmadev->nr_pchans];
 		pchan->dev = dmadev;
 		spin_lock_init(&pchan->lock);
