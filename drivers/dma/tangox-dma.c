@@ -144,8 +144,7 @@ static void tangox_dma_sbox_map(struct tangox_dma_device *dev, int src, int dst)
 		shift -= 32;
 	}
 
-	writel(src << shift, addr);
-	wmb();
+	writel_relaxed(src << shift, addr);
 }
 
 static void tangox_dma_pchan_setup(struct tangox_dma_pchan *pchan,
@@ -186,8 +185,7 @@ static void tangox_dma_issue_cmd(struct tangox_dma_pchan *pchan,
 
 	val = cmd << regs->cmd_shift | flags << regs->flags_shift;
 
-	wmb();
-	writel(val, pchan->base + DMA_CMD);
+	writel_relaxed(val, pchan->base + DMA_CMD);
 }
 
 static int tangox_dma_issue_single(struct tangox_dma_pchan *pchan,
@@ -199,8 +197,8 @@ static int tangox_dma_issue_single(struct tangox_dma_pchan *pchan,
 	if (len < sg->len)
 		flags &= ~DMA_LAST_XFER;
 
-	writel(sg->addr, pchan->base + DMA_ADDR);
-	writel(len, pchan->base + DMA_COUNT);
+	writel_relaxed(sg->addr, pchan->base + DMA_ADDR);
+	writel_relaxed(len, pchan->base + DMA_COUNT);
 
 	tangox_dma_issue_cmd(pchan, DMA_CMD_SINGLE, flags);
 
@@ -217,9 +215,9 @@ static int tangox_dma_issue_double(struct tangox_dma_pchan *pchan,
 	if (len + len1 < sg->len)
 		flags &= ~DMA_LAST_XFER;
 
-	writel(sg->addr, pchan->base + DMA_ADDR);
-	writel(sg->addr + len, pchan->base + DMA_ADDR2);
-	writel(len | len1 << 16, pchan->base + DMA_COUNT);
+	writel_relaxed(sg->addr, pchan->base + DMA_ADDR);
+	writel_relaxed(sg->addr + len, pchan->base + DMA_ADDR2);
+	writel_relaxed(len | len1 << 16, pchan->base + DMA_COUNT);
 
 	tangox_dma_issue_cmd(pchan, DMA_CMD_DOUBLE, flags);
 
@@ -237,9 +235,9 @@ static int tangox_dma_issue_rect(struct tangox_dma_pchan *pchan,
 	if (count * width < sg->len)
 		flags &= ~DMA_LAST_XFER;
 
-	writel(sg->addr, pchan->base + DMA_ADDR);
-	writel(width, pchan->base + DMA_STRIDE);
-	writel(width | count << 16, pchan->base + DMA_COUNT);
+	writel_relaxed(sg->addr, pchan->base + DMA_ADDR);
+	writel_relaxed(width, pchan->base + DMA_STRIDE);
+	writel_relaxed(width | count << 16, pchan->base + DMA_COUNT);
 
 	tangox_dma_issue_cmd(pchan, DMA_CMD_RECT, flags);
 
@@ -511,16 +509,16 @@ static void tangox_dma_desc_free(struct virt_dma_desc *vd)
 
 static void tangox_dma_reset(struct tangox_dma_device *dev)
 {
-	writel(0xffffffff, dev->sbox_base + SBOX_RESET);
-	writel(0xffffffff, dev->sbox_base + SBOX_RESET2);
+	writel_relaxed(0xffffffff, dev->sbox_base + SBOX_RESET);
+	writel_relaxed(0xffffffff, dev->sbox_base + SBOX_RESET2);
 
 	udelay(2);
 
-	writel(0xff00ff00, dev->sbox_base + SBOX_RESET);
-	writel(0xff00ff00, dev->sbox_base + SBOX_RESET2);
+	writel_relaxed(0xff00ff00, dev->sbox_base + SBOX_RESET);
+	writel_relaxed(0xff00ff00, dev->sbox_base + SBOX_RESET2);
 
-	writel(0xffffffff, dev->sbox_base + SBOX_ROUTE);
-	writel(0xffffffff, dev->sbox_base + SBOX_ROUTE2);
+	writel_relaxed(0xffffffff, dev->sbox_base + SBOX_ROUTE);
+	writel_relaxed(0xffffffff, dev->sbox_base + SBOX_ROUTE2);
 }
 
 static struct dma_chan *tangox_dma_xlate(struct of_phandle_args *dma_spec,
