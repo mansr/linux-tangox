@@ -429,6 +429,25 @@
 			clocks = <&usb_clk>;
 		};
 
+		sata0: sata@23000 {
+			compatible = "sigma,smp8642-sata";
+			reg = <0x23000 0x800>,
+			      <0x24000 0xc>,
+			      <0x25290 0x4>;
+			interrupts = <41 IRQ_TYPE_LEVEL_HIGH>,
+				     <42 IRQ_TYPE_LEVEL_HIGH>;
+			dmas = <&dma0 5>;
+			dma-names = "sata-dma";
+			phys = <&sata_phy>;
+			phy-names = "sata-phy";
+		};
+
+		sata_phy: phy@2400c {
+			compatible = "sigma,smp8640-sata-phy";
+			reg = <0x2400c 0x10>;
+			#phy-cells = <0>;
+		};
+
 		eth0: ethernet@26000 {
 			compatible = "sigma,smp8734-ethernet";
 			reg = <0x26000 0x800>;
