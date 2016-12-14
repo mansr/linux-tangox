@@ -397,7 +397,7 @@
 		};
 
 		dma0: dma@290a0 {
-			compatible = "sigma,smp8640-dma";
+			compatible = "sigma,smp8642-dma";
 			reg = <0x290a0 0x10>;
 			ranges = <0x0 0x2b000 0x200>;
 			#dma-cells = <1>;
