@@ -1188,8 +1188,7 @@ static const struct ata_port_info sata_dwc_port_info[] = {
 static int sata_dwc_probe(struct platform_device *ofdev)
 {
 	struct sata_dwc_device *hsdev;
-	u32 idr, versionr;
-	char *ver = (char *)&versionr;
+	u32 idr, ver;
 	void __iomem *base;
 	int err = 0;
 	int irq;
@@ -1225,9 +1224,9 @@ static int sata_dwc_probe(struct platform_device *ofdev)
 
 	/* Read the ID and Version Registers */
 	idr = sata_dwc_readl(&hsdev->sata_dwc_regs->idr);
-	versionr = sata_dwc_readl(&hsdev->sata_dwc_regs->versionr);
+	ver = sata_dwc_readl(&hsdev->sata_dwc_regs->versionr);
 	dev_notice(&ofdev->dev, "id %d, controller version %c.%c%c\n",
-		   idr, ver[0], ver[1], ver[2]);
+		   idr, ver >> 24 & 0xff, ver >> 16 & 0xff, ver >> 8 & 0xff);
 
 	/* Save dev for later use in dev_xxx() routines */
 	hsdev->dev = &ofdev->dev;
