@@ -28,6 +28,11 @@
 #define TANGOX_DMA_MAX_CHANS 6
 #define TANGOX_DMA_MAX_PCHANS 6
 
+#define SBOX_RESET		0
+#define SBOX_RESET2		4
+#define SBOX_ROUTE		8
+#define SBOX_ROUTE2		12
+
 #define DMA_ADDR	0
 #define DMA_COUNT	4
 #define DMA_ADDR2	8
@@ -104,7 +109,7 @@ static struct tangox_dma_desc *tangox_dma_alloc_desc(unsigned int num_sgs)
 
 static void tangox_dma_sbox_map(struct tangox_dma_device *dev, int src, int dst)
 {
-	void __iomem *addr = dev->sbox_base + 8;
+	void __iomem *addr = dev->sbox_base + SBOX_ROUTE;
 	int shift = (dst - 1) * 4;
 
 	if (shift > 31) {
@@ -418,16 +423,16 @@ static void tangox_dma_desc_free(struct virt_dma_desc *vd)
 
 static void tangox_dma_reset(struct tangox_dma_device *dev)
 {
-	writel(0xffffffff, dev->sbox_base);
-	writel(0xffffffff, dev->sbox_base + 4);
+	writel(0xffffffff, dev->sbox_base + SBOX_RESET);
+	writel(0xffffffff, dev->sbox_base + SBOX_RESET2);
 
 	udelay(2);
 
-	writel(0xff00ff00, dev->sbox_base);
-	writel(0xff00ff00, dev->sbox_base + 4);
+	writel(0xff00ff00, dev->sbox_base + SBOX_RESET);
+	writel(0xff00ff00, dev->sbox_base + SBOX_RESET2);
 
-	writel(0xffffffff, dev->sbox_base + 8);
-	writel(0xffffffff, dev->sbox_base + 12);
+	writel(0xffffffff, dev->sbox_base + SBOX_ROUTE);
+	writel(0xffffffff, dev->sbox_base + SBOX_ROUTE2);
 }
 
 static struct dma_chan *tangox_dma_xlate(struct of_phandle_args *dma_spec,
