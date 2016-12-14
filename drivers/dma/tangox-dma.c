@@ -25,19 +25,19 @@
 
 #include "virt-dma.h"
 
-#define TANGOX_DMA_MAX_CHANS 6
-#define TANGOX_DMA_MAX_PCHANS 6
+#define TANGOX_DMA_MAX_CHANS	6
+#define TANGOX_DMA_MAX_PCHANS	6
 
 #define SBOX_RESET		0
 #define SBOX_RESET2		4
 #define SBOX_ROUTE		8
 #define SBOX_ROUTE2		12
 
-#define DMA_ADDR	0
-#define DMA_COUNT	4
-#define DMA_ADDR2	8
-#define DMA_STRIDE	DMA_ADDR2
-#define DMA_CMD		12
+#define DMA_ADDR		0
+#define DMA_COUNT		4
+#define DMA_ADDR2		8
+#define DMA_STRIDE		DMA_ADDR2
+#define DMA_CMD			12
 
 #define DMA_CMD_SINGLE		1
 #define DMA_CMD_DOUBLE		2
