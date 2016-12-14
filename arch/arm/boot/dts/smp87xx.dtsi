@@ -447,6 +447,58 @@
 			#size-cells = <0>;
 		};
 
+		dma0: dma@290a0 {
+			compatible = "sigma,smp8758-dma";
+			reg = <0x290a0 0x10>;
+			ranges = <0x0 0x2b000 0x200>;
+			#dma-cells = <1>;
+			sigma,slave-ids = <5>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			dma0_w0: chan@000 {
+				reg = <0x000 0x10>;
+				interrupts = <9 IRQ_TYPE_EDGE_RISING>;
+				sigma,sbox-id = <1>;
+				sigma,dev-to-mem;
+			};
+
+			dma0_w1: chan@040 {
+				reg = <0x040 0x10>;
+				interrupts = <10 IRQ_TYPE_EDGE_RISING>;
+				sigma,sbox-id = <2>;
+				sigma,dev-to-mem;
+			};
+
+			dma0_w2: chan@080 {
+				reg = <0x080 0x10>;
+				interrupts = <58 IRQ_TYPE_EDGE_RISING>;
+				sigma,sbox-id = <9>;
+				sigma,dev-to-mem;
+			};
+
+			dma0_r0: chan@100 {
+				reg = <0x100 0x10>;
+				interrupts = <11 IRQ_TYPE_EDGE_RISING>;
+				sigma,sbox-id = <1>;
+				sigma,mem-to-dev;
+			};
+
+			dma0_r1: chan@140 {
+				reg = <0x140 0x10>;
+				interrupts = <12 IRQ_TYPE_EDGE_RISING>;
+				sigma,sbox-id = <2>;
+				sigma,mem-to-dev;
+			};
+
+			dma0_r2: chan@180 {
+				reg = <0x180 0x10>;
+				interrupts = <59 IRQ_TYPE_EDGE_RISING>;
+				sigma,sbox-id = <9>;
+				sigma,mem-to-dev;
+			};
+		};
+
 		uart0: serial@10700 {
 			compatible = "ralink,rt2880-uart";
 			reg = <0x10700 0x100>;
