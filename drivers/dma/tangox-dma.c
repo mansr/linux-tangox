@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/of_address.h>
+#include <linux/of_device.h>
 #include <linux/of_dma.h>
 #include <linux/of_irq.h>
 #include <linux/slab.h>
@@ -23,8 +24,6 @@
 #include <linux/bitops.h>
 
 #include "virt-dma.h"
-
-#define TANGOX_DMA_MAX_LEN 0x1000u
 
 #define TANGOX_DMA_MAX_CHANS 6
 #define TANGOX_DMA_MAX_PCHANS 6
@@ -40,10 +39,11 @@
 #define DMA_STRIDE	DMA_ADDR2
 #define DMA_CMD		12
 
-#define DMA_MODE_SINGLE	(1 << 0)
-#define DMA_MODE_DOUBLE	(2 << 0)
-#define DMA_MODE_RECT	(3 << 0)
-#define DMA_LAST_XFER	(1 << 2)
+#define DMA_CMD_SINGLE		1
+#define DMA_CMD_DOUBLE		2
+#define DMA_CMD_RECT		3
+
+#define DMA_LAST_XFER		1
 
 #define DMA_COMPLETE_HOST	0
 #define DMA_COMPLETE_DEV	1
@@ -84,9 +84,19 @@ struct tangox_dma_pchan {
 	struct tasklet_struct complete;
 };
 
+struct tangox_dma_regs {
+	unsigned int xcnt_bits;
+	unsigned int xcnt_max;
+	unsigned int ycnt_bits;
+	unsigned int ycnt_max;
+	unsigned int cmd_shift;
+	unsigned int flags_shift;
+};
+
 struct tangox_dma_device {
 	struct dma_device ddev;
 	void __iomem *sbox_base;
+	const struct tangox_dma_regs *regs;
 	spinlock_t lock;
 	struct list_head desc_memtodev;
 	struct list_head desc_devtomem;
@@ -168,19 +178,31 @@ static void tangox_dma_pchan_detach(struct tangox_dma_pchan *pchan)
 	pchan->slave_id = -1;
 }
 
+static void tangox_dma_issue_cmd(struct tangox_dma_pchan *pchan,
+				 unsigned int cmd, unsigned int flags)
+{
+	const struct tangox_dma_regs *regs = pchan->dev->regs;
+	u32 val;
+
+	val = cmd << regs->cmd_shift | flags << regs->flags_shift;
+
+	wmb();
+	writel(val, pchan->base + DMA_CMD);
+}
+
 static int tangox_dma_issue_single(struct tangox_dma_pchan *pchan,
 				   struct tangox_dma_sg *sg, int flags)
 {
-	unsigned int len = min(sg->len, TANGOX_DMA_MAX_LEN);
+	const struct tangox_dma_regs *regs = pchan->dev->regs;
+	unsigned int len = min(sg->len, regs->xcnt_max);
 
 	if (len < sg->len)
 		flags &= ~DMA_LAST_XFER;
 
 	writel(sg->addr, pchan->base + DMA_ADDR);
 	writel(len, pchan->base + DMA_COUNT);
-	wmb();
-	writel(flags | DMA_MODE_SINGLE, pchan->base + DMA_CMD);
-	wmb();
+
+	tangox_dma_issue_cmd(pchan, DMA_CMD_SINGLE, flags);
 
 	return len;
 }
@@ -188,8 +210,9 @@ static int tangox_dma_issue_single(struct tangox_dma_pchan *pchan,
 static int tangox_dma_issue_double(struct tangox_dma_pchan *pchan,
 				   struct tangox_dma_sg *sg, int flags)
 {
-	unsigned int len = min(sg->len, TANGOX_DMA_MAX_LEN);
-	unsigned int len1 = min(sg->len - len, TANGOX_DMA_MAX_LEN);
+	const struct tangox_dma_regs *regs = pchan->dev->regs;
+	unsigned int len = min(sg->len, regs->xcnt_max);
+	unsigned int len1 = min(sg->len - len, regs->ycnt_max);
 
 	if (len + len1 < sg->len)
 		flags &= ~DMA_LAST_XFER;
@@ -197,9 +220,8 @@ static int tangox_dma_issue_double(struct tangox_dma_pchan *pchan,
 	writel(sg->addr, pchan->base + DMA_ADDR);
 	writel(sg->addr + len, pchan->base + DMA_ADDR2);
 	writel(len | len1 << 16, pchan->base + DMA_COUNT);
-	wmb();
-	writel(flags | DMA_MODE_DOUBLE, pchan->base + DMA_CMD);
-	wmb();
+
+	tangox_dma_issue_cmd(pchan, DMA_CMD_DOUBLE, flags);
 
 	return len + len1;
 }
@@ -207,9 +229,10 @@ static int tangox_dma_issue_double(struct tangox_dma_pchan *pchan,
 static int tangox_dma_issue_rect(struct tangox_dma_pchan *pchan,
 				 struct tangox_dma_sg *sg, int flags)
 {
-	unsigned int shift = __fls(sg->len) - 12;
+	const struct tangox_dma_regs *regs = pchan->dev->regs;
+	unsigned int shift = __fls(sg->len) - regs->xcnt_bits - 1;
 	unsigned int width = sg->len >> shift;
-	unsigned int count = min(1u << shift, TANGOX_DMA_MAX_LEN);
+	unsigned int count = min(1u << shift, regs->ycnt_max);
 
 	if (count * width < sg->len)
 		flags &= ~DMA_LAST_XFER;
@@ -217,9 +240,8 @@ static int tangox_dma_issue_rect(struct tangox_dma_pchan *pchan,
 	writel(sg->addr, pchan->base + DMA_ADDR);
 	writel(width, pchan->base + DMA_STRIDE);
 	writel(width | count << 16, pchan->base + DMA_COUNT);
-	wmb();
-	writel(flags | DMA_MODE_RECT, pchan->base + DMA_CMD);
-	wmb();
+
+	tangox_dma_issue_cmd(pchan, DMA_CMD_RECT, flags);
 
 	return count << shift;
 }
@@ -227,16 +249,17 @@ static int tangox_dma_issue_rect(struct tangox_dma_pchan *pchan,
 static int tangox_dma_pchan_issue(struct tangox_dma_pchan *pchan,
 				  struct tangox_dma_sg *sg)
 {
+	const struct tangox_dma_regs *regs = pchan->dev->regs;
 	struct tangox_dma_desc *desc = pchan->desc;
 	int flags = 0;
 
 	if (desc->next_sg == desc->num_sgs - 1)
 		flags = DMA_LAST_XFER;
 
-	if (sg->len <= TANGOX_DMA_MAX_LEN)
+	if (sg->len <= regs->xcnt_max)
 		return tangox_dma_issue_single(pchan, sg, flags);
 
-	if (sg->len <= TANGOX_DMA_MAX_LEN * 2)
+	if (sg->len <= regs->xcnt_max + regs->ycnt_max)
 		return tangox_dma_issue_double(pchan, sg, flags);
 
 	return tangox_dma_issue_rect(pchan, sg, flags);
@@ -519,6 +542,31 @@ static struct dma_chan *tangox_dma_xlate(struct of_phandle_args *dma_spec,
 	return NULL;
 }
 
+static const struct tangox_dma_regs tango3_regs = {
+	.xcnt_bits	= 13,
+	.xcnt_max	= GENMASK(12, 0),
+	.ycnt_bits	= 14,
+	.ycnt_max	= GENMASK(13, 0),
+	.cmd_shift	= 0,
+	.flags_shift	= 2,
+};
+
+static const struct tangox_dma_regs tango4_regs = {
+	.xcnt_bits	= 13,
+	.xcnt_max	= GENMASK(12, 0),
+	.ycnt_bits	= 14,
+	.ycnt_max	= GENMASK(13, 0),
+	.cmd_shift	= 1,
+	.flags_shift	= 0,
+};
+
+static const struct of_device_id tangox_dma_dt_ids[] = {
+	{ .compatible = "sigma,smp8642-dma", .data = &tango3_regs },
+	{ .compatible = "sigma,smp8758-dma", .data = &tango4_regs },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, tangox_dma_dt_ids);
+
 static int tangox_dma_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -529,13 +577,20 @@ static int tangox_dma_probe(struct platform_device *pdev)
 	struct dma_device *dd;
 	struct resource *res;
 	struct resource cres;
+	const struct of_device_id *match;
 	int irq;
 	int err;
 	int i;
 
+	match = of_match_device(tangox_dma_dt_ids, &pdev->dev);
+	if (!match)
+		return -EINVAL;
+
 	dmadev = devm_kzalloc(&pdev->dev, sizeof(*dmadev), GFP_KERNEL);
 	if (!dmadev)
 		return -ENOMEM;
+
+	dmadev->regs = match->data;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	dmadev->sbox_base = devm_ioremap_resource(&pdev->dev, res);
@@ -639,11 +694,6 @@ static int tangox_dma_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
-static struct of_device_id tangox_dma_dt_ids[] = {
-	{ .compatible = "sigma,smp8640-dma" },
-	{ }
-};
 
 static struct platform_driver tangox_dma_driver = {
 	.probe	= tangox_dma_probe,
