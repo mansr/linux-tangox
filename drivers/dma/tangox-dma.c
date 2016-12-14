@@ -190,11 +190,11 @@ static int tangox_dma_issue_double(struct tangox_dma_pchan *pchan,
 static int tangox_dma_issue_rect(struct tangox_dma_pchan *pchan,
 				 struct tangox_dma_sg *sg, int flags)
 {
-	unsigned int shift = min(__ffs(sg->len), 12ul);
-	unsigned int count = min(sg->len >> shift, TANGOX_DMA_MAX_LEN);
-	unsigned int width = 1 << shift;
+	unsigned int shift = __fls(sg->len) - 12;
+	unsigned int width = sg->len >> shift;
+	unsigned int count = min(1u << shift, TANGOX_DMA_MAX_LEN);
 
-	if (count << shift < sg->len)
+	if (count * width < sg->len)
 		flags &= ~DMA_LAST_XFER;
 
 	writel(sg->addr, pchan->base + DMA_ADDR);
