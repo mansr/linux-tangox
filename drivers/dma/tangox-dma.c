@@ -326,7 +326,10 @@ static void tangox_dma_pchan_start(struct tangox_dma_pchan *pchan)
 
 	desc->pchan = pchan;
 
-	tangox_dma_pchan_issue(pchan);
+	if (desc->num_sgs)
+		tangox_dma_pchan_issue(pchan);
+	else
+		tangox_dma_desc_complete(desc, DMA_COMPLETE_HOST);
 }
 
 static void tangox_dma_queue_desc(struct tangox_dma_device *dev,
@@ -464,7 +467,7 @@ static struct dma_async_tx_descriptor *tangox_dma_prep_slave_sg(
 	struct scatterlist *sg;
 	unsigned int i;
 
-	if (!is_slave_direction(direction) || !sg_len)
+	if (!is_slave_direction(direction))
 		return NULL;
 
 	desc = tangox_dma_alloc_desc(sg_len);
