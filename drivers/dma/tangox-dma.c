@@ -294,6 +294,20 @@ static struct tangox_dma_desc *tangox_dma_next_desc(
 	return desc;
 }
 
+static void tangox_dma_desc_complete(struct tangox_dma_desc *desc, int comp)
+{
+	if (desc->last) {
+		set_bit(comp, &desc->complete);
+		if (desc->complete != 3)
+			return;
+
+		if (test_and_set_bit(DMA_COMPLETE_DONE, &desc->complete))
+			return;
+	}
+
+	tasklet_schedule(&desc->pchan->complete);
+}
+
 static void tangox_dma_pchan_start(struct tangox_dma_pchan *pchan)
 {
 	struct tangox_dma_device *dev = pchan->dev;
@@ -358,20 +372,6 @@ static void tangox_dma_pchan_complete(unsigned long data)
 	pchan->desc = desc;
 	tangox_dma_pchan_start(pchan);
 	spin_unlock_irq(&pchan->lock);
-}
-
-static void tangox_dma_desc_complete(struct tangox_dma_desc *desc, int comp)
-{
-	if (desc->last) {
-		set_bit(comp, &desc->complete);
-		if (desc->complete != 3)
-			return;
-
-		if (test_and_set_bit(DMA_COMPLETE_DONE, &desc->complete))
-			return;
-	}
-
-	tasklet_schedule(&desc->pchan->complete);
 }
 
 static irqreturn_t tangox_dma_irq(int irq, void *irq_data)
