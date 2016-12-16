@@ -244,6 +244,14 @@ static int do_dma(struct tango_nfc *nfc, int dir, int cmd, const void *buf,
 
 	desc->callback = tango_dma_callback;
 	desc->callback_param = &tx_done;
+	dmaengine_submit(desc);
+
+	desc = dmaengine_prep_slave_sg(chan, NULL, 0, dir, DMA_PREP_INTERRUPT);
+	if (!desc)
+		goto dma_unmap;
+
+	dmaengine_submit(desc);
+
 	init_completion(&tx_done);
 
 	writel_relaxed(MODE_NFC, nfc->pbus_base + PBUS_PAD_MODE);
@@ -252,12 +260,13 @@ static int do_dma(struct tango_nfc *nfc, int dir, int cmd, const void *buf,
 	writel_relaxed(0, nfc->reg_base + NFC_ADDR_OFFSET);
 	writel_relaxed(cmd, nfc->reg_base + NFC_FLASH_CMD);
 
-	dmaengine_submit(desc);
 	dma_async_issue_pending(chan);
 
 	res = wait_for_completion_timeout(&tx_done, HZ);
 	if (res > 0)
 		err = readl_poll_timeout(addr, val, val & CMD_READY, 0, 1000);
+
+	dma_async_complete(chan, desc);
 
 	writel_relaxed(MODE_RAW, nfc->pbus_base + PBUS_PAD_MODE);
 
