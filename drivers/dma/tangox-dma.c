@@ -244,23 +244,31 @@ static int tangox_dma_issue_rect(struct tangox_dma_pchan *pchan,
 	return count << shift;
 }
 
-static int tangox_dma_pchan_issue(struct tangox_dma_pchan *pchan,
-				  struct tangox_dma_sg *sg)
+static void tangox_dma_pchan_issue(struct tangox_dma_pchan *pchan)
 {
 	const struct tangox_dma_regs *regs = pchan->dev->regs;
 	struct tangox_dma_desc *desc = pchan->desc;
+	struct tangox_dma_sg *sg = &desc->sg[desc->next_sg];
 	int flags = 0;
+	int len;
 
 	if (desc->next_sg == desc->num_sgs - 1)
 		flags = DMA_LAST_XFER;
 
 	if (sg->len <= regs->xcnt_max)
-		return tangox_dma_issue_single(pchan, sg, flags);
+		len = tangox_dma_issue_single(pchan, sg, flags);
+	else if (sg->len <= regs->xcnt_max + regs->ycnt_max)
+		len = tangox_dma_issue_double(pchan, sg, flags);
+	else
+		len = tangox_dma_issue_rect(pchan, sg, flags);
 
-	if (sg->len <= regs->xcnt_max + regs->ycnt_max)
-		return tangox_dma_issue_double(pchan, sg, flags);
+	sg->addr += len;
+	sg->len  -= len;
 
-	return tangox_dma_issue_rect(pchan, sg, flags);
+	if (!sg->len)
+		desc->next_sg++;
+
+	pchan->issued_len = len;
 }
 
 static struct tangox_dma_desc *tangox_dma_next_desc(
@@ -290,8 +298,6 @@ static void tangox_dma_pchan_start(struct tangox_dma_pchan *pchan)
 {
 	struct tangox_dma_device *dev = pchan->dev;
 	struct tangox_dma_desc *desc = pchan->desc;
-	struct tangox_dma_sg *sg;
-	int len;
 
 	if (!desc) {
 		desc = tangox_dma_next_desc(dev, pchan->direction);
@@ -306,17 +312,7 @@ static void tangox_dma_pchan_start(struct tangox_dma_pchan *pchan)
 
 	desc->pchan = pchan;
 
-	sg = &desc->sg[desc->next_sg];
-
-	len = tangox_dma_pchan_issue(pchan, sg);
-
-	sg->addr += len;
-	sg->len  -= len;
-
-	if (!sg->len)
-		desc->next_sg++;
-
-	pchan->issued_len = len;
+	tangox_dma_pchan_issue(pchan);
 }
 
 static void tangox_dma_queue_desc(struct tangox_dma_device *dev,
